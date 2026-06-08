@@ -21,19 +21,37 @@ class Stop(commands.Cog):
 
         stopped = False
 
-        for game in [
+        # RANDOMS
 
-            randoms_games,
-            crack_games,
-            deathroll_games
+        if channel_id in randoms_games:
 
-        ]:
+            del randoms_games[
+                channel_id
+            ]
 
-            if channel_id in game:
+            stopped = True
 
-                del game[channel_id]
+        # CRACK
 
-                stopped = True
+        if channel_id in crack_games:
+
+            del crack_games[
+                channel_id
+            ]
+
+            stopped = True
+
+        # DEATHROLL
+
+        if channel_id in deathroll_games:
+
+            del deathroll_games[
+                channel_id
+            ]
+
+            stopped = True
+
+        # RESULT
 
         if stopped:
 
