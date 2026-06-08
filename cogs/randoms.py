@@ -6,18 +6,15 @@ from data.pokemon import POKEMON_LIST
 
 from utils.stats import (
     record_win,
-    record_loss,
-    get_profile
+    record_loss
 )
 
 from utils.economy import (
-    parse_amount,
+    create_account,
     get_cash,
+    add_cash,
+    remove_cash,
     format_cash
-)
-
-from cogs.system import (
-    update_roles
 )
 
 from utils.game_state import (
@@ -26,182 +23,19 @@ from utils.game_state import (
 
 
 SPECIAL_PLAYERS = {
-
     1287545546231255092,
     711959035238285443
 }
 
-
 SPECIAL_POOL = [
-
     p for p in POKEMON_LIST
     if 450 <= p.total_stats <= 780
 ]
 
 
-# ─────────────────────────
-# CONFIRM VIEW
-# ─────────────────────────
-
-class RandomsConfirmView(
-    discord.ui.View
-):
-
-    def __init__(
-        self,
-        ctx,
-        opponent,
-        bo,
-        amount
-    ):
-
-        super().__init__(timeout=30)
-
-        self.ctx = ctx
-        self.opponent = opponent
-        self.bo = bo
-        self.amount = amount
-
-    @discord.ui.button(
-        label="Accept",
-        style=discord.ButtonStyle.success
-    )
-    async def accept(
-        self,
-        interaction: discord.Interaction,
-        button: discord.ui.Button
-    ):
-
-        if interaction.user != self.opponent:
-
-            await interaction.response.send_message(
-                "❌ This is not for you.",
-                ephemeral=True
-            )
-
-            return
-
-        if self.ctx.channel.id in randoms_games:
-
-            await interaction.response.send_message(
-                "❌ Match already active.",
-                ephemeral=True
-            )
-
-            return
-
-        if get_cash(
-            self.ctx.author.id
-        ) < self.amount:
-
-            await interaction.response.send_message(
-                "❌ Challenger no longer has enough cash.",
-                ephemeral=True
-            )
-
-            return
-
-        if get_cash(
-            self.opponent.id
-        ) < self.amount:
-
-            await interaction.response.send_message(
-                "❌ You no longer have enough cash.",
-                ephemeral=True
-            )
-
-            return
-
-        wins_required = (
-            self.bo // 2
-        ) + 1
-
-        randoms_games[
-            self.ctx.channel.id
-        ] = {
-
-            "player1": self.ctx.author,
-            "player2": self.opponent,
-
-            "bo": self.bo,
-
-            "amount": self.amount,
-
-            "wins_required": wins_required,
-
-            "score1": 0,
-            "score2": 0,
-
-            "picks": {}
-        }
-
-        embed = discord.Embed(
-
-            title="🐉 RANDOMS",
-
-            description=(
-
-                f"{self.ctx.author.mention} ⚔️ "
-                f"{self.opponent.mention}\n\n"
-
-                f"💵 Bet\n"
-                f"**{format_cash(self.amount)}**\n\n"
-
-                f"🏆 First to "
-                f"**{wins_required}** wins\n\n"
-
-                f"🎮 Use `.pick`"
-
-            ),
-
-            color=discord.Color.purple()
-        )
-
-        await interaction.response.edit_message(
-            embed=embed,
-            view=None
-        )
-
-    @discord.ui.button(
-        label="Decline",
-        style=discord.ButtonStyle.danger
-    )
-    async def decline(
-        self,
-        interaction: discord.Interaction,
-        button: discord.ui.Button
-    ):
-
-        if interaction.user != self.opponent:
-
-            await interaction.response.send_message(
-                "❌ This is not for you.",
-                ephemeral=True
-            )
-
-            return
-
-        embed = discord.Embed(
-
-            description="❌ Challenge declined.",
-
-            color=discord.Color.red()
-        )
-
-        await interaction.response.edit_message(
-            embed=embed,
-            view=None
-        )
-
-
-# ─────────────────────────
-# RANDOMS
-# ─────────────────────────
-
 class Randoms(commands.Cog):
 
     def __init__(self, bot):
-
         self.bot = bot
 
     @commands.command(name="randoms")
@@ -209,115 +43,96 @@ class Randoms(commands.Cog):
         self,
         ctx,
         opponent: discord.Member,
-        bo,
-        amount
+        bo: int = 1,
+        wager: str = "0"
     ):
-
-        amount = parse_amount(
-            amount
-        )
-
-        bo = int(bo)
 
         if opponent == ctx.author:
 
-            return
-
-        if opponent.bot:
+            await ctx.send(
+                "You cannot play yourself."
+            )
 
             return
 
         if bo not in [1, 3, 5, 7, 9]:
 
-            return
-
-        if amount <= 0:
+            await ctx.send(
+                "Use: `.randoms @user 1/3/5/7/9 amount`"
+            )
 
             return
 
         if ctx.channel.id in randoms_games:
 
-            embed = discord.Embed(
-
-                description="❌ Match already active.",
-
-                color=discord.Color.red()
-            )
-
             await ctx.send(
-                embed=embed
+                "A randoms game is already active."
             )
 
             return
 
-        if get_cash(
-            ctx.author.id
-        ) < amount:
+        wager = wager.lower()
 
-            embed = discord.Embed(
+        if wager.endswith("k"):
 
-                description="❌ You don't have enough cash.",
-
-                color=discord.Color.red()
+            wager = int(
+                float(wager[:-1]) * 1000
             )
 
+        elif wager.endswith("m"):
+
+            wager = int(
+                float(wager[:-1]) * 1000000
+            )
+
+        else:
+
+            wager = int(wager)
+
+        create_account(ctx.author.id)
+        create_account(opponent.id)
+
+        if get_cash(ctx.author.id) < wager:
+
             await ctx.send(
-                embed=embed
+                f"{ctx.author.mention} does not have enough cash."
             )
 
             return
 
-        if get_cash(
-            opponent.id
-        ) < amount:
-
-            embed = discord.Embed(
-
-                description=(
-                    f"❌ {opponent.mention} "
-                    f"doesn't have enough cash."
-                ),
-
-                color=discord.Color.red()
-            )
+        if get_cash(opponent.id) < wager:
 
             await ctx.send(
-                embed=embed
+                f"{opponent.mention} does not have enough cash."
             )
 
             return
+
+        wins_required = (bo // 2) + 1
+
+        randoms_games[ctx.channel.id] = {
+            "player1": ctx.author,
+            "player2": opponent,
+            "bo": bo,
+            "wins_required": wins_required,
+            "score1": 0,
+            "score2": 0,
+            "bet": wager,
+            "picks": {}
+        }
 
         embed = discord.Embed(
-
-            title="🐉 RANDOMS CHALLENGE",
-
+            title="🐍 RANDOMS",
             description=(
-
-                f"{ctx.author.mention} challenged "
-                f"{opponent.mention}\n\n"
-
-                f"💵 Bet\n"
-                f"**{format_cash(amount)}**\n\n"
-
-                f"🏆 Best Of "
-                f"**{bo}**"
-
+                f"{ctx.author.mention} ⚔️ {opponent.mention}\n\n"
+                f"💵 Wager: **{format_cash(wager)}**\n\n"
+                f"🏆 First to **{wins_required}** wins\n\n"
+                f"Both players use `.pick`"
             ),
-
-            color=discord.Color.blurple()
+            color=discord.Color.purple()
         )
 
-        await ctx.send(
-
-            embed=embed,
-
-            view=RandomsConfirmView(
-                ctx,
-                opponent,
-                bo,
-                amount
-            )
-        )
+        await ctx.send(embed=embed)
 
     @commands.command(name="pick")
     async def pick(self, ctx):
@@ -330,24 +145,26 @@ class Randoms(commands.Cog):
 
             return
 
-        game = randoms_games[
-            ctx.channel.id
-        ]
+        game = randoms_games[ctx.channel.id]
 
         if ctx.author not in [
-
             game["player1"],
             game["player2"]
-
         ]:
+
+            await ctx.send(
+                "You are not in this match."
+            )
 
             return
 
         if ctx.author in game["picks"]:
 
-            return
+            await ctx.send(
+                "You already picked."
+            )
 
-        # SPECIAL LUCK
+            return
 
         if ctx.author.id in SPECIAL_PLAYERS:
 
@@ -356,7 +173,6 @@ class Randoms(commands.Cog):
             if roll <= 20:
 
                 pool = [
-
                     p for p in POKEMON_LIST
                     if 450 <= p.total_stats <= 500
                 ]
@@ -364,7 +180,6 @@ class Randoms(commands.Cog):
             elif roll <= 35:
 
                 pool = [
-
                     p for p in POKEMON_LIST
                     if 500 < p.total_stats <= 530
                 ]
@@ -372,7 +187,6 @@ class Randoms(commands.Cog):
             elif roll <= 80:
 
                 pool = [
-
                     p for p in POKEMON_LIST
                     if 530 < p.total_stats <= 580
                 ]
@@ -380,7 +194,6 @@ class Randoms(commands.Cog):
             elif roll <= 92:
 
                 pool = [
-
                     p for p in POKEMON_LIST
                     if 570 < p.total_stats <= 680
                 ]
@@ -388,7 +201,6 @@ class Randoms(commands.Cog):
             else:
 
                 pool = [
-
                     p for p in POKEMON_LIST
                     if 680 < p.total_stats <= 780
                 ]
@@ -397,9 +209,7 @@ class Randoms(commands.Cog):
 
                 pool = SPECIAL_POOL
 
-            pokemon = random.choice(
-                pool
-            )
+            pokemon = random.choice(pool)
 
         else:
 
@@ -407,12 +217,9 @@ class Randoms(commands.Cog):
                 POKEMON_LIST
             )
 
-        game["picks"][
-            ctx.author
-        ] = pokemon
+        game["picks"][ctx.author] = pokemon
 
         clean_name = (
-
             pokemon.name.lower()
             .replace(" ", "")
             .replace(".", "")
@@ -420,12 +227,9 @@ class Randoms(commands.Cog):
         )
 
         gif_url = (
-
             "https://play.pokemonshowdown.com/"
             f"sprites/xyani/{clean_name}.gif"
         )
-
-        # COLOR
 
         if pokemon.total_stats < 400:
 
@@ -440,27 +244,22 @@ class Randoms(commands.Cog):
             embed_color = discord.Color.red()
 
         embed = discord.Embed(
-
             description=(
-
                 f"🎴 {ctx.author.mention} picked\n"
-                f"# **{pokemon.name}**\n\n"
-
-                f"💥 Total Power\n"
-                f"# **{pokemon.total_stats}**"
-
+                f"# **{pokemon.name}**"
             ),
-
             color=embed_color
         )
 
-        embed.set_image(
-            url=gif_url
+        embed.set_image(url=gif_url)
+
+        embed.add_field(
+            name="💥 Total Power",
+            value=f"# **{pokemon.total_stats}**",
+            inline=False
         )
 
-        await ctx.send(
-            embed=embed
-        )
+        await ctx.send(embed=embed)
 
         if len(game["picks"]) == 2:
 
@@ -468,14 +267,9 @@ class Randoms(commands.Cog):
                 ctx.channel.id
             )
 
-    async def resolve_round(
-        self,
-        channel_id
-    ):
+    async def resolve_round(self, channel_id):
 
-        game = randoms_games[
-            channel_id
-        ]
+        game = randoms_games[channel_id]
 
         p1 = game["player1"]
         p2 = game["player2"]
@@ -490,13 +284,11 @@ class Randoms(commands.Cog):
         if poke1.total_stats > poke2.total_stats:
 
             game["score1"] += 1
-
             winner = p1
 
         elif poke2.total_stats > poke1.total_stats:
 
             game["score2"] += 1
-
             winner = p2
 
         else:
@@ -506,59 +298,36 @@ class Randoms(commands.Cog):
         if winner:
 
             embed = discord.Embed(
-
                 description=(
-
-                    f"🏆 {winner.mention} "
-                    f"wins the round!\n\n"
-
-                    f"📊 Score\n"
-                    f"# {game['score1']} - "
-                    f"{game['score2']}"
-
+                    f"🏆 {winner.mention} wins the round!"
                 ),
-
                 color=discord.Color.gold()
             )
 
         else:
 
             embed = discord.Embed(
-
                 description="🤝 Round tied!",
-
                 color=discord.Color.light_grey()
             )
 
-        await channel.send(
-            embed=embed
-        )
+        await channel.send(embed=embed)
 
         game["picks"] = {}
 
         if (
-
-            game["score1"]
-            == game["wins_required"]
-
+            game["score1"] == game["wins_required"]
             or
-
-            game["score2"]
-            == game["wins_required"]
+            game["score2"] == game["wins_required"]
         ):
 
             await self.end_match(
                 channel_id
             )
 
-    async def end_match(
-        self,
-        channel_id
-    ):
+    async def end_match(self, channel_id):
 
-        game = randoms_games[
-            channel_id
-        ]
+        game = randoms_games[channel_id]
 
         if game["score1"] > game["score2"]:
 
@@ -570,50 +339,28 @@ class Randoms(commands.Cog):
             winner = game["player2"]
             loser = game["player1"]
 
-        record_win(
-            winner.id,
-            game["amount"]
-        )
+        bet = game["bet"]
 
-        record_loss(
+        remove_cash(
             loser.id,
-            game["amount"]
+            bet
         )
 
-        winner_stats = get_profile(
-            winner.id
+        add_cash(
+            winner.id,
+            bet
         )
 
-        loser_stats = get_profile(
-            loser.id
-        )
-
-        await update_roles(
-            winner,
-            winner_stats["matches"]
-        )
-
-        await update_roles(
-            loser,
-            loser_stats["matches"]
-        )
+        record_win(winner.id, 0)
+        record_loss(loser.id, 0)
 
         embed = discord.Embed(
-
             description=(
-
-                f"🏆 {winner.mention} "
-                f"wins the match!\n\n"
-
-                f"💵 Won\n"
-                f"**{format_cash(game['amount'])}**\n\n"
-
+                f"🏆 {winner.mention} wins the match!\n\n"
+                f"💵 Won: **{format_cash(bet)}**\n\n"
                 f"📊 Final Score\n"
-                f"# {game['score1']} - "
-                f"{game['score2']}"
-
+                f"# {game['score1']} - {game['score2']}"
             ),
-
             color=discord.Color.gold()
         )
 
@@ -621,17 +368,13 @@ class Randoms(commands.Cog):
             channel_id
         )
 
-        await channel.send(
-            embed=embed
-        )
+        await channel.send(embed=embed)
 
-        del randoms_games[
-            channel_id
-        ]
+        del randoms_games[channel_id]
 
 
 async def setup(bot):
 
     await bot.add_cog(
         Randoms(bot)
-        )
+    )
