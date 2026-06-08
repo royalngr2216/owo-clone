@@ -95,21 +95,36 @@ class Deathroll(commands.Cog):
             return
 
         deathroll_games[ctx.channel.id] = {
+
             "player1": ctx.author,
             "player2": opponent,
+
             "turn": ctx.author,
+
             "current": 100,
+
             "bet": amount
         }
 
         embed = discord.Embed(
+
             title="💀 DEATHROLL",
+
             description=(
-                f"{ctx.author.mention} ⚔️ {opponent.mention}\n\n"
-                f"💵 Wager: **{format_cash(amount)}**\n\n"
-                f"🎲 Starting Number: **100**\n\n"
+
+                f"{ctx.author.mention} ⚔️ "
+                f"{opponent.mention}\n\n"
+
+                f"💵 Wager: "
+                f"**{format_cash(amount)}**\n\n"
+
+                f"🎲 Starting Number: "
+                f"**100**\n\n"
+
                 f"Use `.roll`"
+
             ),
+
             color=discord.Color.red()
         )
 
@@ -126,7 +141,9 @@ class Deathroll(commands.Cog):
 
             return
 
-        game = deathroll_games[ctx.channel.id]
+        game = deathroll_games[
+            ctx.channel.id
+        ]
 
         if ctx.author != game["turn"]:
 
@@ -142,10 +159,14 @@ class Deathroll(commands.Cog):
         )
 
         embed = discord.Embed(
+
             description=(
+
                 f"🎲 {ctx.author.mention} rolled\n"
                 f"# **{rolled}**"
+
             ),
+
             color=discord.Color.orange()
         )
 
@@ -175,22 +196,43 @@ class Deathroll(commands.Cog):
                 amount
             )
 
-            record_win(winner.id, amount)
-            record_loss(loser.id, amount)
+            record_win(
+                winner.id,
+                amount
+            )
+
+            record_loss(
+                loser.id,
+                amount
+            )
 
             end_embed = discord.Embed(
+
                 title="☠️ DEATHROLL OVER",
+
                 description=(
-                    f"{loser.mention} rolled **1**\n\n"
-                    f"🏆 Winner: {winner.mention}\n"
-                    f"💵 Won: **{format_cash(amount)}**"
+
+                    f"{loser.mention} rolled "
+                    f"**1**\n\n"
+
+                    f"🏆 Winner: "
+                    f"{winner.mention}\n"
+
+                    f"💵 Won: "
+                    f"**{format_cash(amount)}**"
+
                 ),
+
                 color=discord.Color.dark_red()
             )
 
-            await ctx.send(embed=end_embed)
+            await ctx.send(
+                embed=end_embed
+            )
 
-            del deathroll_games[ctx.channel.id]
+            del deathroll_games[
+                ctx.channel.id
+            ]
 
             return
 
@@ -203,23 +245,6 @@ class Deathroll(commands.Cog):
         else:
 
             game["turn"] = game["player1"]
-
-    @commands.command(name="stop")
-    async def stop(self, ctx):
-
-        if ctx.channel.id in deathroll_games:
-
-            del deathroll_games[ctx.channel.id]
-
-            await ctx.send(
-                "🛑 Deathroll game stopped."
-            )
-
-            return
-
-        await ctx.send(
-            "No active game in this channel."
-        )
 
 
 async def setup(bot):
