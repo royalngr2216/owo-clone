@@ -1,14 +1,14 @@
 from discord.ext import commands
 import discord
 import random
-import asyncio
 
 from utils.economy import (
     get_cash,
     add_cash,
     remove_cash,
     format_cash,
-    add_history
+    add_history,
+    parse_amount
 )
 
 from utils.stats import (
@@ -17,7 +17,7 @@ from utils.stats import (
 )
 
 
-class Coinflip(commands.Cog):
+class CF(commands.Cog):
 
     def __init__(self, bot):
 
@@ -27,35 +27,39 @@ class Coinflip(commands.Cog):
     async def cf(
         self,
         ctx,
-        choice: str,
-        amount: int
+        side: str,
+        amount
     ):
 
-        choice = choice.lower()
+        amount = parse_amount(
+            amount
+        )
 
-        if choice in ["h", "heads"]:
+        side = side.lower()
 
-            choice = "heads"
+        if side not in [
 
-        elif choice in ["t", "tails"]:
+            "h",
+            "t",
+            "heads",
+            "tails"
 
-            choice = "tails"
-
-        else:
+        ]:
 
             embed = discord.Embed(
 
                 description=(
                     "Use:\n"
                     "`.cf h amount`\n"
-                    "or\n"
                     "`.cf t amount`"
                 ),
 
-                color=0xED4245
+                color=discord.Color.red()
             )
 
-            await ctx.send(embed=embed)
+            await ctx.send(
+                embed=embed
+            )
 
             return
 
@@ -63,7 +67,9 @@ class Coinflip(commands.Cog):
 
             return
 
-        cash = get_cash(ctx.author.id)
+        cash = get_cash(
+            ctx.author.id
+        )
 
         if cash < amount:
 
@@ -71,43 +77,27 @@ class Coinflip(commands.Cog):
 
                 description="❌ Not enough cash.",
 
-                color=0xED4245
+                color=discord.Color.red()
             )
 
-            await ctx.send(embed=embed)
+            await ctx.send(
+                embed=embed
+            )
 
             return
 
-        remove_cash(
-            ctx.author.id,
-            amount
-        )
-
-        embed = discord.Embed(
-
-            title="🪙 Coin Flip",
-
-            description="Flipping...",
-
-            color=0xFEE75C
-        )
-
-        msg = await ctx.send(embed=embed)
-
-        await asyncio.sleep(1.5)
-
         result = random.choice([
-            "heads",
-            "tails"
+            "h",
+            "t"
         ])
 
-        if result == choice:
+        won = side[0] == result
 
-            winnings = amount * 2
+        if won:
 
             add_cash(
                 ctx.author.id,
-                winnings
+                amount
             )
 
             record_win(
@@ -116,31 +106,30 @@ class Coinflip(commands.Cog):
             )
 
             add_history(
+
                 ctx.author.id,
+
                 "Coinflip",
+
                 "WIN",
+
                 amount,
-                "Bot"
+
+                None
             )
 
-            result_embed = discord.Embed(
+            color = discord.Color.green()
 
-                title="✅ YOU WON",
-
-                description=(
-
-                    f"🪙 Result: "
-                    f"**{result.upper()}**\n\n"
-
-                    f"💵 Won "
-                    f"**{format_cash(amount)}**"
-
-                ),
-
-                color=0x57F287
+            result_text = (
+                "✅ You won!"
             )
 
         else:
+
+            remove_cash(
+                ctx.author.id,
+                amount
+            )
 
             record_loss(
                 ctx.author.id,
@@ -148,37 +137,81 @@ class Coinflip(commands.Cog):
             )
 
             add_history(
+
                 ctx.author.id,
+
                 "Coinflip",
+
                 "LOSS",
+
                 amount,
-                "Bot"
+
+                None
             )
 
-            result_embed = discord.Embed(
+            color = discord.Color.red()
 
-                title="❌ YOU LOST",
+            result_text = (
+                "❌ You lost!"
+            )
 
-                description=(
+        flip = (
+            "🪙 Heads"
+            if result == "h"
+            else "🪙 Tails"
+        )
 
-                    f"🪙 Result: "
-                    f"**{result.upper()}**\n\n"
+        embed = discord.Embed(
 
-                    f"💸 Lost "
+            title="🪙 COINFLIP",
+
+            description=(
+
+                f"🎯 Bet:\n"
+                f"**{side.upper()}**\n\n"
+
+                f"{flip}\n\n"
+
+                f"{result_text}"
+
+            ),
+
+            color=color
+        )
+
+        if won:
+
+            embed.add_field(
+
+                name="💵 Won",
+
+                value=(
                     f"**{format_cash(amount)}**"
-
                 ),
 
-                color=0xED4245
+                inline=False
             )
 
-        await msg.edit(
-            embed=result_embed
+        else:
+
+            embed.add_field(
+
+                name="💸 Lost",
+
+                value=(
+                    f"**{format_cash(amount)}**"
+                ),
+
+                inline=False
+            )
+
+        await ctx.send(
+            embed=embed
         )
 
 
 async def setup(bot):
 
     await bot.add_cog(
-        Coinflip(bot)
+        CF(bot)
     )
