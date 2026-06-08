@@ -6,13 +6,21 @@ from utils.game_state import (
     deathroll_games
 )
 
+from utils.economy import (
+    parse_amount,
+    get_cash,
+    format_cash
+)
+
 from utils.stats import (
     record_win,
     record_loss,
     get_profile
 )
 
-from cogs.system import update_roles
+from cogs.system import (
+    update_roles
+)
 
 
 # ─────────────────────────
@@ -27,7 +35,8 @@ class DeathrollConfirmView(
         self,
         ctx,
         opponent,
-        bo
+        bo,
+        amount
     ):
 
         super().__init__(timeout=30)
@@ -35,6 +44,7 @@ class DeathrollConfirmView(
         self.ctx = ctx
         self.opponent = opponent
         self.bo = bo
+        self.amount = amount
 
     @discord.ui.button(
         label="Accept",
@@ -64,6 +74,28 @@ class DeathrollConfirmView(
 
             return
 
+        if get_cash(
+            self.ctx.author.id
+        ) < self.amount:
+
+            await interaction.response.send_message(
+                "❌ Challenger no longer has enough cash.",
+                ephemeral=True
+            )
+
+            return
+
+        if get_cash(
+            self.opponent.id
+        ) < self.amount:
+
+            await interaction.response.send_message(
+                "❌ You no longer have enough cash.",
+                ephemeral=True
+            )
+
+            return
+
         wins_required = (
             self.bo // 2
         ) + 1
@@ -74,6 +106,8 @@ class DeathrollConfirmView(
 
             "player1": self.ctx.author,
             "player2": self.opponent,
+
+            "amount": self.amount,
 
             "bo": self.bo,
 
@@ -95,6 +129,9 @@ class DeathrollConfirmView(
 
                 f"{self.ctx.author.mention} ⚔️ "
                 f"{self.opponent.mention}\n\n"
+
+                f"💵 Bet\n"
+                f"**{format_cash(self.amount)}**\n\n"
 
                 f"🏆 First to "
                 f"**{wins_required}** wins\n\n"
@@ -153,46 +190,85 @@ class Deathroll(commands.Cog):
 
         self.bot = bot
 
-    # ─────────────────────────
-    # START MATCH
-    # ─────────────────────────
-
     @commands.command(name="deathroll")
     async def deathroll(
         self,
         ctx,
         opponent: discord.Member,
-        bo: int = 1
+        bo,
+        amount
     ):
 
-        if opponent == ctx.author:
+        amount = parse_amount(
+            amount
+        )
 
-            await ctx.send(
-                "You cannot play yourself."
-            )
+        bo = int(bo)
+
+        if opponent == ctx.author:
 
             return
 
         if opponent.bot:
 
-            await ctx.send(
-                "You cannot challenge bots."
-            )
-
             return
 
         if bo not in [1, 3, 5, 7, 9]:
 
-            await ctx.send(
-                "Use: `.deathroll @user 1/3/5/7/9`"
-            )
+            return
+
+        if amount <= 0:
 
             return
 
         if ctx.channel.id in deathroll_games:
 
+            embed = discord.Embed(
+
+                description="❌ Match already active.",
+
+                color=discord.Color.red()
+            )
+
             await ctx.send(
-                "A deathroll game is already active."
+                embed=embed
+            )
+
+            return
+
+        if get_cash(
+            ctx.author.id
+        ) < amount:
+
+            embed = discord.Embed(
+
+                description="❌ You don't have enough cash.",
+
+                color=discord.Color.red()
+            )
+
+            await ctx.send(
+                embed=embed
+            )
+
+            return
+
+        if get_cash(
+            opponent.id
+        ) < amount:
+
+            embed = discord.Embed(
+
+                description=(
+                    f"❌ {opponent.mention} "
+                    f"doesn't have enough cash."
+                ),
+
+                color=discord.Color.red()
+            )
+
+            await ctx.send(
+                embed=embed
             )
 
             return
@@ -206,16 +282,15 @@ class Deathroll(commands.Cog):
                 f"{ctx.author.mention} challenged "
                 f"{opponent.mention}\n\n"
 
+                f"💵 Bet\n"
+                f"**{format_cash(amount)}**\n\n"
+
                 f"🏆 Best Of "
                 f"**{bo}**"
 
             ),
 
-            color=discord.Color.red()
-        )
-
-        embed.set_footer(
-            text="Waiting for opponent..."
+            color=discord.Color.blurple()
         )
 
         await ctx.send(
@@ -225,22 +300,15 @@ class Deathroll(commands.Cog):
             view=DeathrollConfirmView(
                 ctx,
                 opponent,
-                bo
+                bo,
+                amount
             )
         )
-
-    # ─────────────────────────
-    # ROLL
-    # ─────────────────────────
 
     @commands.command(name="roll")
     async def roll(self, ctx):
 
         if ctx.channel.id not in deathroll_games:
-
-            await ctx.send(
-                "No active deathroll game."
-            )
 
             return
 
@@ -248,24 +316,7 @@ class Deathroll(commands.Cog):
             ctx.channel.id
         ]
 
-        if ctx.author not in [
-
-            game["player1"],
-            game["player2"]
-
-        ]:
-
-            await ctx.send(
-                "You are not in this match."
-            )
-
-            return
-
         if ctx.author != game["turn"]:
-
-            await ctx.send(
-                "It is not your turn."
-            )
 
             return
 
@@ -274,9 +325,7 @@ class Deathroll(commands.Cog):
             game["current"]
         )
 
-        # ─────────────────────────
-        # PLAYER LOST ROUND
-        # ─────────────────────────
+        # LOST ROUND
 
         if roll == 1:
 
@@ -350,7 +399,7 @@ class Deathroll(commands.Cog):
 
                     f"🎲 New round started\n\n"
 
-                    f"🎯 Turn:\n"
+                    f"🎯 Turn\n"
                     f"{winner.mention}"
 
                 ),
@@ -364,9 +413,7 @@ class Deathroll(commands.Cog):
 
             return
 
-        # ─────────────────────────
-        # CONTINUE GAME
-        # ─────────────────────────
+        # CONTINUE
 
         game["current"] = roll
 
@@ -391,7 +438,7 @@ class Deathroll(commands.Cog):
 
                 f"# {roll}\n\n"
 
-                f"🎯 Turn:\n"
+                f"🎯 Turn\n"
                 f"{next_turn.mention}"
 
             ),
@@ -402,10 +449,6 @@ class Deathroll(commands.Cog):
         await ctx.send(
             embed=embed
         )
-
-    # ─────────────────────────
-    # END MATCH
-    # ─────────────────────────
 
     async def end_match(
         self,
@@ -426,16 +469,14 @@ class Deathroll(commands.Cog):
             winner = game["player2"]
             loser = game["player1"]
 
-        # SAVE STATS
-
         record_win(
             winner.id,
-            0
+            game["amount"]
         )
 
         record_loss(
             loser.id,
-            0
+            game["amount"]
         )
 
         winner_stats = get_profile(
@@ -463,6 +504,9 @@ class Deathroll(commands.Cog):
                 f"🏆 {winner.mention} "
                 f"wins the match!\n\n"
 
+                f"💵 Won\n"
+                f"**{format_cash(game['amount'])}**\n\n"
+
                 f"📊 Final Score\n"
                 f"# {game['score1']} - "
                 f"{game['score2']}"
@@ -489,4 +533,4 @@ async def setup(bot):
 
     await bot.add_cog(
         Deathroll(bot)
-    )
+        )
