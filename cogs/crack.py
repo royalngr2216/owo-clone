@@ -7,18 +7,182 @@ from utils.game_state import (
 )
 
 from utils.economy import (
+    parse_amount,
     get_cash,
-    add_cash,
-    remove_cash,
-    format_cash,
-    add_history
+    format_cash
 )
 
 from utils.stats import (
     record_win,
-    record_loss
+    record_loss,
+    get_profile
 )
 
+from cogs.system import (
+    update_roles
+)
+
+
+# ─────────────────────────
+# CONFIRM VIEW
+# ─────────────────────────
+
+class CrackConfirmView(
+    discord.ui.View
+):
+
+    def __init__(
+        self,
+        ctx,
+        opponent,
+        bo,
+        amount
+    ):
+
+        super().__init__(timeout=30)
+
+        self.ctx = ctx
+        self.opponent = opponent
+        self.bo = bo
+        self.amount = amount
+
+    @discord.ui.button(
+        label="Accept",
+        style=discord.ButtonStyle.success
+    )
+    async def accept(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button
+    ):
+
+        if interaction.user != self.opponent:
+
+            await interaction.response.send_message(
+                "❌ This is not for you.",
+                ephemeral=True
+            )
+
+            return
+
+        if self.ctx.channel.id in crack_games:
+
+            await interaction.response.send_message(
+                "❌ Match already active.",
+                ephemeral=True
+            )
+
+            return
+
+        if get_cash(
+            self.ctx.author.id
+        ) < self.amount:
+
+            await interaction.response.send_message(
+                "❌ Challenger no longer has enough cash.",
+                ephemeral=True
+            )
+
+            return
+
+        if get_cash(
+            self.opponent.id
+        ) < self.amount:
+
+            await interaction.response.send_message(
+                "❌ You no longer have enough cash.",
+                ephemeral=True
+            )
+
+            return
+
+        wins_required = (
+            self.bo // 2
+        ) + 1
+
+        crack_games[
+            self.ctx.channel.id
+        ] = {
+
+            "player1": self.ctx.author,
+            "player2": self.opponent,
+
+            "amount": self.amount,
+
+            "bo": self.bo,
+
+            "wins_required": wins_required,
+
+            "score1": 0,
+            "score2": 0,
+
+            "number": random.randint(1, 100),
+
+            "turn": self.ctx.author
+        }
+
+        embed = discord.Embed(
+
+            title="🎯 CRACK",
+
+            description=(
+
+                f"{self.ctx.author.mention} ⚔️ "
+                f"{self.opponent.mention}\n\n"
+
+                f"💵 Bet\n"
+                f"**{format_cash(self.amount)}**\n\n"
+
+                f"🏆 First to "
+                f"**{wins_required}** wins\n\n"
+
+                f"🎮 Use `.guess number`"
+
+            ),
+
+            color=discord.Color.blurple()
+        )
+
+        await interaction.response.edit_message(
+            embed=embed,
+            view=None
+        )
+
+    @discord.ui.button(
+        label="Decline",
+        style=discord.ButtonStyle.danger
+    )
+    async def decline(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button
+    ):
+
+        if interaction.user != self.opponent:
+
+            await interaction.response.send_message(
+                "❌ This is not for you.",
+                ephemeral=True
+            )
+
+            return
+
+        embed = discord.Embed(
+
+            description="❌ Challenge declined.",
+
+            color=discord.Color.red()
+        )
+
+        await interaction.response.edit_message(
+            embed=embed,
+            view=None
+        )
+
+
+# ─────────────────────────
+# CRACK
+# ─────────────────────────
 
 class Crack(commands.Cog):
 
@@ -31,31 +195,29 @@ class Crack(commands.Cog):
         self,
         ctx,
         opponent: discord.Member,
-        bo: int,
-        amount: int
+        bo,
+        amount
     ):
 
-        if opponent.bot:
+        amount = parse_amount(
+            amount
+        )
 
-            return
+        bo = int(bo)
 
         if opponent == ctx.author:
 
             return
 
-        if bo not in [1, 3, 5]:
+        if opponent.bot:
 
-            embed = discord.Embed(
+            return
 
-                description=(
-                    "Use:\n"
-                    "`.crack @user 1/3/5 amount`"
-                ),
+        if bo not in [1, 3, 5, 7, 9]:
 
-                color=0xED4245
-            )
+            return
 
-            await ctx.send(embed=embed)
+        if amount <= 0:
 
             return
 
@@ -63,94 +225,85 @@ class Crack(commands.Cog):
 
             embed = discord.Embed(
 
-                description="❌ Crack already active.",
+                description="❌ Match already active.",
 
-                color=0xED4245
+                color=discord.Color.red()
             )
 
-            await ctx.send(embed=embed)
+            await ctx.send(
+                embed=embed
+            )
 
             return
 
-        cash1 = get_cash(ctx.author.id)
-        cash2 = get_cash(opponent.id)
+        if get_cash(
+            ctx.author.id
+        ) < amount:
 
-        if cash1 < amount:
+            embed = discord.Embed(
+
+                description="❌ You don't have enough cash.",
+
+                color=discord.Color.red()
+            )
+
+            await ctx.send(
+                embed=embed
+            )
+
+            return
+
+        if get_cash(
+            opponent.id
+        ) < amount:
 
             embed = discord.Embed(
 
                 description=(
-                    f"{ctx.author.mention} "
+                    f"❌ {opponent.mention} "
                     f"doesn't have enough cash."
                 ),
 
-                color=0xED4245
+                color=discord.Color.red()
             )
 
-            await ctx.send(embed=embed)
-
-            return
-
-        if cash2 < amount:
-
-            embed = discord.Embed(
-
-                description=(
-                    f"{opponent.mention} "
-                    f"doesn't have enough cash."
-                ),
-
-                color=0xED4245
+            await ctx.send(
+                embed=embed
             )
 
-            await ctx.send(embed=embed)
-
             return
-
-        wins_required = (
-            bo // 2
-        ) + 1
-
-        crack_games[ctx.channel.id] = {
-
-            "player1": ctx.author,
-            "player2": opponent,
-
-            "amount": amount,
-
-            "wins_required": wins_required,
-
-            "score1": 0,
-            "score2": 0,
-
-            "number": random.randint(1, 100),
-
-            "turn": ctx.author
-        }
 
         embed = discord.Embed(
 
-            title="🎯 CRACK",
+            title="🎯 CRACK CHALLENGE",
 
             description=(
 
-                f"{ctx.author.mention} ⚔️ "
+                f"{ctx.author.mention} challenged "
                 f"{opponent.mention}\n\n"
 
-                f"💵 Wager: "
+                f"💵 Bet\n"
                 f"**{format_cash(amount)}**\n\n"
 
-                f"🏆 First to "
-                f"**{wins_required}** wins\n\n"
-
-                f"Use `.guess number`"
+                f"🏆 Best Of "
+                f"**{bo}**"
 
             ),
 
-            color=0x5865F2
+            color=discord.Color.blurple()
         )
 
-        await ctx.send(embed=embed)
+        await ctx.send(
+
+            embed=embed,
+
+            view=CrackConfirmView(
+                ctx,
+                opponent,
+                bo,
+                amount
+            )
+        )
 
     @commands.command(name="guess")
     async def guess(
@@ -163,7 +316,9 @@ class Crack(commands.Cog):
 
             return
 
-        game = crack_games[ctx.channel.id]
+        game = crack_games[
+            ctx.channel.id
+        ]
 
         if ctx.author != game["turn"]:
 
@@ -183,57 +338,54 @@ class Crack(commands.Cog):
 
             embed = discord.Embed(
 
-                title="✅ CORRECT",
-
                 description=(
 
-                    f"{ctx.author.mention}\n\n"
+                    f"✅ {ctx.author.mention} "
+                    f"guessed correctly!\n\n"
 
                     f"🎯 Number was "
-                    f"**{target}**"
+                    f"**{target}**\n\n"
+
+                    f"📊 Score\n"
+                    f"# {game['score1']} - "
+                    f"{game['score2']}"
 
                 ),
 
-                color=0x57F287
+                color=discord.Color.green()
             )
 
-            await ctx.send(embed=embed)
+            await ctx.send(
+                embed=embed
+            )
+
+            game["number"] = random.randint(
+                1,
+                100
+            )
 
             if (
+
                 game["score1"]
-                >= game["wins_required"]
+                == game["wins_required"]
+
                 or
+
                 game["score2"]
-                >= game["wins_required"]
+                == game["wins_required"]
             ):
 
-                winner = ctx.author
-
-                loser = (
-                    game["player1"]
-                    if winner == game["player2"]
-                    else game["player2"]
-                )
-
                 await self.end_match(
-                    ctx.channel.id,
-                    winner,
-                    loser
+                    ctx.channel.id
                 )
-
-                return
-
-            game["number"] = random.randint(1, 100)
 
             return
 
-        if number < target:
-
-            hint = "⬆️ Higher"
-
-        else:
-
-            hint = "⬇️ Lower"
+        hint = (
+            "⬆️ Higher"
+            if number < target
+            else "⬇️ Lower"
+        )
 
         next_turn = (
 
@@ -253,86 +405,91 @@ class Crack(commands.Cog):
 
                 f"{hint}\n\n"
 
-                f"🎯 Turn:\n"
+                f"🎯 Turn\n"
                 f"{next_turn.mention}"
 
             ),
 
-            color=0xED4245
+            color=discord.Color.red()
         )
 
-        await ctx.send(embed=embed)
+        await ctx.send(
+            embed=embed
+        )
 
     async def end_match(
         self,
-        channel_id,
-        winner,
-        loser
+        channel_id
     ):
 
-        game = crack_games[channel_id]
+        game = crack_games[
+            channel_id
+        ]
 
-        amount = game["amount"]
+        if game["score1"] > game["score2"]:
 
-        remove_cash(
-            loser.id,
-            amount
-        )
+            winner = game["player1"]
+            loser = game["player2"]
 
-        add_cash(
-            winner.id,
-            amount
-        )
+        else:
+
+            winner = game["player2"]
+            loser = game["player1"]
 
         record_win(
             winner.id,
-            amount
+            game["amount"]
         )
 
         record_loss(
             loser.id,
-            amount
+            game["amount"]
         )
 
-        add_history(
-            winner.id,
-            "Crack",
-            "WIN",
-            amount,
+        winner_stats = get_profile(
+            winner.id
+        )
+
+        loser_stats = get_profile(
             loser.id
         )
 
-        add_history(
-            loser.id,
-            "Crack",
-            "LOSS",
-            amount,
-            winner.id
+        await update_roles(
+            winner,
+            winner_stats["matches"]
+        )
+
+        await update_roles(
+            loser,
+            loser_stats["matches"]
         )
 
         embed = discord.Embed(
 
-            title="🏆 MATCH WINNER",
-
             description=(
 
-                f"{winner.mention}\n\n"
+                f"🏆 {winner.mention} "
+                f"wins the match!\n\n"
 
-                f"💵 Won "
-                f"**{format_cash(amount)}**"
+                f"💵 Won\n"
+                f"**{format_cash(game['amount'])}**"
 
             ),
 
-            color=0xFEE75C
+            color=discord.Color.gold()
         )
 
         channel = self.bot.get_channel(
             channel_id
         )
 
-        await channel.send(embed=embed)
+        await channel.send(
+            embed=embed
+        )
 
-        del crack_games[channel_id]
+        del crack_games[
+            channel_id
+        ]
 
 
 async def setup(bot):
