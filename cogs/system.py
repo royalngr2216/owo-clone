@@ -34,9 +34,9 @@ class System(commands.Cog):
     async def help(self, ctx):
 
         embed = discord.Embed(
-            title="📖 COMMANDS",
+            title="📖 **COMMANDS**",
             description=(
-                "Use the commands below.\n"
+                "**Use the commands below**\n"
                 "Prefix: `.`"
             ),
             color=discord.Color.blurple()
@@ -45,12 +45,13 @@ class System(commands.Cog):
         # ECONOMY
 
         embed.add_field(
-            name="💰 Economy",
+            name="💰 **Economy**",
             value=(
-                "`.cash`\n"
-                "`.daily`\n"
-                "`.weekly`\n"
-                "`.monthly`"
+                "**`.cash`**\n"
+                "**`.daily`**\n"
+                "**`.weekly`**\n"
+                "**`.monthly`**\n"
+                "**`.give`**"
             ),
             inline=False
         )
@@ -58,10 +59,10 @@ class System(commands.Cog):
         # RANDOMS
 
         embed.add_field(
-            name="🐉 Randoms",
+            name="🐉 **Randoms**",
             value=(
-                "`.randoms @user bo amount`\n"
-                "`.pick`"
+                "**`.randoms @user bo amount`**\n"
+                "**`.pick`**"
             ),
             inline=False
         )
@@ -69,10 +70,10 @@ class System(commands.Cog):
         # DEATHROLL
 
         embed.add_field(
-            name="💀 Deathroll",
+            name="💀 **Deathroll**",
             value=(
-                "`.deathroll @user amount`\n"
-                "`.roll`"
+                "**`.deathroll @user amount`**\n"
+                "**`.roll`**"
             ),
             inline=False
         )
@@ -80,11 +81,11 @@ class System(commands.Cog):
         # DICE
 
         embed.add_field(
-            name="🎲 Dice",
+            name="🎲 **Dice**",
             value=(
-                "`.dice up amount`\n"
-                "`.dice 7 amount`\n"
-                "`.dice down amount`"
+                "**`.dice up amount`**\n"
+                "**`.dice 7 amount`**\n"
+                "**`.dice down amount`**"
             ),
             inline=False
         )
@@ -92,10 +93,21 @@ class System(commands.Cog):
         # CRACK
 
         embed.add_field(
-            name="💥 Crack",
+            name="💥 **Crack**",
             value=(
-                "`.crack @user amount`\n"
-                "`.guess number`"
+                "**`.crack @user amount`**\n"
+                "**`.guess number`**"
+            ),
+            inline=False
+        )
+
+        # COINFLIP
+
+        embed.add_field(
+            name="🪙 **Coinflip**",
+            value=(
+                "**`.cf heads amount`**\n"
+                "**`.cf tails amount`**"
             ),
             inline=False
         )
@@ -103,21 +115,22 @@ class System(commands.Cog):
         # PROFILE
 
         embed.add_field(
-            name="📊 Profile",
+            name="📊 **Profile**",
             value=(
-                "`.profile`\n"
-                "`.leaderboard`"
+                "**`.profile`**\n"
+                "**`.leaderboard`**\n"
+                "**`.history`**"
             ),
             inline=False
         )
 
-        # STOP
+        # UTILITY
 
         embed.add_field(
-            name="🛑 Utility",
+            name="🛑 **Utility**",
             value=(
-                "`.stop`\n"
-                "`.ping`"
+                "**`.stop`**\n"
+                "**`.ping`**"
             ),
             inline=False
         )
