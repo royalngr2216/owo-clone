@@ -7,7 +7,8 @@ from utils.economy import (
     add_cash,
     remove_cash,
     format_cash,
-    add_history
+    add_history,
+    parse_amount
 )
 
 from utils.stats import (
@@ -31,8 +32,12 @@ class Dice(commands.Cog):
         self,
         ctx,
         side: str,
-        amount: int
+        amount
     ):
+
+        amount = parse_amount(
+            amount
+        )
 
         side = side.lower()
 
@@ -88,10 +93,6 @@ class Dice(commands.Cog):
 
             return
 
-        # ─────────────────────────
-        # ROLL
-        # ─────────────────────────
-
         dice1 = random.randint(1, 6)
         dice2 = random.randint(1, 6)
 
@@ -128,24 +129,20 @@ class Dice(commands.Cog):
                 won = True
                 multiplier = 1
 
-        # ─────────────────────────
         # RESULT
-        # ─────────────────────────
 
         if won:
 
             winnings = amount * multiplier
 
-            profit = winnings
-
             add_cash(
                 ctx.author.id,
-                profit
+                winnings
             )
 
             record_win(
                 ctx.author.id,
-                profit
+                winnings
             )
 
             add_history(
@@ -156,7 +153,7 @@ class Dice(commands.Cog):
 
                 "WIN",
 
-                profit,
+                winnings,
 
                 None
             )
@@ -198,10 +195,6 @@ class Dice(commands.Cog):
                 "❌ You lost!"
             )
 
-        # ─────────────────────────
-        # EMBED
-        # ─────────────────────────
-
         embed = discord.Embed(
 
             title="🎲 DICE",
@@ -228,7 +221,7 @@ class Dice(commands.Cog):
                 name="💵 Won",
 
                 value=(
-                    f"**{format_cash(profit)}**"
+                    f"**{format_cash(winnings)}**"
                 ),
 
                 inline=False
