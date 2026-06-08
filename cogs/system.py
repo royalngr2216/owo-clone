@@ -27,14 +27,14 @@ class System(commands.Cog):
 
         embed = discord.Embed(
 
-            title="👑 ROYAL BOT",
+            title="👑 ROYAL ECONOMY",
 
             description=(
 
                 ">>> "
-                "**Gambling Bot**\n"
+                "**Competitive Gambling Bot**\n"
                 "Challenge players, gamble cash,\n"
-                "Climb leaderboards and dominate."
+                "climb leaderboards and dominate."
 
             ),
 
@@ -84,15 +84,15 @@ class System(commands.Cog):
 
         embed.add_field(
 
-            name="⚔️ GAMBLING GAMES",
+            name="⚔️ PvP GAMES",
 
             value=(
 
                 "```yaml\n"
 
                 ".randoms @user bo amount\n"
-                ".crack @user bo amount\n"
-                ".deathroll @user bo amount\n"
+                ".crack @user amount\n"
+                ".deathroll @user amount\n"
 
                 "```"
 
@@ -331,6 +331,71 @@ class System(commands.Cog):
             "\n\n" +
             "\n\n".join(lines)
         )
+
+        await ctx.send(
+            embed=embed
+        )
+
+    # ─────────────────────────
+    # STOP
+    # ─────────────────────────
+
+    @commands.command(name="stop")
+    async def stop(self, ctx):
+
+        from utils.game_state import (
+            randoms_games,
+            deathroll_games,
+            crack_games
+        )
+
+        stopped = False
+
+        if ctx.channel.id in randoms_games:
+
+            del randoms_games[
+                ctx.channel.id
+            ]
+
+            stopped = True
+
+        if ctx.channel.id in deathroll_games:
+
+            del deathroll_games[
+                ctx.channel.id
+            ]
+
+            stopped = True
+
+        if ctx.channel.id in crack_games:
+
+            del crack_games[
+                ctx.channel.id
+            ]
+
+            stopped = True
+
+        if stopped:
+
+            embed = discord.Embed(
+
+                description=(
+                    "🛑 Active game stopped."
+                ),
+
+                color=discord.Color.red()
+            )
+
+        else:
+
+            embed = discord.Embed(
+
+                description=(
+                    "❌ No active game."
+                ),
+
+                color=discord.Color.red()
+            )
 
         await ctx.send(
             embed=embed
