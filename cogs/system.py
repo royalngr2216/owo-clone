@@ -8,8 +8,7 @@ from utils.stats import (
 from utils.economy import (
     get_cash,
     format_cash,
-    economy_collection,
-    get_history
+    economy_collection
 )
 
 
@@ -235,61 +234,6 @@ class System(commands.Cog):
             )
 
         embed.description = "\n\n".join(lines)
-
-        await ctx.send(embed=embed)
-
-    # HISTORY
-
-    @commands.command(name="history")
-    async def history(
-        self,
-        ctx,
-        member: discord.Member = None
-    ):
-
-        if member is None:
-
-            member = ctx.author
-
-        data = get_history(member.id)
-
-        if not data:
-
-            embed = discord.Embed(
-                description="No history found.",
-                color=0xED4245
-            )
-
-            await ctx.send(embed=embed)
-
-            return
-
-        lines = []
-
-        for entry in data:
-
-            result_emoji = (
-                "✅"
-                if entry["result"] == "WIN"
-                else "❌"
-            )
-
-            lines.append(
-
-                f"{result_emoji} "
-                f"{entry['game']} • "
-                f"{format_cash(entry['amount'])}"
-
-            )
-
-        embed = discord.Embed(
-
-            title=f"{member.display_name} History",
-
-            description="\n".join(lines),
-
-            color=0x5865F2
-        )
 
         await ctx.send(embed=embed)
 
