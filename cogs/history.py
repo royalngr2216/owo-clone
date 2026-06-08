@@ -2,115 +2,87 @@ from discord.ext import commands
 import discord
 
 from utils.economy import (
-ensure_account,
-economy_collection,
-format_cash
+    get_history,
+    format_cash
 )
+
 
 class History(commands.Cog):
 
-def __init__(self, bot):
+    def __init__(self, bot):
 
-    self.bot = bot
+        self.bot = bot
 
-@commands.command(name="history")
-async def history(
-    self,
-    ctx,
-    member: discord.Member = None
-):
+    @commands.command(name="history")
+    async def history(
+        self,
+        ctx,
+        member: discord.Member = None
+    ):
 
-    if member is None:
-        member = ctx.author
+        if member is None:
 
-    user = ensure_account(
-        member.id
-    )
+            member = ctx.author
 
-    history = user.get(
-        "history",
-        []
-    )
+        data = get_history(member.id)
 
-    if not history:
+        if not data:
+
+            embed = discord.Embed(
+
+                description="❌ No history found.",
+
+                color=0xED4245
+            )
+
+            await ctx.send(embed=embed)
+
+            return
+
+        lines = []
+
+        for entry in data:
+
+            result = entry["result"]
+
+            emoji = (
+                "✅"
+                if result == "WIN"
+                else "❌"
+            )
+
+            game = entry["game"]
+
+            amount = format_cash(
+                entry["amount"]
+            )
+
+            lines.append(
+
+                f"{emoji} "
+                f"**{game}** • "
+                f"{amount}"
+
+            )
 
         embed = discord.Embed(
-            description=(
-                "📜 No history found."
-            ),
-            color=0x2B2D31
+
+            title=f"📜 {member.display_name} History",
+
+            description="\n".join(lines),
+
+            color=0x5865F2
         )
 
-        return await ctx.send(
-            embed=embed
+        embed.set_thumbnail(
+            url=member.display_avatar.url
         )
 
-    embed = discord.Embed(
-        title="📜 Match History",
-        description=member.display_name,
-        color=0x2B2D31
-    )
+        await ctx.send(embed=embed)
 
-    lines = []
-
-    game_icons = {
-
-        "coinflip": "🪙",
-        "dice": "🎲",
-        "deathroll": "💀",
-        "crack": "🎯",
-        "randoms": "🐉",
-        "average": "📊",
-        "jackpot": "🎰"
-    }
-
-    for entry in history[:10]:
-
-        game = entry["game"]
-
-        icon = game_icons.get(
-            game,
-            "🎮"
-        )
-
-        result = entry["result"]
-
-        amount = format_cash(
-            entry["amount"]
-        )
-
-        opponent = entry["opponent"]
-
-        if result == "win":
-
-            line = (
-                f"{icon} **{game.title()}**\n"
-                f"✅ Won {amount}\n"
-                f"vs <@{opponent}>"
-            )
-
-        else:
-
-            line = (
-                f"{icon} **{game.title()}**\n"
-                f"❌ Lost {amount}\n"
-                f"vs <@{opponent}>"
-            )
-
-        lines.append(line)
-
-    embed.description = "\n\n".join(
-        lines
-    )
-
-    embed.set_footer(
-        text=f"Showing {min(len(history), 10)} recent matches"
-    )
-
-    await ctx.send(embed=embed)
 
 async def setup(bot):
 
-await bot.add_cog(
-    History(bot)
-)
+    await bot.add_cog(
+        History(bot)
+    )
