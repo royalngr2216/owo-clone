@@ -72,7 +72,7 @@ async def profile(
     await ctx.send(embed=embed)
 
 # ─────────────────────────
-# CASH LEADERBOARD
+# LEADERBOARD
 # ─────────────────────────
 
 @commands.command(name="leaderboard")
@@ -163,63 +163,127 @@ async def ping(self, ctx):
 async def help(self, ctx):
 
     embed = discord.Embed(
-        title="🎮 Royal Economy",
-        color=0x2B2D31
+
+        title="🎰 Royal Economy",
+
+        description=(
+            "Competitive gambling & Pokémon games."
+        ),
+
+        color=0x5865F2
     )
+
+    # ─────────────────────────
+    # ECONOMY
+    # ─────────────────────────
 
     embed.add_field(
         name="💵 Economy",
         value=(
 
-            "`.cash`\n"
-            "`.daily`\n"
-            "`.weekly`\n"
-            "`.monthly`\n"
-            "`.give`\n"
-            "`.history`"
+            "```yaml\n"
+
+            ".cash\n"
+            "View your cash\n\n"
+
+            ".daily\n"
+            "Claim daily reward\n\n"
+
+            ".weekly\n"
+            "Claim weekly reward\n\n"
+
+            ".monthly\n"
+            "Claim monthly reward\n\n"
+
+            ".give @user amount\n"
+            "Send cash to player\n"
+
+            "```"
 
         ),
         inline=False
     )
+
+    # ─────────────────────────
+    # GAMBLING
+    # ─────────────────────────
 
     embed.add_field(
         name="🎲 Gambling",
         value=(
 
-            "`.cf h/t amount`\n"
-            "`.dice 6/7/9 amount`\n"
-            "`.deathroll @user bo amount`"
+            "```yaml\n"
+
+            ".cf h/t amount\n"
+            "Coinflip against bot\n\n"
+
+            ".dice 6/7/9 amount\n"
+            "Dice gamble against bot\n\n"
+
+            ".deathroll @user bo amount\n"
+            "PvP deathroll wager\n"
+
+            "```"
 
         ),
         inline=False
     )
+
+    # ─────────────────────────
+    # POKÉMON GAMES
+    # ─────────────────────────
 
     embed.add_field(
-        name="🐉 Games",
+        name="🐉 Pokémon Games",
         value=(
 
-            "`.randoms @user bo amount`\n"
-            "`.crack @user bo amount`\n"
-            "`.average`\n"
-            "`.jackpot`"
+            "```yaml\n"
+
+            ".randoms @user bo amount\n"
+            "Random Pokémon battle\n\n"
+
+            ".crack @user bo amount\n"
+            "Guessing duel wager\n\n"
+
+            ".guess number\n"
+            "Used in crack matches\n"
+
+            "```"
 
         ),
         inline=False
     )
+
+    # ─────────────────────────
+    # PROFILE
+    # ─────────────────────────
 
     embed.add_field(
         name="📊 Profile",
         value=(
 
-            "`.profile`\n"
-            "`.leaderboard`"
+            "```yaml\n"
+
+            ".profile\n"
+            "View player profile\n\n"
+
+            ".leaderboard\n"
+            "Richest players\n\n"
+
+            ".history\n"
+            "Recent gambling history\n\n"
+
+            ".ping\n"
+            "Bot latency\n"
+
+            "```"
 
         ),
         inline=False
     )
 
     embed.set_footer(
-        text="Royal Economy"
+        text="Royal Economy • Gamble Responsibly"
     )
 
     await ctx.send(embed=embed)
