@@ -18,17 +18,24 @@ class System(commands.Cog):
 
         self.bot = bot
 
+    # ─────────────────────────
     # HELP
+    # ─────────────────────────
 
     @commands.command(name="help")
     async def help(self, ctx):
 
         embed = discord.Embed(
 
-            title="🎰 Royal Economy",
+            title="👑 ROYAL BOT",
 
             description=(
-                "Competitive gambling bot."
+
+                ">>> "
+                "**Gambling Bot**\n"
+                "Challenge players, gamble cash,\n"
+                "Climb leaderboards and dominate."
+
             ),
 
             color=0x5865F2
@@ -36,7 +43,7 @@ class System(commands.Cog):
 
         embed.add_field(
 
-            name="💵 Economy",
+            name="💸 ECONOMY",
 
             value=(
 
@@ -52,19 +59,39 @@ class System(commands.Cog):
 
             ),
 
-            inline=False
+            inline=True
         )
 
         embed.add_field(
 
-            name="🎲 Gambling",
+            name="🎲 SOLO GAMBLING",
 
             value=(
 
                 "```yaml\n"
 
                 ".cf h/t amount\n"
-                ".dice 6/7/9 amount\n"
+                ".dice down amount\n"
+                ".dice 7 amount\n"
+                ".dice up amount\n"
+
+                "```"
+
+            ),
+
+            inline=True
+        )
+
+        embed.add_field(
+
+            name="⚔️ GAMBLING GAMES",
+
+            value=(
+
+                "```yaml\n"
+
+                ".randoms @user bo amount\n"
+                ".crack @user bo amount\n"
                 ".deathroll @user bo amount\n"
 
                 "```"
@@ -76,26 +103,27 @@ class System(commands.Cog):
 
         embed.add_field(
 
-            name="🐉 Games",
+            name="🎮 MATCH COMMANDS",
 
             value=(
 
                 "```yaml\n"
 
-                ".randoms @user bo amount\n"
-                ".crack @user bo amount\n"
+                ".pick\n"
                 ".guess number\n"
+                ".roll\n"
+                ".stop\n"
 
                 "```"
 
             ),
 
-            inline=False
+            inline=True
         )
 
         embed.add_field(
 
-            name="📊 Profile",
+            name="📊 PROFILE",
 
             value=(
 
@@ -110,12 +138,45 @@ class System(commands.Cog):
 
             ),
 
+            inline=True
+        )
+
+        embed.add_field(
+
+            name="💰 CASH EXAMPLES",
+
+            value=(
+
+                "```yaml\n"
+
+                "10k = 10,000\n"
+                "1m = 1,000,000\n"
+                "1b = 1,000,000,000\n"
+
+                "```"
+
+            ),
+
             inline=False
         )
 
-        await ctx.send(embed=embed)
+        embed.set_footer(
 
+            text=(
+                f"Requested by "
+                f"{ctx.author.display_name}"
+            ),
+
+            icon_url=ctx.author.display_avatar.url
+        )
+
+        await ctx.send(
+            embed=embed
+        )
+
+    # ─────────────────────────
     # PROFILE
+    # ─────────────────────────
 
     @commands.command(name="profile")
     async def profile(
@@ -128,17 +189,23 @@ class System(commands.Cog):
 
             member = ctx.author
 
-        stats = get_profile(member.id)
+        stats = get_profile(
+            member.id
+        )
 
-        cash = get_cash(member.id)
+        cash = get_cash(
+            member.id
+        )
 
         embed = discord.Embed(
 
-            title=f"{member.display_name}",
+            title=f"👤 {member.display_name}",
 
             description=(
-                f"💵 Cash: "
-                f"**{format_cash(cash)}**"
+
+                f"💵 Cash\n"
+                f"# {format_cash(cash)}"
+
             ),
 
             color=0x2B2D31
@@ -150,32 +217,47 @@ class System(commands.Cog):
 
         embed.add_field(
             name="🏆 Wins",
-            value=stats["wins"]
+            value=f"**{stats['wins']}**",
+            inline=True
         )
 
         embed.add_field(
             name="💀 Losses",
-            value=stats["losses"]
+            value=f"**{stats['losses']}**",
+            inline=True
         )
 
         embed.add_field(
             name="📈 Winrate",
-            value=f"{stats['winrate']}%"
+            value=f"**{stats['winrate']}%**",
+            inline=True
         )
 
         embed.add_field(
             name="🔥 Streak",
-            value=stats["streak"]
+            value=f"**{stats['streak']}**",
+            inline=True
         )
 
         embed.add_field(
-            name="👑 Best",
-            value=stats["best_streak"]
+            name="👑 Best Streak",
+            value=f"**{stats['best_streak']}**",
+            inline=True
         )
 
-        await ctx.send(embed=embed)
+        embed.add_field(
+            name="🎮 Matches",
+            value=f"**{stats['matches']}**",
+            inline=True
+        )
 
+        await ctx.send(
+            embed=embed
+        )
+
+    # ─────────────────────────
     # LEADERBOARD
+    # ─────────────────────────
 
     @commands.command(name="leaderboard")
     async def leaderboard(self, ctx):
@@ -203,17 +285,25 @@ class System(commands.Cog):
         top = data[:10]
 
         embed = discord.Embed(
-            title="🏆 Richest Players",
+
+            title="🏆 RICHEST PLAYERS",
+
+            description=(
+                ">>> Top richest players\n"
+                "across the server."
+            ),
+
             color=0xFEE75C
         )
 
-        lines = []
-
         medals = [
+
             "🥇",
             "🥈",
             "🥉"
         ]
+
+        lines = []
 
         for i, (
             uid,
@@ -221,23 +311,34 @@ class System(commands.Cog):
         ) in enumerate(top):
 
             rank = (
+
                 medals[i]
+
                 if i < 3
+
                 else f"`#{i+1}`"
+
             )
 
             lines.append(
 
                 f"{rank} <@{uid}>\n"
-                f"💵 {format_cash(cash)}"
+                f"💵 **{format_cash(cash)}**"
 
             )
 
-        embed.description = "\n\n".join(lines)
+        embed.description += (
+            "\n\n" +
+            "\n\n".join(lines)
+        )
 
-        await ctx.send(embed=embed)
+        await ctx.send(
+            embed=embed
+        )
 
+    # ─────────────────────────
     # PING
+    # ─────────────────────────
 
     @commands.command(name="ping")
     async def ping(self, ctx):
@@ -249,13 +350,16 @@ class System(commands.Cog):
         embed = discord.Embed(
 
             description=(
-                f"🏓 {latency}ms"
+                f"🏓 Pong!\n"
+                f"## {latency}ms"
             ),
 
-            color=0x2B2D31
+            color=0x57F287
         )
 
-        await ctx.send(embed=embed)
+        await ctx.send(
+            embed=embed
+        )
 
 
 async def setup(bot):
