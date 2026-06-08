@@ -5,7 +5,8 @@ from utils.economy import (
     get_cash,
     add_cash,
     remove_cash,
-    format_cash
+    format_cash,
+    parse_amount
 )
 
 
@@ -43,7 +44,9 @@ class GiveView(discord.ui.View):
 
             return
 
-        cash = get_cash(self.sender.id)
+        cash = get_cash(
+            self.sender.id
+        )
 
         if cash < self.amount:
 
@@ -51,7 +54,7 @@ class GiveView(discord.ui.View):
 
                 description="❌ Not enough cash.",
 
-                color=0xED4245
+                color=discord.Color.red()
             )
 
             await interaction.response.edit_message(
@@ -61,10 +64,15 @@ class GiveView(discord.ui.View):
 
             return
 
-        remove_cash(
+        success = remove_cash(
+
             self.sender.id,
             self.amount
         )
+
+        if not success:
+
+            return
 
         add_cash(
             self.receiver.id,
@@ -83,7 +91,7 @@ class GiveView(discord.ui.View):
 
             ),
 
-            color=0x57F287
+            color=discord.Color.green()
         )
 
         await interaction.response.edit_message(
@@ -114,7 +122,7 @@ class GiveView(discord.ui.View):
 
             description="❌ Transfer cancelled.",
 
-            color=0xED4245
+            color=discord.Color.red()
         )
 
         await interaction.response.edit_message(
@@ -134,8 +142,12 @@ class Give(commands.Cog):
         self,
         ctx,
         member: discord.Member,
-        amount: int
+        amount
     ):
+
+        amount = parse_amount(
+            amount
+        )
 
         if member.bot:
 
@@ -149,7 +161,9 @@ class Give(commands.Cog):
 
             return
 
-        cash = get_cash(ctx.author.id)
+        cash = get_cash(
+            ctx.author.id
+        )
 
         if cash < amount:
 
@@ -157,10 +171,12 @@ class Give(commands.Cog):
 
                 description="❌ Not enough cash.",
 
-                color=0xED4245
+                color=discord.Color.red()
             )
 
-            await ctx.send(embed=embed)
+            await ctx.send(
+                embed=embed
+            )
 
             return
 
@@ -176,16 +192,18 @@ class Give(commands.Cog):
 
             ),
 
-            color=0x5865F2
+            color=discord.Color.blurple()
         )
 
         view = GiveView(
+
             ctx.author,
             member,
             amount
         )
 
         await ctx.send(
+
             embed=embed,
             view=view
         )
