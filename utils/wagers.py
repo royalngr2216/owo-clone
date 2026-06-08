@@ -1,179 +1,73 @@
 from utils.economy import (
-can_afford,
-remove_cash,
-add_cash
+    get_cash,
+    remove_cash,
+    add_cash,
+    format_cash
 )
 
-─────────────────────────
 
-ACTIVE WAGERS
-
-─────────────────────────
-
-active_wagers = {}
-
-─────────────────────────
-
-CHECK ACTIVE
-
-─────────────────────────
-
-def in_wager(user_id):
-
-return str(user_id) in active_wagers
-
-─────────────────────────
-
-CREATE WAGER
-
-─────────────────────────
+# CREATE WAGER
 
 def create_wager(
-user1_id,
-user2_id,
-amount,
-game
+    user1,
+    user2,
+    amount,
+    game
 ):
 
-# ALREADY IN GAME
+    if amount <= 0:
 
-if in_wager(user1_id):
-    return (
-        False,
-        "You are already in a wager."
+        return (
+            False,
+            "Invalid amount."
+        )
+
+    cash1 = get_cash(user1)
+    cash2 = get_cash(user2)
+
+    if cash1 < amount:
+
+        return (
+            False,
+            "Player 1 lacks cash."
+        )
+
+    if cash2 < amount:
+
+        return (
+            False,
+            "Player 2 lacks cash."
+        )
+
+    remove_cash(
+        user1,
+        amount
     )
 
-if in_wager(user2_id):
-    return (
-        False,
-        "Opponent is already in a wager."
+    remove_cash(
+        user2,
+        amount
     )
 
-# ENOUGH MONEY
-
-if not can_afford(
-    user1_id,
-    amount
-):
     return (
-        False,
-        "You do not have enough cash."
+        True,
+        f"Wager created for {game}"
     )
 
-if not can_afford(
-    user2_id,
-    amount
-):
-    return (
-        False,
-        "Opponent does not have enough cash."
-    )
 
-# REMOVE MONEY
-
-remove_cash(
-    user1_id,
-    amount
-)
-
-remove_cash(
-    user2_id,
-    amount
-)
-
-# LOCK USERS
-
-active_wagers[str(user1_id)] = {
-
-    "amount": amount,
-    "game": game,
-    "opponent": str(user2_id)
-}
-
-active_wagers[str(user2_id)] = {
-
-    "amount": amount,
-    "game": game,
-    "opponent": str(user1_id)
-}
-
-return (
-    True,
-    "Wager created."
-)
-
-─────────────────────────
-
-COMPLETE WAGER
-
-─────────────────────────
+# COMPLETE WAGER
 
 def complete_wager(
-winner_id,
-loser_id,
-amount
+    winner,
+    loser,
+    amount
 ):
 
-total = amount * 2
+    payout = amount * 2
 
-# 5% TAX
+    add_cash(
+        winner,
+        payout
+    )
 
-payout = int(total * 0.95)
-
-add_cash(
-    winner_id,
-    payout
-)
-
-clear_wager(
-    winner_id
-)
-
-clear_wager(
-    loser_id
-)
-
-return payout
-
-─────────────────────────
-
-REFUND WAGER
-
-─────────────────────────
-
-def refund_wager(
-user1_id,
-user2_id,
-amount
-):
-
-add_cash(
-    user1_id,
-    amount
-)
-
-add_cash(
-    user2_id,
-    amount
-)
-
-clear_wager(
-    user1_id
-)
-
-clear_wager(
-    user2_id
-)
-
-─────────────────────────
-
-CLEAR WAGER
-
-─────────────────────────
-
-def clear_wager(user_id):
-
-active_wagers.pop(
-    str(user_id),
-    None
-)
+    return payout
