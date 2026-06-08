@@ -7,11 +7,7 @@ from threading import Thread
 import traceback
 import os
 
-─────────────────────────
-
 KEEP ALIVE
-
-─────────────────────────
 
 app = Flask(name)
 
@@ -42,11 +38,7 @@ t = Thread(
 
 t.start()
 
-─────────────────────────
-
 BOT
-
-─────────────────────────
 
 intents = discord.Intents.default()
 
@@ -69,13 +61,9 @@ def __init__(self):
 
     self.maintenance = False
 
-# ─────────────────────────
-# LOAD COGS
-# ─────────────────────────
-
 async def setup_hook(self):
 
-    print("\n⚙️ Loading Cogs...\n")
+    print("\nLoading Cogs...\n")
 
     if os.path.exists("./cogs"):
 
@@ -90,24 +78,20 @@ async def setup_hook(self):
                     )
 
                     print(
-                        f"✅ Loaded {file}"
+                        f"Loaded {file}"
                     )
 
                 except Exception:
 
                     print(
-                        f"\n❌ FAILED TO LOAD: {file}\n"
+                        f"\nFAILED TO LOAD: {file}\n"
                     )
 
                     traceback.print_exc()
 
                     print("\n")
 
-    print("\n✅ Cog loading finished.\n")
-
-# ─────────────────────────
-# COMMAND ERRORS
-# ─────────────────────────
+    print("\nCog loading finished.\n")
 
 async def on_command_error(
     self,
@@ -122,7 +106,7 @@ async def on_command_error(
 
         return
 
-    print("\n❌ COMMAND ERROR ❌\n")
+    print("\nCOMMAND ERROR\n")
 
     traceback.print_exception(
         type(error),
@@ -153,16 +137,12 @@ async def on_command_error(
 
 bot = RoyalBot()
 
-─────────────────────────
-
 EVENTS
-
-─────────────────────────
 
 @bot.event
 async def on_ready():
 
-print("\n🚀 BOT ONLINE 🚀\n")
+print("\nBOT ONLINE\n")
 
 print(
     f"Logged in as: {bot.user}"
@@ -174,15 +154,11 @@ print(
 
 print("\n")
 
-─────────────────────────
-
 START BOT
-
-─────────────────────────
 
 if name == "main":
 
-print("\n🔄 Starting Royal Economy...\n")
+print("\nStarting Royal Economy...\n")
 
 keep_alive()
 
@@ -191,7 +167,7 @@ token = os.getenv("TOKEN")
 if not token:
 
     print(
-        "\n❌ TOKEN NOT FOUND ❌\n"
+        "\nTOKEN NOT FOUND\n"
     )
 
 else:
