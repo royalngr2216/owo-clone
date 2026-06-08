@@ -1,7 +1,6 @@
 from discord.ext import commands
 import discord
 import random
-import asyncio
 
 from utils.economy import (
     get_cash,
@@ -23,29 +22,46 @@ class Dice(commands.Cog):
 
         self.bot = bot
 
+    # ─────────────────────────
+    # DICE
+    # ─────────────────────────
+
     @commands.command(name="dice")
     async def dice(
         self,
         ctx,
-        target: int,
+        side: str,
         amount: int
     ):
 
-        if target not in [6, 7, 9]:
+        side = side.lower()
+
+        if side not in [
+
+            "down",
+            "7",
+            "up"
+
+        ]:
 
             embed = discord.Embed(
 
                 description=(
-                    "Use:\n"
-                    "`.dice 6 amount`\n"
+
+                    "Use:\n\n"
+
+                    "`.dice down amount`\n"
                     "`.dice 7 amount`\n"
-                    "`.dice 9 amount`"
+                    "`.dice up amount`"
+
                 ),
 
-                color=0xED4245
+                color=discord.Color.red()
             )
 
-            await ctx.send(embed=embed)
+            await ctx.send(
+                embed=embed
+            )
 
             return
 
@@ -53,7 +69,9 @@ class Dice(commands.Cog):
 
             return
 
-        cash = get_cash(ctx.author.id)
+        cash = get_cash(
+            ctx.author.id
+        )
 
         if cash < amount:
 
@@ -61,30 +79,18 @@ class Dice(commands.Cog):
 
                 description="❌ Not enough cash.",
 
-                color=0xED4245
+                color=discord.Color.red()
             )
 
-            await ctx.send(embed=embed)
+            await ctx.send(
+                embed=embed
+            )
 
             return
 
-        remove_cash(
-            ctx.author.id,
-            amount
-        )
-
-        embed = discord.Embed(
-
-            title="🎲 Rolling Dice",
-
-            description="Rolling...",
-
-            color=0x5865F2
-        )
-
-        msg = await ctx.send(embed=embed)
-
-        await asyncio.sleep(2)
+        # ─────────────────────────
+        # ROLL
+        # ─────────────────────────
 
         dice1 = random.randint(1, 6)
         dice2 = random.randint(1, 6)
@@ -92,77 +98,81 @@ class Dice(commands.Cog):
         total = dice1 + dice2
 
         won = False
-        payout = 0
 
-        # TARGET 6
+        multiplier = 1
 
-        if target == 6:
+        # DOWN
 
-            if total < 7:
+        if side == "down":
 
-                won = True
-                payout = amount * 2
-
-        # TARGET 9
-
-        elif target == 9:
-
-            if total > 7:
+            if 2 <= total <= 6:
 
                 won = True
-                payout = amount * 2
+                multiplier = 1
 
-        # TARGET 7
+        # EXACT 7
 
-        elif target == 7:
+        elif side == "7":
 
             if total == 7:
 
                 won = True
-                payout = amount * 7
+                multiplier = 4
 
-        # WIN
+        # UP
+
+        elif side == "up":
+
+            if 8 <= total <= 12:
+
+                won = True
+                multiplier = 1
+
+        # ─────────────────────────
+        # RESULT
+        # ─────────────────────────
 
         if won:
 
+            winnings = amount * multiplier
+
+            profit = winnings
+
             add_cash(
                 ctx.author.id,
-                payout
+                profit
             )
 
             record_win(
                 ctx.author.id,
-                amount
+                profit
             )
 
             add_history(
+
                 ctx.author.id,
+
                 "Dice",
+
                 "WIN",
-                payout - amount,
-                "Bot"
+
+                profit,
+
+                None
             )
 
-            embed = discord.Embed(
+            color = discord.Color.green()
 
-                title="✅ YOU WON",
-
-                description=(
-
-                    f"🎲 Dice Rolled\n"
-                    f"**{dice1} + {dice2} = {total}**\n\n"
-
-                    f"💵 Won "
-                    f"**{format_cash(payout - amount)}**"
-
-                ),
-
-                color=0x57F287
+            result_text = (
+                "✅ You won!"
             )
-
-        # LOSS
 
         else:
+
+            remove_cash(
+                ctx.author.id,
+                amount
+            )
 
             record_loss(
                 ctx.author.id,
@@ -170,31 +180,74 @@ class Dice(commands.Cog):
             )
 
             add_history(
+
                 ctx.author.id,
+
                 "Dice",
+
                 "LOSS",
+
                 amount,
-                "Bot"
+
+                None
             )
 
-            embed = discord.Embed(
+            color = discord.Color.red()
 
-                title="❌ YOU LOST",
+            result_text = (
+                "❌ You lost!"
+            )
 
-                description=(
+        # ─────────────────────────
+        # EMBED
+        # ─────────────────────────
 
-                    f"🎲 Dice Rolled\n"
-                    f"**{dice1} + {dice2} = {total}**\n\n"
+        embed = discord.Embed(
 
-                    f"💸 Lost "
-                    f"**{format_cash(amount)}**"
+            title="🎲 DICE",
 
+            description=(
+
+                f"🎯 Bet:\n"
+                f"**{side.upper()}**\n\n"
+
+                f"🎲 Rolls:\n"
+                f"**{dice1} + {dice2} = {total}**\n\n"
+
+                f"{result_text}"
+
+            ),
+
+            color=color
+        )
+
+        if won:
+
+            embed.add_field(
+
+                name="💵 Won",
+
+                value=(
+                    f"**{format_cash(profit)}**"
                 ),
 
-                color=0xED4245
+                inline=False
             )
 
-        await msg.edit(
+        else:
+
+            embed.add_field(
+
+                name="💸 Lost",
+
+                value=(
+                    f"**{format_cash(amount)}**"
+                ),
+
+                inline=False
+            )
+
+        await ctx.send(
             embed=embed
         )
 
