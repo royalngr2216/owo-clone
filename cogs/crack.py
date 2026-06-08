@@ -95,26 +95,50 @@ class Crack(commands.Cog):
             return
 
         crack_games[ctx.channel.id] = {
+
             "player1": ctx.author,
             "player2": opponent,
+
             "turn": ctx.author,
-            "bet": amount
+
+            "bet": amount,
+
+            "number": random.randint(
+                1,
+                25
+            )
         }
 
         embed = discord.Embed(
+
             title="💥 CRACK",
+
             description=(
-                f"{ctx.author.mention} ⚔️ {opponent.mention}\n\n"
-                f"💵 Wager: **{format_cash(amount)}**\n\n"
-                f"Use `.hit`"
+
+                f"{ctx.author.mention} ⚔️ "
+                f"{opponent.mention}\n\n"
+
+                f"💵 Wager: "
+                f"**{format_cash(amount)}**\n\n"
+
+                f"🎯 Guess the hidden number\n"
+                f"between **1 - 25**\n\n"
+
+                f"Use `.guess number`"
+
             ),
+
             color=discord.Color.orange()
         )
 
         await ctx.send(embed=embed)
 
-    @commands.command(name="hit")
-    async def hit(self, ctx):
+    @commands.command(name="guess")
+    async def guess(
+        self,
+        ctx,
+        number: int
+    ):
 
         if ctx.channel.id not in crack_games:
 
@@ -124,7 +148,9 @@ class Crack(commands.Cog):
 
             return
 
-        game = crack_games[ctx.channel.id]
+        game = crack_games[
+            ctx.channel.id
+        ]
 
         if ctx.author != game["turn"]:
 
@@ -134,19 +160,9 @@ class Crack(commands.Cog):
 
             return
 
-        roll = random.randint(1, 6)
+        target = game["number"]
 
-        embed = discord.Embed(
-            description=(
-                f"🎲 {ctx.author.mention} rolled\n"
-                f"# **{roll}**"
-            ),
-            color=discord.Color.blurple()
-        )
-
-        await ctx.send(embed=embed)
-
-        if roll == 1:
+        if number == target:
 
             loser = ctx.author
 
@@ -170,24 +186,71 @@ class Crack(commands.Cog):
                 amount
             )
 
-            record_win(winner.id, amount)
-            record_loss(loser.id, amount)
+            record_win(
+                winner.id,
+                amount
+            )
 
-            end_embed = discord.Embed(
+            record_loss(
+                loser.id,
+                amount
+            )
+
+            embed = discord.Embed(
+
                 title="💥 CRACKED",
+
                 description=(
-                    f"{loser.mention} cracked!\n\n"
-                    f"🏆 Winner: {winner.mention}\n"
-                    f"💵 Won: **{format_cash(amount)}**"
+
+                    f"{loser.mention} guessed "
+                    f"the hidden number!\n\n"
+
+                    f"🎯 Number was "
+                    f"**{target}**\n\n"
+
+                    f"🏆 Winner: "
+                    f"{winner.mention}\n"
+
+                    f"💵 Won: "
+                    f"**{format_cash(amount)}**"
+
                 ),
+
                 color=discord.Color.red()
             )
 
-            await ctx.send(embed=end_embed)
+            await ctx.send(embed=embed)
 
-            del crack_games[ctx.channel.id]
+            del crack_games[
+                ctx.channel.id
+            ]
 
             return
+
+        hint = (
+
+            "⬆️ Higher"
+
+            if number < target
+
+            else "⬇️ Lower"
+        )
+
+        embed = discord.Embed(
+
+            description=(
+
+                f"{ctx.author.mention} guessed "
+                f"**{number}**\n\n"
+
+                f"{hint}"
+
+            ),
+
+            color=discord.Color.blurple()
+        )
+
+        await ctx.send(embed=embed)
 
         if game["turn"] == game["player1"]:
 
@@ -197,26 +260,9 @@ class Crack(commands.Cog):
 
             game["turn"] = game["player1"]
 
-    @commands.command(name="stop")
-    async def stop(self, ctx):
-
-        if ctx.channel.id in crack_games:
-
-            del crack_games[ctx.channel.id]
-
-            await ctx.send(
-                "🛑 Crack game stopped."
-            )
-
-            return
-
-        await ctx.send(
-            "No active game in this channel."
-        )
-
 
 async def setup(bot):
 
     await bot.add_cog(
         Crack(bot)
-        )
+    )
