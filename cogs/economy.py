@@ -1,269 +1,175 @@
 from discord.ext import commands
 import discord
-
-from datetime import datetime, timedelta
+import time
 
 from utils.economy import (
-ensure_account,
-get_cash,
-add_cash,
-format_cash,
-economy_collection
+    create_account,
+    get_cash,
+    add_cash,
+    remove_cash,
+    can_claim_daily,
+    can_claim_weekly,
+    can_claim_monthly,
+    update_daily,
+    update_weekly,
+    update_monthly,
+    format_cash
 )
 
 class Economy(commands.Cog):
 
-def __init__(self, bot):
+    def __init__(self, bot):
 
-    self.bot = bot
+        self.bot = bot
 
-# ─────────────────────────
-# CASH
-# ─────────────────────────
+    # DAILY
 
-@commands.command(name="cash")
-async def cash(
-    self,
-    ctx,
-    member: discord.Member = None
-):
+    @commands.command(name="daily")
+    async def daily(self, ctx):
 
-    if member is None:
-        member = ctx.author
+        create_account(ctx.author.id)
 
-    ensure_account(member.id)
-
-    cash = get_cash(member.id)
-
-    embed = discord.Embed(
-        description=(
-            f"💵 {member.display_name}'s Cash\n\n"
-            f"# {format_cash(cash)}"
-        ),
-        color=0x2B2D31
-    )
-
-    embed.set_thumbnail(
-        url=member.display_avatar.url
-    )
-
-    await ctx.send(embed=embed)
-
-# ─────────────────────────
-# DAILY
-# ─────────────────────────
-
-@commands.command(name="daily")
-async def daily(self, ctx):
-
-    user = ensure_account(ctx.author.id)
-
-    last_claim = user.get("daily_claimed")
-
-    now = datetime.utcnow()
-
-    if last_claim:
-
-        last_claim = datetime.fromisoformat(
-            last_claim
-        )
-
-        remaining = (
-            last_claim + timedelta(days=1)
-        ) - now
-
-        if remaining.total_seconds() > 0:
-
-            hours, remainder = divmod(
-                int(remaining.total_seconds()),
-                3600
-            )
-
-            minutes = remainder // 60
+        if not can_claim_daily(ctx.author.id):
 
             embed = discord.Embed(
-                description=(
-                    "⏳ Daily already claimed.\n\n"
-                    f"Try again in "
-                    f"`{hours}h {minutes}m`"
-                ),
+                description="❌ You already claimed daily.",
                 color=0xED4245
             )
 
-            return await ctx.send(
-                embed=embed
-            )
+            await ctx.send(embed=embed)
 
-    reward = 10_000
+            return
 
-    add_cash(
-        ctx.author.id,
-        reward
-    )
+        amount = 10000
 
-    economy_collection.update_one(
-        {
-            "user_id": str(ctx.author.id)
-        },
-        {
-            "$set": {
-                "daily_claimed": now.isoformat()
-            }
-        }
-    )
-
-    embed = discord.Embed(
-        description=(
-            "🎁 Daily Claimed\n\n"
-            f"+ {format_cash(reward)}"
-        ),
-        color=0x57F287
-    )
-
-    await ctx.send(embed=embed)
-
-# ─────────────────────────
-# WEEKLY
-# ─────────────────────────
-
-@commands.command(name="weekly")
-async def weekly(self, ctx):
-
-    user = ensure_account(ctx.author.id)
-
-    last_claim = user.get("weekly_claimed")
-
-    now = datetime.utcnow()
-
-    if last_claim:
-
-        last_claim = datetime.fromisoformat(
-            last_claim
+        add_cash(
+            ctx.author.id,
+            amount
         )
 
-        remaining = (
-            last_claim + timedelta(days=7)
-        ) - now
+        update_daily(ctx.author.id)
 
-        if remaining.total_seconds() > 0:
+        embed = discord.Embed(
+            title="💸 DAILY CLAIMED",
+            description=(
+                f"{ctx.author.mention}\n\n"
+                f"+ **{format_cash(amount)}**"
+            ),
+            color=0x57F287
+        )
 
-            days = remaining.days
+        await ctx.send(embed=embed)
 
-            hours = (
-                remaining.seconds // 3600
-            )
+    # WEEKLY
+
+    @commands.command(name="weekly")
+    async def weekly(self, ctx):
+
+        create_account(ctx.author.id)
+
+        if not can_claim_weekly(ctx.author.id):
 
             embed = discord.Embed(
-                description=(
-                    "⏳ Weekly already claimed.\n\n"
-                    f"Try again in "
-                    f"`{days}d {hours}h`"
-                ),
+                description="❌ You already claimed weekly.",
                 color=0xED4245
             )
 
-            return await ctx.send(
-                embed=embed
-            )
+            await ctx.send(embed=embed)
 
-    reward = 100_000
+            return
 
-    add_cash(
-        ctx.author.id,
-        reward
-    )
+        amount = 100000
 
-    economy_collection.update_one(
-        {
-            "user_id": str(ctx.author.id)
-        },
-        {
-            "$set": {
-                "weekly_claimed": now.isoformat()
-            }
-        }
-    )
-
-    embed = discord.Embed(
-        description=(
-            "🎉 Weekly Claimed\n\n"
-            f"+ {format_cash(reward)}"
-        ),
-        color=0x57F287
-    )
-
-    await ctx.send(embed=embed)
-
-# ─────────────────────────
-# MONTHLY
-# ─────────────────────────
-
-@commands.command(name="monthly")
-async def monthly(self, ctx):
-
-    user = ensure_account(ctx.author.id)
-
-    last_claim = user.get("monthly_claimed")
-
-    now = datetime.utcnow()
-
-    if last_claim:
-
-        last_claim = datetime.fromisoformat(
-            last_claim
+        add_cash(
+            ctx.author.id,
+            amount
         )
 
-        remaining = (
-            last_claim + timedelta(days=30)
-        ) - now
+        update_weekly(ctx.author.id)
 
-        if remaining.total_seconds() > 0:
+        embed = discord.Embed(
+            title="💰 WEEKLY CLAIMED",
+            description=(
+                f"{ctx.author.mention}\n\n"
+                f"+ **{format_cash(amount)}**"
+            ),
+            color=0x5865F2
+        )
 
-            days = remaining.days
+        await ctx.send(embed=embed)
+
+    # MONTHLY
+
+    @commands.command(name="monthly")
+    async def monthly(self, ctx):
+
+        create_account(ctx.author.id)
+
+        if not can_claim_monthly(ctx.author.id):
 
             embed = discord.Embed(
-                description=(
-                    "⏳ Monthly already claimed.\n\n"
-                    f"Try again in "
-                    f"`{days} days`"
-                ),
+                description="❌ You already claimed monthly.",
                 color=0xED4245
             )
 
-            return await ctx.send(
-                embed=embed
-            )
+            await ctx.send(embed=embed)
 
-    reward = 1_000_000
+            return
 
-    add_cash(
-        ctx.author.id,
-        reward
-    )
+        amount = 1000000
 
-    economy_collection.update_one(
-        {
-            "user_id": str(ctx.author.id)
-        },
-        {
-            "$set": {
-                "monthly_claimed": now.isoformat()
-            }
-        }
-    )
+        add_cash(
+            ctx.author.id,
+            amount
+        )
 
-    embed = discord.Embed(
-        description=(
-            "💎 Monthly Claimed\n\n"
-            f"+ {format_cash(reward)}"
-        ),
-        color=0x57F287
-    )
+        update_monthly(ctx.author.id)
 
-    await ctx.send(embed=embed)
+        embed = discord.Embed(
+            title="🏆 MONTHLY CLAIMED",
+            description=(
+                f"{ctx.author.mention}\n\n"
+                f"+ **{format_cash(amount)}**"
+            ),
+            color=0xFEE75C
+        )
+
+        await ctx.send(embed=embed)
+
+    # CASH
+
+    @commands.command(name="cash")
+    async def cash(
+        self,
+        ctx,
+        member: discord.Member = None
+    ):
+
+        if member is None:
+
+            member = ctx.author
+
+        create_account(member.id)
+
+        cash = get_cash(member.id)
+
+        embed = discord.Embed(
+            title="💵 CASH",
+            description=(
+                f"{member.mention}\n\n"
+                f"## {format_cash(cash)}"
+            ),
+            color=0x2B2D31
+        )
+
+        embed.set_thumbnail(
+            url=member.display_avatar.url
+        )
+
+        await ctx.send(embed=embed)
 
 async def setup(bot):
 
-await bot.add_cog(
-    Economy(bot)
-)
+    await bot.add_cog(
+        Economy(bot)
+    )
