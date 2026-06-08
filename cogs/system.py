@@ -1,15 +1,19 @@
 from discord.ext import commands
 import discord
 
-from utils.stats import (
-    get_profile
-)
+from utils.stats import get_profile
 
-from utils.economy import (
-    get_cash,
-    format_cash,
-    economy_collection
-)
+
+# ─────────────────────────
+# ROLE UPDATE FUNCTION
+# ─────────────────────────
+
+async def update_roles(member, matches):
+
+    # OPTIONAL ROLE SYSTEM
+    # Add custom rank roles later if wanted
+
+    return
 
 
 class System(commands.Cog):
@@ -26,153 +30,88 @@ class System(commands.Cog):
     async def help(self, ctx):
 
         embed = discord.Embed(
-
-            title="👑 ROYAL ECONOMY",
-
+            title="📖 COMMANDS",
             description=(
-
-                ">>> "
-                "**Competitive Gambling Bot**\n"
-                "Challenge players, gamble cash,\n"
-                "climb leaderboards and dominate."
-
+                "Use the commands below.\n"
+                "Prefix: `.`"
             ),
-
-            color=0x5865F2
+            color=discord.Color.blurple()
         )
 
-        embed.add_field(
-
-            name="💸 ECONOMY",
-
-            value=(
-
-                "```yaml\n"
-
-                ".cash\n"
-                ".daily\n"
-                ".weekly\n"
-                ".monthly\n"
-                ".give @user amount\n"
-
-                "```"
-
-            ),
-
-            inline=True
-        )
+        # ECONOMY
 
         embed.add_field(
-
-            name="🎲 SOLO GAMBLING",
-
+            name="💰 Economy",
             value=(
-
-                "```yaml\n"
-
-                ".cf h/t amount\n"
-                ".dice down amount\n"
-                ".dice 7 amount\n"
-                ".dice up amount\n"
-
-                "```"
-
+                "`.cash`\n"
+                "`.daily`\n"
+                "`.weekly`\n"
+                "`.monthly`"
             ),
-
-            inline=True
-        )
-
-        embed.add_field(
-
-            name="⚔️ PvP GAMES",
-
-            value=(
-
-                "```yaml\n"
-
-                ".randoms @user bo amount\n"
-                ".crack @user amount\n"
-                ".deathroll @user amount\n"
-
-                "```"
-
-            ),
-
             inline=False
         )
 
+        # RANDOMS
+
         embed.add_field(
-
-            name="🎮 MATCH COMMANDS",
-
+            name="🐉 Randoms",
             value=(
-
-                "```yaml\n"
-
-                ".pick\n"
-                ".guess number\n"
-                ".roll\n"
-                ".stop\n"
-
-                "```"
-
+                "`.randoms @user bo amount`\n"
+                "`.pick`"
             ),
-
-            inline=True
+            inline=False
         )
 
+        # DEATHROLL
+
         embed.add_field(
-
-            name="📊 PROFILE",
-
+            name="💀 Deathroll",
             value=(
-
-                "```yaml\n"
-
-                ".profile\n"
-                ".leaderboard\n"
-                ".history\n"
-                ".ping\n"
-
-                "```"
-
+                "`.deathroll @user amount`\n"
+                "`.roll`"
             ),
-
-            inline=True
+            inline=False
         )
 
+        # DICE
+
         embed.add_field(
-
-            name="💰 CASH EXAMPLES",
-
+            name="🎲 Dice",
             value=(
-
-                "```yaml\n"
-
-                "10k = 10,000\n"
-                "1m = 1,000,000\n"
-                "1b = 1,000,000,000\n"
-
-                "```"
-
+                "`.dice up amount`\n"
+                "`.dice 7 amount`\n"
+                "`.dice down amount`"
             ),
+            inline=False
+        )
 
+        # CRACK
+
+        embed.add_field(
+            name="💥 Crack",
+            value=(
+                "`.crack @user amount`\n"
+                "`.guess number`"
+            ),
+            inline=False
+        )
+
+        # PROFILE
+
+        embed.add_field(
+            name="📊 Profile",
+            value=(
+                "`.profile`\n"
+                "`.profile @user`"
+            ),
             inline=False
         )
 
         embed.set_footer(
-
-            text=(
-                f"Requested by "
-                f"{ctx.author.display_name}"
-            ),
-
-            icon_url=ctx.author.display_avatar.url
+            text="Made with discord.py"
         )
 
-        await ctx.send(
-            embed=embed
-        )
+        await ctx.send(embed=embed)
 
     # ─────────────────────────
     # PROFILE
@@ -193,22 +132,27 @@ class System(commands.Cog):
             member.id
         )
 
-        cash = get_cash(
-            member.id
-        )
+        wins = stats["wins"]
+        losses = stats["losses"]
+        matches = stats["matches"]
+
+        if matches > 0:
+
+            winrate = round(
+                (wins / matches) * 100,
+                1
+            )
+
+        else:
+
+            winrate = 0
 
         embed = discord.Embed(
-
-            title=f"👤 {member.display_name}",
-
+            title="📊 PROFILE",
             description=(
-
-                f"💵 Cash\n"
-                f"# {format_cash(cash)}"
-
+                f"{member.mention}"
             ),
-
-            color=0x2B2D31
+            color=discord.Color.dark_embed()
         )
 
         embed.set_thumbnail(
@@ -217,214 +161,29 @@ class System(commands.Cog):
 
         embed.add_field(
             name="🏆 Wins",
-            value=f"**{stats['wins']}**",
+            value=f"**{wins}**",
             inline=True
         )
 
         embed.add_field(
-            name="💀 Losses",
-            value=f"**{stats['losses']}**",
-            inline=True
-        )
-
-        embed.add_field(
-            name="📈 Winrate",
-            value=f"**{stats['winrate']}%**",
-            inline=True
-        )
-
-        embed.add_field(
-            name="🔥 Streak",
-            value=f"**{stats['streak']}**",
-            inline=True
-        )
-
-        embed.add_field(
-            name="👑 Best Streak",
-            value=f"**{stats['best_streak']}**",
+            name="❌ Losses",
+            value=f"**{losses}**",
             inline=True
         )
 
         embed.add_field(
             name="🎮 Matches",
-            value=f"**{stats['matches']}**",
+            value=f"**{matches}**",
             inline=True
         )
 
-        await ctx.send(
-            embed=embed
+        embed.add_field(
+            name="📈 Winrate",
+            value=f"**{winrate}%**",
+            inline=False
         )
 
-    # ─────────────────────────
-    # LEADERBOARD
-    # ─────────────────────────
-
-    @commands.command(name="leaderboard")
-    async def leaderboard(self, ctx):
-
-        users = economy_collection.find()
-
-        data = []
-
-        for user in users:
-
-            data.append(
-
-                (
-                    user["user_id"],
-                    user.get("cash", 0)
-                )
-
-            )
-
-        data.sort(
-            key=lambda x: x[1],
-            reverse=True
-        )
-
-        top = data[:10]
-
-        embed = discord.Embed(
-
-            title="🏆 RICHEST PLAYERS",
-
-            description=(
-                ">>> Top richest players\n"
-                "across the server."
-            ),
-
-            color=0xFEE75C
-        )
-
-        medals = [
-
-            "🥇",
-            "🥈",
-            "🥉"
-        ]
-
-        lines = []
-
-        for i, (
-            uid,
-            cash
-        ) in enumerate(top):
-
-            rank = (
-
-                medals[i]
-
-                if i < 3
-
-                else f"`#{i+1}`"
-
-            )
-
-            lines.append(
-
-                f"{rank} <@{uid}>\n"
-                f"💵 **{format_cash(cash)}**"
-
-            )
-
-        embed.description += (
-            "\n\n" +
-            "\n\n".join(lines)
-        )
-
-        await ctx.send(
-            embed=embed
-        )
-
-    # ─────────────────────────
-    # STOP
-    # ─────────────────────────
-
-    @commands.command(name="stop")
-    async def stop(self, ctx):
-
-        from utils.game_state import (
-            randoms_games,
-            deathroll_games,
-            crack_games
-        )
-
-        stopped = False
-
-        if ctx.channel.id in randoms_games:
-
-            del randoms_games[
-                ctx.channel.id
-            ]
-
-            stopped = True
-
-        if ctx.channel.id in deathroll_games:
-
-            del deathroll_games[
-                ctx.channel.id
-            ]
-
-            stopped = True
-
-        if ctx.channel.id in crack_games:
-
-            del crack_games[
-                ctx.channel.id
-            ]
-
-            stopped = True
-
-        if stopped:
-
-            embed = discord.Embed(
-
-                description=(
-                    "🛑 Active game stopped."
-                ),
-
-                color=discord.Color.red()
-            )
-
-        else:
-
-            embed = discord.Embed(
-
-                description=(
-                    "❌ No active game."
-                ),
-
-                color=discord.Color.red()
-            )
-
-        await ctx.send(
-            embed=embed
-        )
-
-    # ─────────────────────────
-    # PING
-    # ─────────────────────────
-
-    @commands.command(name="ping")
-    async def ping(self, ctx):
-
-        latency = round(
-            self.bot.latency * 1000
-        )
-
-        embed = discord.Embed(
-
-            description=(
-                f"🏓 Pong!\n"
-                f"## {latency}ms"
-            ),
-
-            color=0x57F287
-        )
-
-        await ctx.send(
-            embed=embed
-        )
+        await ctx.send(embed=embed)
 
 
 async def setup(bot):
