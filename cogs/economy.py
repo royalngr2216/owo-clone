@@ -16,13 +16,16 @@ from utils.economy import (
     format_cash
 )
 
+
 class Economy(commands.Cog):
 
     def __init__(self, bot):
 
         self.bot = bot
 
+    # ─────────────────────────
     # DAILY
+    # ─────────────────────────
 
     @commands.command(name="daily")
     async def daily(self, ctx):
@@ -31,8 +34,23 @@ class Economy(commands.Cog):
 
         if not can_claim_daily(ctx.author.id):
 
+            next_claim = int(
+                time.time() + 86400
+            )
+
             embed = discord.Embed(
-                description="❌ You already claimed daily.",
+
+                description=(
+
+                    "❌ You already claimed daily.\n\n"
+
+                    f"⏰ Try again "
+                    f"<t:{next_claim}:R>\n"
+
+                    f"📅 <t:{next_claim}:F>"
+
+                ),
+
                 color=0xED4245
             )
 
@@ -47,20 +65,30 @@ class Economy(commands.Cog):
             amount
         )
 
-        update_daily(ctx.author.id)
+        update_daily(
+            ctx.author.id
+        )
 
         embed = discord.Embed(
+
             title="💸 DAILY CLAIMED",
+
             description=(
+
                 f"{ctx.author.mention}\n\n"
+
                 f"+ **{format_cash(amount)}**"
+
             ),
+
             color=0x57F287
         )
 
         await ctx.send(embed=embed)
 
+    # ─────────────────────────
     # WEEKLY
+    # ─────────────────────────
 
     @commands.command(name="weekly")
     async def weekly(self, ctx):
@@ -69,8 +97,23 @@ class Economy(commands.Cog):
 
         if not can_claim_weekly(ctx.author.id):
 
+            next_claim = int(
+                time.time() + 604800
+            )
+
             embed = discord.Embed(
-                description="❌ You already claimed weekly.",
+
+                description=(
+
+                    "❌ You already claimed weekly.\n\n"
+
+                    f"⏰ Try again "
+                    f"<t:{next_claim}:R>\n"
+
+                    f"📅 <t:{next_claim}:F>"
+
+                ),
+
                 color=0xED4245
             )
 
@@ -85,20 +128,30 @@ class Economy(commands.Cog):
             amount
         )
 
-        update_weekly(ctx.author.id)
+        update_weekly(
+            ctx.author.id
+        )
 
         embed = discord.Embed(
+
             title="💰 WEEKLY CLAIMED",
+
             description=(
+
                 f"{ctx.author.mention}\n\n"
+
                 f"+ **{format_cash(amount)}**"
+
             ),
+
             color=0x5865F2
         )
 
         await ctx.send(embed=embed)
 
+    # ─────────────────────────
     # MONTHLY
+    # ─────────────────────────
 
     @commands.command(name="monthly")
     async def monthly(self, ctx):
@@ -107,8 +160,23 @@ class Economy(commands.Cog):
 
         if not can_claim_monthly(ctx.author.id):
 
+            next_claim = int(
+                time.time() + 2592000
+            )
+
             embed = discord.Embed(
-                description="❌ You already claimed monthly.",
+
+                description=(
+
+                    "❌ You already claimed monthly.\n\n"
+
+                    f"⏰ Try again "
+                    f"<t:{next_claim}:R>\n"
+
+                    f"📅 <t:{next_claim}:F>"
+
+                ),
+
                 color=0xED4245
             )
 
@@ -123,20 +191,30 @@ class Economy(commands.Cog):
             amount
         )
 
-        update_monthly(ctx.author.id)
+        update_monthly(
+            ctx.author.id
+        )
 
         embed = discord.Embed(
+
             title="🏆 MONTHLY CLAIMED",
+
             description=(
+
                 f"{ctx.author.mention}\n\n"
+
                 f"+ **{format_cash(amount)}**"
+
             ),
+
             color=0xFEE75C
         )
 
         await ctx.send(embed=embed)
 
+    # ─────────────────────────
     # CASH
+    # ─────────────────────────
 
     @commands.command(name="cash")
     async def cash(
@@ -154,11 +232,17 @@ class Economy(commands.Cog):
         cash = get_cash(member.id)
 
         embed = discord.Embed(
+
             title="💵 CASH",
+
             description=(
+
                 f"{member.mention}\n\n"
-                f"## {format_cash(cash)}"
+
+                f"# {format_cash(cash)}"
+
             ),
+
             color=0x2B2D31
         )
 
@@ -167,6 +251,7 @@ class Economy(commands.Cog):
         )
 
         await ctx.send(embed=embed)
+
 
 async def setup(bot):
 
