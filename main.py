@@ -4,157 +4,196 @@ from discord.ext import commands
 from flask import Flask
 from threading import Thread
 
+import traceback
 import os
 
+─────────────────────────
 
-# ─────────────────────────
-# KEEP ALIVE
-# ─────────────────────────
+KEEP ALIVE
 
-app = Flask(__name__)
+─────────────────────────
 
+app = Flask(name)
 
 @app.route("/")
 def home():
 
-    return "Royal Economy Online"
-
+return "Royal Economy Online"
 
 def run_web():
 
-    port = int(
-        os.environ.get(
-            "PORT",
-            10000
-        )
+port = int(
+    os.environ.get(
+        "PORT",
+        10000
     )
+)
 
-    app.run(
-        host="0.0.0.0",
-        port=port
-    )
-
+app.run(
+    host="0.0.0.0",
+    port=port
+)
 
 def keep_alive():
 
-    t = Thread(
-        target=run_web
-    )
+t = Thread(
+    target=run_web
+)
 
-    t.start()
+t.start()
 
+─────────────────────────
 
-# ─────────────────────────
-# BOT
-# ─────────────────────────
+BOT
+
+─────────────────────────
 
 intents = discord.Intents.default()
 
 intents.message_content = True
 intents.members = True
 
-
 class RoyalBot(commands.Bot):
 
-    def __init__(self):
+def __init__(self):
 
-        super().__init__(
+    super().__init__(
 
-            command_prefix=".",
+        command_prefix=".",
 
-            intents=intents,
+        intents=intents,
 
-            help_command=None
+        help_command=None
 
-        )
+    )
 
-        self.maintenance = False
+    self.maintenance = False
 
-    # ─────────────────────────
-    # LOAD COGS
-    # ─────────────────────────
+# ─────────────────────────
+# LOAD COGS
+# ─────────────────────────
 
-    async def setup_hook(self):
+async def setup_hook(self):
 
-        print("⚙️ Loading Cogs...")
+    print("\n⚙️ Loading Cogs...\n")
 
-        if os.path.exists("./cogs"):
+    if os.path.exists("./cogs"):
 
-            for file in os.listdir("./cogs"):
+        for file in os.listdir("./cogs"):
 
-                if file.endswith(".py"):
+            if file.endswith(".py"):
 
-                    try:
+                try:
 
-                        await self.load_extension(
-                            f"cogs.{file[:-3]}"
-                        )
+                    await self.load_extension(
+                        f"cogs.{file[:-3]}"
+                    )
 
-                        print(
-                            f"✅ Loaded {file}"
-                        )
+                    print(
+                        f"✅ Loaded {file}"
+                    )
 
-                    except Exception as e:
+                except Exception:
 
-                        print(
-                            f"❌ Failed {file}: {e}"
-                        )
+                    print(
+                        f"\n❌ FAILED TO LOAD: {file}\n"
+                    )
 
-    # ─────────────────────────
-    # ERROR HANDLER
-    # ─────────────────────────
+                    traceback.print_exc()
 
-    async def on_command_error(
-        self,
-        ctx,
-        error
+                    print("\n")
+
+    print("\n✅ Cog loading finished.\n")
+
+# ─────────────────────────
+# COMMAND ERRORS
+# ─────────────────────────
+
+async def on_command_error(
+    self,
+    ctx,
+    error
+):
+
+    if isinstance(
+        error,
+        commands.CommandNotFound
     ):
 
-        if isinstance(
-            error,
-            commands.CommandNotFound
-        ):
-            return
+        return
 
-        print(error)
+    print("\n❌ COMMAND ERROR ❌\n")
 
+    traceback.print_exception(
+        type(error),
+        error,
+        error.__traceback__
+    )
+
+    print("\n")
+
+    embed = discord.Embed(
+
+        description=(
+            "❌ Command crashed.\n"
+            "Check Render logs."
+        ),
+
+        color=0xED4245
+    )
+
+    try:
+
+        await ctx.send(
+            embed=embed
+        )
+
+    except:
+        pass
 
 bot = RoyalBot()
 
+─────────────────────────
 
-# ─────────────────────────
-# EVENTS
-# ─────────────────────────
+EVENTS
+
+─────────────────────────
 
 @bot.event
 async def on_ready():
 
-    print(
-        f"🚀 Logged in as {bot.user}"
-    )
+print("\n🚀 BOT ONLINE 🚀\n")
+
+print(
+    f"Logged in as: {bot.user}"
+)
+
+print(
+    f"Servers: {len(bot.guilds)}"
+)
+
+print("\n")
+
+─────────────────────────
+
+START BOT
+
+─────────────────────────
+
+if name == "main":
+
+print("\n🔄 Starting Royal Economy...\n")
+
+keep_alive()
+
+token = os.getenv("TOKEN")
+
+if not token:
 
     print(
-        f"🌍 Connected to "
-        f"{len(bot.guilds)} servers"
+        "\n❌ TOKEN NOT FOUND ❌\n"
     )
 
+else:
 
-# ─────────────────────────
-# START BOT
-# ─────────────────────────
-
-if __name__ == "__main__":
-
-    print("🔄 Starting Royal Economy...")
-
-    keep_alive()
-
-    token = os.getenv("TOKEN")
-
-    if not token:
-
-        print("❌ TOKEN NOT FOUND")
-
-    else:
-
-        bot.run(token)
+    bot.run(token)
