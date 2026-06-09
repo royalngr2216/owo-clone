@@ -1,5 +1,6 @@
 from discord.ext import commands
 import discord
+import time
 
 from utils.economy import (
     economy_collection,
@@ -36,46 +37,9 @@ class Economy(commands.Cog):
         ) or {}
 
         last_daily = user.get(
-            "last_daily"
+            "last_daily",
+            0
         )
-
-        # OLD USERS FIX
-
-        if (
-            last_daily is None
-        ):
-
-            amount = 10000
-
-            add_cash(
-                ctx.author.id,
-                amount
-            )
-
-            update_daily(
-                ctx.author.id
-            )
-
-            embed = discord.Embed(
-
-                title="💸 DAILY CLAIMED",
-
-                description=(
-
-                    f"{ctx.author.mention}\n\n"
-
-                    f"+ **{format_cash(amount)}**"
-
-                ),
-
-                color=0x57F287
-            )
-
-            await ctx.send(embed=embed)
-
-            return
-
-        # COOLDOWN
 
         if not can_claim_daily(ctx.author.id):
 
@@ -102,8 +66,6 @@ class Economy(commands.Cog):
             await ctx.send(embed=embed)
 
             return
-
-        # CLAIM
 
         amount = 10000
 
@@ -147,46 +109,9 @@ class Economy(commands.Cog):
         ) or {}
 
         last_weekly = user.get(
-            "last_weekly"
+            "last_weekly",
+            0
         )
-
-        # OLD USERS FIX
-
-        if (
-            last_weekly is None
-        ):
-
-            amount = 100000
-
-            add_cash(
-                ctx.author.id,
-                amount
-            )
-
-            update_weekly(
-                ctx.author.id
-            )
-
-            embed = discord.Embed(
-
-                title="💰 WEEKLY CLAIMED",
-
-                description=(
-
-                    f"{ctx.author.mention}\n\n"
-
-                    f"+ **{format_cash(amount)}**"
-
-                ),
-
-                color=0x5865F2
-            )
-
-            await ctx.send(embed=embed)
-
-            return
-
-        # COOLDOWN
 
         if not can_claim_weekly(ctx.author.id):
 
@@ -213,8 +138,6 @@ class Economy(commands.Cog):
             await ctx.send(embed=embed)
 
             return
-
-        # CLAIM
 
         amount = 100000
 
@@ -258,46 +181,9 @@ class Economy(commands.Cog):
         ) or {}
 
         last_monthly = user.get(
-            "last_monthly"
+            "last_monthly",
+            0
         )
-
-        # OLD USERS FIX
-
-        if (
-            last_monthly is None
-        ):
-
-            amount = 1000000
-
-            add_cash(
-                ctx.author.id,
-                amount
-            )
-
-            update_monthly(
-                ctx.author.id
-            )
-
-            embed = discord.Embed(
-
-                title="🏆 MONTHLY CLAIMED",
-
-                description=(
-
-                    f"{ctx.author.mention}\n\n"
-
-                    f"+ **{format_cash(amount)}**"
-
-                ),
-
-                color=0xFEE75C
-            )
-
-            await ctx.send(embed=embed)
-
-            return
-
-        # COOLDOWN
 
         if not can_claim_monthly(ctx.author.id):
 
@@ -324,8 +210,6 @@ class Economy(commands.Cog):
             await ctx.send(embed=embed)
 
             return
-
-        # CLAIM
 
         amount = 1000000
 
