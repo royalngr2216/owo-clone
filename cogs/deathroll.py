@@ -7,15 +7,16 @@ from utils.economy import (
     get_cash,
     add_cash,
     remove_cash,
-    format_cash,
-    parse_amount
+    format_cash
 )
 
 from utils.stats import (
     record_win,
-    record_loss
+    record_loss,
+    get_profile
 )
 
+from cogs.system import update_roles
 from utils.game_state import (
     deathroll_games
 )
@@ -28,11 +29,16 @@ class Deathroll(commands.Cog):
         self.bot = bot
 
 
+    # ─────────────────────────
+    # START GAME
+    # ─────────────────────────
+
     @commands.command(name="deathroll")
     async def deathroll(
         self,
         ctx,
         opponent: discord.Member,
+        bo: int,
         amount: str
     ):
 
@@ -40,6 +46,15 @@ class Deathroll(commands.Cog):
 
             await ctx.send(
                 "You cannot play yourself."
+            )
+
+            return
+
+
+        if bo not in [1, 3, 5, 7, 9]:
+
+            await ctx.send(
+                "Use: `.deathroll @user 1/3/5/7/9 amount`"
             )
 
             return
@@ -54,36 +69,38 @@ class Deathroll(commands.Cog):
             return
 
 
-        create_account(ctx.author.id)
-        create_account(opponent.id)
+        amount = amount.lower()
 
 
-        # ─────────────────────────
-        # PARSE AMOUNT
-        # ─────────────────────────
+        if amount.endswith("k"):
 
-        cash = get_cash(
-            ctx.author.id
-        )
+            amount = int(
+                float(amount[:-1]) * 1000
+            )
 
-        amount = parse_amount(
-            amount,
-            cash
-        )
+        elif amount.endswith("m"):
+
+            amount = int(
+                float(amount[:-1]) * 1000000
+            )
+
+        else:
+
+            amount = int(amount)
 
 
-        if amount is None or amount <= 0:
+        if amount <= 0:
 
             await ctx.send(
-                "Invalid amount."
+                "Amount must be greater than 0."
             )
 
             return
 
 
-        # ─────────────────────────
-        # CHECK CASH
-        # ─────────────────────────
+        create_account(ctx.author.id)
+        create_account(opponent.id)
+
 
         if get_cash(ctx.author.id) < amount:
 
@@ -103,6 +120,9 @@ class Deathroll(commands.Cog):
             return
 
 
+        wins_required = (bo // 2) + 1
+
+
         deathroll_games[ctx.channel.id] = {
 
             "player1": ctx.author,
@@ -112,7 +132,14 @@ class Deathroll(commands.Cog):
 
             "current": 100,
 
-            "bet": amount
+            "bet": amount,
+
+            "bo": bo,
+
+            "wins_required": wins_required,
+
+            "score1": 0,
+            "score2": 0
         }
 
 
@@ -128,6 +155,9 @@ class Deathroll(commands.Cog):
                 f"💵 Wager: "
                 f"**{format_cash(amount)}**\n\n"
 
+                f"🏆 First to "
+                f"**{wins_required}** wins\n\n"
+
                 f"🎲 Starting Number: "
                 f"**100**\n\n"
 
@@ -141,6 +171,10 @@ class Deathroll(commands.Cog):
 
         await ctx.send(embed=embed)
 
+
+    # ─────────────────────────
+    # ROLL
+    # ─────────────────────────
 
     @commands.command(name="roll")
     async def roll(self, ctx):
@@ -190,6 +224,8 @@ class Deathroll(commands.Cog):
         await ctx.send(embed=embed)
 
 
+        # ROUND LOSS
+
         if rolled == 1:
 
             loser = ctx.author
@@ -199,71 +235,84 @@ class Deathroll(commands.Cog):
 
                 winner = game["player2"]
 
+                game["score2"] += 1
+
             else:
 
                 winner = game["player1"]
 
-
-            amount = game["bet"]
-
-
-            remove_cash(
-                loser.id,
-                amount
-            )
+                game["score1"] += 1
 
 
-            add_cash(
-                winner.id,
-                amount
-            )
+            round_embed = discord.Embed(
 
-
-            record_win(
-                winner.id,
-                amount
-            )
-
-
-            record_loss(
-                loser.id,
-                amount
-            )
-
-
-            end_embed = discord.Embed(
-
-                title="☠️ DEATHROLL OVER",
+                title="🏆 ROUND WON",
 
                 description=(
 
                     f"{loser.mention} rolled "
                     f"**1**\n\n"
 
-                    f"🏆 Winner: "
-                    f"{winner.mention}\n"
+                    f"{winner.mention} wins the round.\n\n"
 
-                    f"💵 Won: "
-                    f"**{format_cash(amount)}**"
+                    f"📊 Score\n"
+                    f"**{game['score1']} - {game['score2']}**"
 
                 ),
 
-                color=discord.Color.dark_red()
+                color=discord.Color.green()
             )
 
+            await ctx.send(embed=round_embed)
 
-            await ctx.send(
-                embed=end_embed
+
+            # MATCH END
+
+            if (
+
+                game["score1"] >= game["wins_required"]
+
+                or
+
+                game["score2"] >= game["wins_required"]
+
+            ):
+
+                await self.end_match(
+                    ctx.channel.id
+                )
+
+                return
+
+
+            # NEXT ROUND
+
+            game["current"] = 100
+
+            game["turn"] = loser
+
+
+            next_embed = discord.Embed(
+
+                description=(
+
+                    "🎲 New round started.\n\n"
+
+                    f"🎮 {loser.mention} goes first\n\n"
+
+                    f"Starting Number: **100**"
+
+                ),
+
+                color=discord.Color.red()
             )
 
-
-            del deathroll_games[
-                ctx.channel.id
-            ]
-
+            await ctx.send(embed=next_embed)
 
             return
 
+
+        # CONTINUE
 
         game["current"] = rolled
 
@@ -275,6 +324,111 @@ class Deathroll(commands.Cog):
         else:
 
             game["turn"] = game["player1"]
+
+
+    # ─────────────────────────
+    # END MATCH
+    # ─────────────────────────
+
+    async def end_match(self, channel_id):
+
+        game = deathroll_games[channel_id]
+
+
+        if game["score1"] > game["score2"]:
+
+            winner = game["player1"]
+            loser = game["player2"]
+
+        else:
+
+            winner = game["player2"]
+            loser = game["player1"]
+
+
+        amount = game["bet"]
+
+
+        # MONEY
+
+        remove_cash(
+            loser.id,
+            amount
+        )
+
+        add_cash(
+            winner.id,
+            amount
+        )
+
+
+        # STATS
+
+        record_win(
+            winner.id,
+            amount
+        )
+
+        record_loss(
+            loser.id,
+            amount
+        )
+
+
+        winner_stats = get_profile(
+            winner.id
+        )
+
+        loser_stats = get_profile(
+            loser.id
+        )
+
+
+        await update_roles(
+            winner,
+            winner_stats["matches"]
+        )
+
+        await update_roles(
+            loser,
+            loser_stats["matches"]
+        )
+
+
+        # RESULT EMBED
+
+        end_embed = discord.Embed(
+
+            title="☠️ DEATHROLL RESULT",
+
+            description=(
+
+                f"{winner.mention} wins the match!\n\n"
+
+                f"📊 Final Score\n"
+                f"**{game['score1']} - {game['score2']}**\n\n"
+
+                f"💵 Prize: "
+                f"**{format_cash(amount)}**"
+
+            ),
+
+            color=discord.Color.dark_red()
+        )
+
+
+        channel = self.bot.get_channel(
+            channel_id
+        )
+
+        await channel.send(
+            embed=end_embed
+        )
+
+
+        del deathroll_games[
+            channel_id
+        ]
 
 
 async def setup(bot):
