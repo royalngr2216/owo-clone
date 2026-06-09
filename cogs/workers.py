@@ -1,6 +1,5 @@
 from discord.ext import commands
 import discord
-from datetime import datetime
 
 from utils.economy import (
     economy_collection,
@@ -90,6 +89,11 @@ class Workers(commands.Cog):
                 1
             )
 
+            stored = worker.get(
+                "stored",
+                0
+            )
+
             total_earned = worker.get(
                 "total_earned",
                 0
@@ -97,32 +101,8 @@ class Workers(commands.Cog):
 
             income = WORKER_LEVELS[level]["income"]
 
-            last_claim = worker.get(
-                "last_claim",
-                int(datetime.now().timestamp())
-            )
 
-
-            current_time = int(
-                datetime.now().timestamp()
-            )
-
-
-            seconds_passed = (
-
-                current_time - last_claim
-            )
-
-
-            unclaimed = int(
-
-                (seconds_passed / 86400)
-
-                * income
-            )
-
-
-            total_unclaimed += unclaimed
+            total_unclaimed += stored
 
 
             embed.add_field(
@@ -133,7 +113,7 @@ class Workers(commands.Cog):
 
                     f"📈 Level: **{level}**\n"
                     f"💰 Income: **{format_cash(income)} / day**\n"
-                    f"💵 Unclaimed: **{format_cash(unclaimed)}**\n"
+                    f"💵 Unclaimed: **{format_cash(stored)}**\n"
                     f"🏦 Lifetime Earned: **{format_cash(total_earned)}**"
 
                 ),
@@ -204,64 +184,39 @@ class Workers(commands.Cog):
         claim_text = ""
 
 
-        current_time = int(
-            datetime.now().timestamp()
-        )
-
-
         for worker_name, worker in workers.items():
 
-            level = worker.get(
-                "level",
-                1
-            )
-
-            income = WORKER_LEVELS[level]["income"]
-
-            last_claim = worker.get(
-                "last_claim",
-                current_time
+            stored = worker.get(
+                "stored",
+                0
             )
 
 
-            seconds_passed = (
-
-                current_time - last_claim
-            )
-
-
-            earned = int(
-
-                (seconds_passed / 86400)
-
-                * income
-            )
-
-
-            if earned <= 0:
+            if stored <= 0:
 
                 continue
 
 
-            total_claimed += earned
+            total_claimed += stored
 
 
             claim_text += (
 
                 f"{worker_name} → "
-                f"**{format_cash(earned)}**\n"
+                f"**{format_cash(stored)}**\n"
 
             )
 
 
-            worker["last_claim"] = current_time
+            worker["stored"] = 0
+
 
             worker["total_earned"] = (
 
                 worker.get(
                     "total_earned",
                     0
-                ) + earned
+                ) + stored
             )
 
 
@@ -326,4 +281,4 @@ async def setup(bot):
 
     await bot.add_cog(
         Workers(bot)
-            )
+    )
