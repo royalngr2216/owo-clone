@@ -578,7 +578,7 @@ class Shop(commands.Cog):
 
                 "Increase rob attempts permanently.\n\n"
 
-                "• Price: **1M NGR**\n"
+                "• Price: **2.5M NGR**\n"
                 "• Rob Attempts: **10 → 20**\n"
                 f"• Owned: **{'Yes' if lock_and_key else 'No'}**"
 
