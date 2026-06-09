@@ -63,7 +63,6 @@ class Inventory(commands.Cog):
 
         text = ""
 
-
         total_value = 0
 
 
@@ -119,7 +118,114 @@ class Inventory(commands.Cog):
 
         create_account(ctx.author.id)
 
+        user_data = economy_collection.find_one({
+
+            "user_id": str(ctx.author.id)
+
+        })
+
+
+        inventory = user_data.get(
+            "inventory",
+            {}
+        )
+
+
         item_name = item_name.lower()
+
+
+        # ─────────────────────────
+        # SELL ALL
+        # ─────────────────────────
+
+        if item_name == "all":
+
+            total_earned = 0
+
+            sold_items = ""
+
+
+            for inv_item, owned in inventory.items():
+
+                if inv_item not in ALL_ITEMS:
+
+                    continue
+
+
+                item_data = ALL_ITEMS[inv_item]
+
+                earned = item_data["price"] * owned
+
+                total_earned += earned
+
+
+                sold_items += (
+
+                    f"{item_data['emoji']} "
+                    f"{item_data['display']} × {owned}\n"
+
+                )
+
+
+            if total_earned <= 0:
+
+                embed = discord.Embed(
+
+                    description="❌ Your inventory is empty.",
+
+                    color=0xED4245
+                )
+
+                await ctx.send(embed=embed)
+
+                return
+
+
+            add_cash(
+                ctx.author.id,
+                total_earned
+            )
+
+
+            economy_collection.update_one(
+
+                {
+                    "user_id": str(ctx.author.id)
+                },
+
+                {
+                    "$set": {
+                        "inventory": {}
+                    }
+                }
+            )
+
+
+            embed = discord.Embed(
+
+                title="💰 SOLD EVERYTHING",
+
+                description=(
+
+                    f"{sold_items}\n"
+
+                    f"💵 Earned:\n"
+                    f"**{format_cash(total_earned)}**"
+
+                ),
+
+                color=0x57F287
+            )
+
+
+            await ctx.send(embed=embed)
+
+            return
+
+
+        # ─────────────────────────
+        # INVALID ITEM
+        # ─────────────────────────
 
         if item_name not in ALL_ITEMS:
 
@@ -133,19 +239,6 @@ class Inventory(commands.Cog):
             await ctx.send(embed=embed)
 
             return
-
-
-        user_data = economy_collection.find_one({
-
-            "user_id": str(ctx.author.id)
-
-        })
-
-
-        inventory = user_data.get(
-            "inventory",
-            {}
-        )
 
 
         owned = inventory.get(
@@ -168,7 +261,9 @@ class Inventory(commands.Cog):
             return
 
 
-        # ALL
+        # ─────────────────────────
+        # SELL ALL OF ONE ITEM
+        # ─────────────────────────
 
         if amount.lower() == "all":
 
@@ -272,4 +367,4 @@ async def setup(bot):
 
     await bot.add_cog(
         Inventory(bot)
-      )
+            )
