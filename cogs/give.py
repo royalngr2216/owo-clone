@@ -25,6 +25,7 @@ class GiveView(discord.ui.View):
         self.receiver = receiver
         self.amount = amount
 
+
     @discord.ui.button(
         label="Accept",
         style=discord.ButtonStyle.success
@@ -44,9 +45,11 @@ class GiveView(discord.ui.View):
 
             return
 
+
         cash = get_cash(
             self.sender.id
         )
+
 
         if cash < self.amount:
 
@@ -64,20 +67,19 @@ class GiveView(discord.ui.View):
 
             return
 
-        success = remove_cash(
+
+        remove_cash(
 
             self.sender.id,
             self.amount
         )
 
-        if not success:
-
-            return
 
         add_cash(
             self.receiver.id,
             self.amount
         )
+
 
         embed = discord.Embed(
 
@@ -94,10 +96,12 @@ class GiveView(discord.ui.View):
             color=discord.Color.green()
         )
 
+
         await interaction.response.edit_message(
             embed=embed,
             view=None
         )
+
 
     @discord.ui.button(
         label="Cancel",
@@ -118,12 +122,14 @@ class GiveView(discord.ui.View):
 
             return
 
+
         embed = discord.Embed(
 
             description="❌ Transfer cancelled.",
 
             color=discord.Color.red()
         )
+
 
         await interaction.response.edit_message(
             embed=embed,
@@ -137,6 +143,7 @@ class Give(commands.Cog):
 
         self.bot = bot
 
+
     @commands.command(name="give")
     async def give(
         self,
@@ -145,25 +152,35 @@ class Give(commands.Cog):
         amount
     ):
 
-        amount = parse_amount(
-            amount
-        )
-
         if member.bot:
 
             return
+
 
         if member == ctx.author:
 
             return
 
-        if amount <= 0:
-
-            return
 
         cash = get_cash(
             ctx.author.id
         )
+
+
+        amount = parse_amount(
+            amount,
+            cash
+        )
+
+
+        if amount is None or amount <= 0:
+
+            await ctx.send(
+                "Invalid amount."
+            )
+
+            return
+
 
         if cash < amount:
 
@@ -180,6 +197,7 @@ class Give(commands.Cog):
 
             return
 
+
         embed = discord.Embed(
 
             title="💸 Confirm Transfer",
@@ -195,12 +213,14 @@ class Give(commands.Cog):
             color=discord.Color.blurple()
         )
 
+
         view = GiveView(
 
             ctx.author,
             member,
             amount
         )
+
 
         await ctx.send(
 
