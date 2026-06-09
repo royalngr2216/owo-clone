@@ -94,6 +94,54 @@ class Rob(commands.Cog):
 
 
         # ─────────────────────────
+        # PADLOCK CHECK
+        # ─────────────────────────
+
+        victim_data = economy_collection.find_one({
+
+            "user_id": str(member.id)
+
+        })
+
+        padlock_until = victim_data.get(
+            "padlock_until",
+            0
+        )
+
+        current_time = int(
+            datetime.now().timestamp()
+        )
+
+        if padlock_until > current_time:
+
+            remaining = padlock_until - current_time
+
+            days = remaining // 86400
+
+            hours = (remaining % 86400) // 3600
+
+            embed = discord.Embed(
+
+                title="🛡 PADLOCK ACTIVE",
+
+                description=(
+
+                    f"{member.mention} is protected from robbing.\n\n"
+
+                    f"⏰ Remaining Time:\n"
+                    f"**{days}d {hours}h**"
+
+                ),
+
+                color=0x5865F2
+            )
+
+            await ctx.send(embed=embed)
+
+            return
+
+
+        # ─────────────────────────
         # ROB LIMIT RESET
         # ─────────────────────────
 
@@ -200,7 +248,7 @@ class Rob(commands.Cog):
                     "❌ You are too rich to rob people.\n\n"
 
                     "Rob is only available for users under "
-                    "**$200K**."
+                    "**200K NGR**."
 
                 ),
 
@@ -293,7 +341,7 @@ class Rob(commands.Cog):
 
                     f"💰 Stole **{format_cash(stolen)}**\n\n"
 
-                    f"📊 Remaining Attempts: "
+                    f"📊 Remaining Attempts:\n"
                     f"**{10 - (rob_uses + 1)} / 10**"
 
                 ),
@@ -338,7 +386,7 @@ class Rob(commands.Cog):
 
                 f"💸 Lost **{format_cash(loss)}**\n\n"
 
-                f"📊 Remaining Attempts: "
+                f"📊 Remaining Attempts:\n"
                 f"**{10 - (rob_uses + 1)} / 10**"
 
             ),
