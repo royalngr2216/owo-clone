@@ -61,6 +61,24 @@ class Rob(commands.Cog):
             return
 
 
+        # ─────────────────────────
+        # BOT CHECK
+        # ─────────────────────────
+
+        if member.bot:
+
+            embed = discord.Embed(
+
+                description="❌ You cannot rob bots.",
+
+                color=0xED4245
+            )
+
+            await ctx.send(embed=embed)
+
+            return
+
+
         create_account(ctx.author.id)
         create_account(member.id)
 
@@ -88,7 +106,7 @@ class Rob(commands.Cog):
 
 
         # ─────────────────────────
-        # 20% FAIL CHANCE
+        # 40% FAIL CHANCE
         # ─────────────────────────
 
         caught = random.randint(1, 100) <= 40
@@ -103,6 +121,7 @@ class Rob(commands.Cog):
             loss = int(robber_cash * 0.50)
 
             if loss < 1:
+
                 loss = 1
 
 
@@ -112,6 +131,7 @@ class Rob(commands.Cog):
                 ctx.author.id,
                 loss
             )
+
 
             # GIVE TO VICTIM
 
@@ -148,6 +168,7 @@ class Rob(commands.Cog):
         stolen = int(victim_cash * 0.20)
 
         if stolen < 1:
+
             stolen = 1
 
 
@@ -157,6 +178,7 @@ class Rob(commands.Cog):
             member.id,
             stolen
         )
+
 
         # GIVE TO ROBBER
 
