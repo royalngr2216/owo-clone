@@ -1,12 +1,12 @@
 from utils.economy import (
     get_cash,
-    remove_cash,
-    add_cash,
-    format_cash
+    add_cash
 )
 
 
+# ─────────────────────────
 # CREATE WAGER
+# ─────────────────────────
 
 def create_wager(
     user1,
@@ -22,8 +22,10 @@ def create_wager(
             "Invalid amount."
         )
 
+
     cash1 = get_cash(user1)
     cash2 = get_cash(user2)
+
 
     if cash1 < amount:
 
@@ -32,6 +34,7 @@ def create_wager(
             "Player 1 lacks cash."
         )
 
+
     if cash2 < amount:
 
         return (
@@ -39,15 +42,6 @@ def create_wager(
             "Player 2 lacks cash."
         )
 
-    remove_cash(
-        user1,
-        amount
-    )
-
-    remove_cash(
-        user2,
-        amount
-    )
 
     return (
         True,
@@ -55,7 +49,9 @@ def create_wager(
     )
 
 
+# ─────────────────────────
 # COMPLETE WAGER
+# ─────────────────────────
 
 def complete_wager(
     winner,
@@ -63,7 +59,7 @@ def complete_wager(
     amount
 ):
 
-    payout = amount * 2
+    payout = amount
 
     add_cash(
         winner,
