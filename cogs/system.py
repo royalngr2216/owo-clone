@@ -51,6 +51,7 @@ class System(commands.Cog):
                 "**`.daily`**\n"
                 "**`.weekly`**\n"
                 "**`.monthly`**\n"
+                "**`.rob`**\n"
                 "**`.give`**"
             ),
             inline=False
