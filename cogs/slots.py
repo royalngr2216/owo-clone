@@ -13,6 +13,39 @@ from utils.economy import (
 
 
 # ─────────────────────────
+# PARSE MONEY
+# ─────────────────────────
+
+def parse_amount(amount):
+
+    amount = amount.lower()
+
+    multipliers = {
+
+        "k": 1_000,
+        "m": 1_000_000,
+        "b": 1_000_000_000
+    }
+
+    try:
+
+        if amount[-1] in multipliers:
+
+            return int(
+
+                float(amount[:-1])
+
+                * multipliers[amount[-1]]
+            )
+
+        return int(amount)
+
+    except:
+
+        return None
+
+
+# ─────────────────────────
 # SYMBOLS
 # ─────────────────────────
 
@@ -33,19 +66,19 @@ SYMBOLS = [
 
 OUTCOMES = {
 
-    "lose": 49,
+    "lose": 60,
 
-    "cherry": 20,
+    "cherry": 15,
 
-    "lemon": 12,
+    "lemon": 8,
 
-    "clover": 6,
+    "clover": 5,
 
     "bell": 3,
 
     "diamond": 2,
 
-    "jackpot": 3,
+    "jackpot": 2,
 
     "troll": 5
 }
@@ -95,7 +128,7 @@ class Slots(commands.Cog):
                     "❌ Enter a bet amount.\n\n"
 
                     "Example:\n"
-                    "`.slots 100000`"
+                    "`.slots 100k`"
 
                 ),
 
@@ -120,11 +153,9 @@ class Slots(commands.Cog):
 
         else:
 
-            try:
+            amount = parse_amount(amount)
 
-                amount = int(amount)
-
-            except:
+            if amount is None:
 
                 embed = discord.Embed(
 
@@ -236,16 +267,23 @@ class Slots(commands.Cog):
 
         else:
 
-            near_misses = [
+            lose_patterns = [
+
+                ["🍒", "💎", "🍋"],
+                ["👑", "🍀", "🍒"],
+                ["💀", "🍋", "💎"],
+                ["🔔", "🍒", "💀"],
+                ["💎", "🍋", "🍀"],
+                ["👑", "💀", "🍒"],
+
+                # rare near misses
 
                 ["👑", "👑", "🍒"],
-                ["💎", "💎", "🍋"],
-                ["🍀", "🍀", "💀"],
-                ["🔔", "🔔", "🍒"]
+                ["💎", "💎", "🍋"]
             ]
 
             final_slots = random.choice(
-                near_misses
+                lose_patterns
             )
 
 
@@ -461,4 +499,4 @@ async def setup(bot):
 
     await bot.add_cog(
         Slots(bot)
-            )
+    )
