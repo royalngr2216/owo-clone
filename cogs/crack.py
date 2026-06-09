@@ -7,8 +7,7 @@ from utils.economy import (
     get_cash,
     add_cash,
     remove_cash,
-    format_cash,
-    parse_amount
+    format_cash
 )
 
 from utils.stats import (
@@ -37,6 +36,7 @@ class Crack(commands.Cog):
         self,
         ctx,
         opponent: discord.Member,
+        bo: int,
         amount: str
     ):
 
@@ -44,6 +44,15 @@ class Crack(commands.Cog):
 
             await ctx.send(
                 "You cannot play yourself."
+            )
+
+            return
+
+
+        if bo not in [1, 3, 5, 7, 9]:
+
+            await ctx.send(
+                "Use: `.crack @user 1/3/5/7/9 amount`"
             )
 
             return
@@ -58,40 +67,36 @@ class Crack(commands.Cog):
             return
 
 
-        # ─────────────────────────
-        # CREATE ACCOUNTS
-        # ─────────────────────────
-
-        create_account(ctx.author.id)
-        create_account(opponent.id)
-
-
-        # ─────────────────────────
         # PARSE BET
-        # ─────────────────────────
 
-        cash = get_cash(
-            ctx.author.id
-        )
-
-        bet = parse_amount(
-            amount,
-            cash
-        )
+        amount = amount.lower()
 
 
-        if bet is None or bet <= 0:
+        if amount.endswith("k"):
+
+            bet = int(amount[:-1]) * 1000
+
+        elif amount.endswith("m"):
+
+            bet = int(amount[:-1]) * 1000000
+
+        else:
+
+            bet = int(amount)
+
+
+        if bet <= 0:
 
             await ctx.send(
-                "Invalid amount."
+                "Bet must be greater than 0."
             )
 
             return
 
 
-        # ─────────────────────────
-        # CHECK CASH
-        # ─────────────────────────
+        create_account(ctx.author.id)
+        create_account(opponent.id)
+
 
         if get_cash(ctx.author.id) < bet:
 
@@ -111,16 +116,25 @@ class Crack(commands.Cog):
             return
 
 
-        # ─────────────────────────
-        # CREATE GAME
-        # ─────────────────────────
+        wins_required = (bo // 2) + 1
+
 
         crack_games[ctx.channel.id] = {
 
             "player1": ctx.author,
             "player2": opponent,
+
             "bet": bet,
+
+            "bo": bo,
+
+            "wins_required": wins_required,
+
+            "score1": 0,
+            "score2": 0,
+
             "secret": random.randint(1, 100),
+
             "turn": ctx.author
 
         }
@@ -137,6 +151,9 @@ class Crack(commands.Cog):
 
                 f"💵 Wager: "
                 f"**{format_cash(bet)}**\n\n"
+
+                f"🏆 First to "
+                f"**{wins_required}** wins\n\n"
 
                 f"🎯 Guess a number between "
                 f"**1 and 100**\n\n"
@@ -175,9 +192,7 @@ class Crack(commands.Cog):
             return
 
 
-        game = crack_games[
-            ctx.channel.id
-        ]
+        game = crack_games[ctx.channel.id]
 
 
         if ctx.author != game["turn"]:
@@ -204,9 +219,7 @@ class Crack(commands.Cog):
         p2 = game["player2"]
 
 
-        # ─────────────────────────
-        # CORRECT GUESS
-        # ─────────────────────────
+        # CORRECT
 
         if number == secret:
 
@@ -216,76 +229,27 @@ class Crack(commands.Cog):
             if winner == p1:
 
                 loser = p2
+                game["score1"] += 1
 
             else:
 
                 loser = p1
+                game["score2"] += 1
 
-
-            bet = game["bet"]
-
-
-            # MONEY
-
-            remove_cash(
-                loser.id,
-                bet
-            )
-
-            add_cash(
-                winner.id,
-                bet
-            )
-
-
-            # STATS
-
-            record_win(
-                winner.id,
-                0
-            )
-
-            record_loss(
-                loser.id,
-                0
-            )
-
-
-            winner_stats = get_profile(
-                winner.id
-            )
-
-            loser_stats = get_profile(
-                loser.id
-            )
-
-
-            await update_roles(
-                winner,
-                winner_stats["matches"]
-            )
-
-            await update_roles(
-                loser,
-                loser_stats["matches"]
-            )
-
-
-            # RESULT EMBED
 
             embed = discord.Embed(
 
-                title="🏆 CRACK RESULT",
+                title="🏆 ROUND WON",
 
                 description=(
 
                     f"🎯 Secret Number: "
                     f"**{secret}**\n\n"
 
-                    f"{winner.mention} cracked it!\n\n"
+                    f"{winner.mention} cracked it.\n\n"
 
-                    f"💵 Won "
-                    f"**{format_cash(bet)}**"
+                    f"📊 Score\n"
+                    f"**{game['score1']} - {game['score2']}**"
 
                 ),
 
@@ -296,17 +260,51 @@ class Crack(commands.Cog):
             await ctx.send(embed=embed)
 
 
-            del crack_games[
-                ctx.channel.id
-            ]
+            # MATCH END
 
+            if (
+
+                game["score1"] >= game["wins_required"]
+
+                or
+
+                game["score2"] >= game["wins_required"]
+
+            ):
+
+                await self.end_match(
+                    ctx.channel.id
+                )
+
+                return
+
+
+            # NEXT ROUND
+
+            game["secret"] = random.randint(1, 100)
+
+            game["turn"] = loser
+
+
+            next_embed = discord.Embed(
+
+                description=(
+
+                    "🎯 New round started.\n\n"
+
+                    f"🎮 {loser.mention} goes first"
+
+                ),
+
+                color=discord.Color.orange()
+            )
+
+            await ctx.send(embed=next_embed)
 
             return
 
 
-        # ─────────────────────────
         # WRONG GUESS
-        # ─────────────────────────
 
         if number < secret:
 
@@ -317,9 +315,7 @@ class Crack(commands.Cog):
             hint = "📉 Lower"
 
 
-        # ─────────────────────────
         # SWITCH TURN
-        # ─────────────────────────
 
         if game["turn"] == p1:
 
@@ -348,8 +344,109 @@ class Crack(commands.Cog):
         await ctx.send(embed=embed)
 
 
+    # ─────────────────────────
+    # END MATCH
+    # ─────────────────────────
+
+    async def end_match(self, channel_id):
+
+        game = crack_games[channel_id]
+
+
+        if game["score1"] > game["score2"]:
+
+            winner = game["player1"]
+            loser = game["player2"]
+
+        else:
+
+            winner = game["player2"]
+            loser = game["player1"]
+
+
+        bet = game["bet"]
+
+
+        # MONEY
+
+        remove_cash(
+            loser.id,
+            bet
+        )
+
+        add_cash(
+            winner.id,
+            bet
+        )
+
+
+        # STATS
+
+        record_win(
+            winner.id,
+            bet
+        )
+
+        record_loss(
+            loser.id,
+            bet
+        )
+
+
+        winner_stats = get_profile(
+            winner.id
+        )
+
+        loser_stats = get_profile(
+            loser.id
+        )
+
+
+        await update_roles(
+            winner,
+            winner_stats["matches"]
+        )
+
+        await update_roles(
+            loser,
+            loser_stats["matches"]
+        )
+
+
+        # RESULT EMBED
+
+        embed = discord.Embed(
+
+            title="🏆 CRACK RESULT",
+
+            description=(
+
+                f"{winner.mention} wins the match!\n\n"
+
+                f"📊 Final Score\n"
+                f"**{game['score1']} - {game['score2']}**\n\n"
+
+                f"💵 Prize: "
+                f"**{format_cash(bet)}**"
+
+            ),
+
+            color=discord.Color.gold()
+        )
+
+
+        channel = self.bot.get_channel(
+            channel_id
+        )
+
+        await channel.send(embed=embed)
+
+
+        del crack_games[channel_id]
+
+
 async def setup(bot):
 
     await bot.add_cog(
         Crack(bot)
-    )
+        )
