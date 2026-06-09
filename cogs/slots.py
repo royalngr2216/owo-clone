@@ -66,10 +66,6 @@ PAYOUTS = {
 }
 
 
-# ─────────────────────────
-# SLOTS COG
-# ─────────────────────────
-
 class Slots(commands.Cog):
 
     def __init__(self, bot):
@@ -79,15 +75,12 @@ class Slots(commands.Cog):
 
     @commands.command(name="slots")
     async def slots(
-
         self,
         ctx,
         amount: str = None
-
     ):
 
         create_account(ctx.author.id)
-
 
         # ─────────────────────────
         # NO AMOUNT
@@ -243,18 +236,17 @@ class Slots(commands.Cog):
 
         else:
 
-            while True:
+            near_misses = [
 
-                final_slots = [
+                ["👑", "👑", "🍒"],
+                ["💎", "💎", "🍋"],
+                ["🍀", "🍀", "💀"],
+                ["🔔", "🔔", "🍒"]
+            ]
 
-                    random.choice(SYMBOLS),
-                    random.choice(SYMBOLS),
-                    random.choice(SYMBOLS)
-                ]
-
-                if len(set(final_slots)) != 1:
-
-                    break
+            final_slots = random.choice(
+                near_misses
+            )
 
 
         # ─────────────────────────
@@ -283,7 +275,9 @@ class Slots(commands.Cog):
         # REEL 1
         # ─────────────────────────
 
-        for _ in range(3):
+        start = asyncio.get_event_loop().time()
+
+        while asyncio.get_event_loop().time() - start < 0.5:
 
             embed.description = (
 
@@ -294,7 +288,7 @@ class Slots(commands.Cog):
 
             await msg.edit(embed=embed)
 
-            await asyncio.sleep(0.3)
+            await asyncio.sleep(0.00001)
 
 
         reel1 = final_slots[0]
@@ -308,14 +302,16 @@ class Slots(commands.Cog):
 
         await msg.edit(embed=embed)
 
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(0.15)
 
 
         # ─────────────────────────
         # REEL 2
         # ─────────────────────────
 
-        for _ in range(3):
+        start = asyncio.get_event_loop().time()
+
+        while asyncio.get_event_loop().time() - start < 0.5:
 
             embed.description = (
 
@@ -326,7 +322,7 @@ class Slots(commands.Cog):
 
             await msg.edit(embed=embed)
 
-            await asyncio.sleep(0.3)
+            await asyncio.sleep(0.00001)
 
 
         reel2 = final_slots[1]
@@ -340,14 +336,16 @@ class Slots(commands.Cog):
 
         await msg.edit(embed=embed)
 
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(0.15)
 
 
         # ─────────────────────────
         # REEL 3
         # ─────────────────────────
 
-        for _ in range(3):
+        start = asyncio.get_event_loop().time()
+
+        while asyncio.get_event_loop().time() - start < 0.5:
 
             embed.description = (
 
@@ -358,7 +356,7 @@ class Slots(commands.Cog):
 
             await msg.edit(embed=embed)
 
-            await asyncio.sleep(0.3)
+            await asyncio.sleep(0.00001)
 
 
         reel3 = final_slots[2]
@@ -463,4 +461,4 @@ async def setup(bot):
 
     await bot.add_cog(
         Slots(bot)
-      )
+            )
