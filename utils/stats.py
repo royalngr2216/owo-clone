@@ -10,7 +10,9 @@ db = client["royal_bot"]
 stats_collection = db["player_stats"]
 
 
+# ─────────────────────────
 # CREATE PROFILE
+# ─────────────────────────
 
 def create_profile(user_id):
 
@@ -21,7 +23,9 @@ def create_profile(user_id):
     })
 
     if user:
+
         return
+
 
     stats_collection.insert_one({
 
@@ -39,22 +43,41 @@ def create_profile(user_id):
     })
 
 
+# ─────────────────────────
 # WIN
+# ─────────────────────────
 
 def record_win(user_id, amount):
 
     create_profile(user_id)
 
+    if amount is None:
+
+        amount = 0
+
+
     user = stats_collection.find_one({
         "user_id": str(user_id)
     })
 
-    streak = user.get("streak", 0) + 1
+
+    streak = user.get(
+        "streak",
+        0
+    ) + 1
+
 
     best = max(
+
         streak,
-        user.get("best_streak", 0)
+
+        user.get(
+            "best_streak",
+            0
+        )
+
     )
+
 
     stats_collection.update_one(
 
@@ -83,11 +106,18 @@ def record_win(user_id, amount):
     )
 
 
+# ─────────────────────────
 # LOSS
+# ─────────────────────────
 
 def record_loss(user_id, amount):
 
     create_profile(user_id)
+
+    if amount is None:
+
+        amount = 0
+
 
     stats_collection.update_one(
 
@@ -114,7 +144,9 @@ def record_loss(user_id, amount):
     )
 
 
+# ─────────────────────────
 # PROFILE
+# ─────────────────────────
 
 def get_profile(user_id):
 
@@ -124,13 +156,21 @@ def get_profile(user_id):
         "user_id": str(user_id)
     })
 
-    wins = user.get("wins", 0)
 
-    losses = user.get("losses", 0)
+    wins = user.get(
+        "wins",
+        0
+    )
+
+    losses = user.get(
+        "losses",
+        0
+    )
 
     matches = wins + losses
 
     winrate = 0
+
 
     if matches > 0:
 
@@ -138,6 +178,7 @@ def get_profile(user_id):
             (wins / matches) * 100,
             2
         )
+
 
     return {
 
