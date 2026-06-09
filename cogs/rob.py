@@ -88,6 +88,31 @@ class Rob(commands.Cog):
 
 
         # ─────────────────────────
+        # TOO RICH TO ROB
+        # ─────────────────────────
+
+        if robber_cash > 200000:
+
+            embed = discord.Embed(
+
+                description=(
+
+                    "❌ You are too rich to rob people.\n\n"
+
+                    "Rob is only available for users under "
+                    "**$200K**."
+
+                ),
+
+                color=0xED4245
+            )
+
+            await ctx.send(embed=embed)
+
+            return
+
+
+        # ─────────────────────────
         # VICTIM TOO BROKE
         # ─────────────────────────
 
@@ -106,54 +131,54 @@ class Rob(commands.Cog):
 
 
         # ─────────────────────────
-        # 40% FAIL CHANCE
+        # 40% SUCCESS CHANCE
         # ─────────────────────────
 
-        caught = random.randint(1, 100) <= 40
+        success = random.randint(1, 100) <= 40
 
 
         # ─────────────────────────
-        # GOT CAUGHT
+        # SUCCESS
         # ─────────────────────────
 
-        if caught:
+        if success:
 
-            loss = int(robber_cash * 0.50)
+            stolen = int(victim_cash * 0.05)
 
-            if loss < 1:
+            if stolen < 1:
 
-                loss = 1
+                stolen = 1
 
 
-            # REMOVE FROM ROBBER
+            # REMOVE FROM VICTIM
 
             remove_cash(
-                ctx.author.id,
-                loss
+                member.id,
+                stolen
             )
 
 
-            # GIVE TO VICTIM
+            # GIVE TO ROBBER
 
             add_cash(
-                member.id,
-                loss
+                ctx.author.id,
+                stolen
             )
 
 
             embed = discord.Embed(
 
-                title="🚔 ROB FAILED",
+                title="🦹 ROB SUCCESS",
 
                 description=(
 
-                    f"{ctx.author.mention} got caught robbing {member.mention}\n\n"
+                    f"{ctx.author.mention} robbed {member.mention}\n\n"
 
-                    f"💸 Paid **{format_cash(loss)}** to the victim"
+                    f"💰 Stole **{format_cash(stolen)}**"
 
                 ),
 
-                color=0xED4245
+                color=0x57F287
             )
 
             await ctx.send(embed=embed)
@@ -162,45 +187,45 @@ class Rob(commands.Cog):
 
 
         # ─────────────────────────
-        # SUCCESS
+        # FAILED ROB
         # ─────────────────────────
 
-        stolen = int(victim_cash * 0.20)
+        loss = int(robber_cash * 0.50)
 
-        if stolen < 1:
+        if loss < 1:
 
-            stolen = 1
+            loss = 1
 
 
-        # REMOVE FROM VICTIM
+        # REMOVE FROM ROBBER
 
         remove_cash(
-            member.id,
-            stolen
+            ctx.author.id,
+            loss
         )
 
 
-        # GIVE TO ROBBER
+        # GIVE TO VICTIM
 
         add_cash(
-            ctx.author.id,
-            stolen
+            member.id,
+            loss
         )
 
 
         embed = discord.Embed(
 
-            title="🦹 ROB SUCCESS",
+            title="🚔 ROB FAILED",
 
             description=(
 
-                f"{ctx.author.mention} robbed {member.mention}\n\n"
+                f"{ctx.author.mention} got caught robbing {member.mention}\n\n"
 
-                f"💰 Stole **{format_cash(stolen)}**"
+                f"💸 Lost **{format_cash(loss)}**"
 
             ),
 
-            color=0x57F287
+            color=0xED4245
         )
 
         await ctx.send(embed=embed)
