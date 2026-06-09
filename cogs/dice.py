@@ -7,7 +7,6 @@ from utils.economy import (
     add_cash,
     remove_cash,
     format_cash,
-    add_history,
     parse_amount
 )
 
@@ -23,6 +22,7 @@ class Dice(commands.Cog):
 
         self.bot = bot
 
+
     # ─────────────────────────
     # DICE
     # ─────────────────────────
@@ -34,10 +34,6 @@ class Dice(commands.Cog):
         side: str,
         amount
     ):
-
-        amount = parse_amount(
-            amount
-        )
 
         side = side.lower()
 
@@ -70,13 +66,26 @@ class Dice(commands.Cog):
 
             return
 
-        if amount <= 0:
-
-            return
 
         cash = get_cash(
             ctx.author.id
         )
+
+
+        amount = parse_amount(
+            amount,
+            cash
+        )
+
+
+        if amount is None or amount <= 0:
+
+            await ctx.send(
+                "Invalid amount."
+            )
+
+            return
+
 
         if cash < amount:
 
@@ -93,6 +102,15 @@ class Dice(commands.Cog):
 
             return
 
+
+        # REMOVE BET FIRST
+
+        remove_cash(
+            ctx.author.id,
+            amount
+        )
+
+
         dice1 = random.randint(1, 6)
         dice2 = random.randint(1, 6)
 
@@ -100,7 +118,8 @@ class Dice(commands.Cog):
 
         won = False
 
-        multiplier = 1
+        multiplier = 0
+
 
         # DOWN
 
@@ -109,7 +128,8 @@ class Dice(commands.Cog):
             if 2 <= total <= 6:
 
                 won = True
-                multiplier = 1
+                multiplier = 2
+
 
         # EXACT 7
 
@@ -118,7 +138,8 @@ class Dice(commands.Cog):
             if total == 7:
 
                 won = True
-                multiplier = 4
+                multiplier = 5
+
 
         # UP
 
@@ -127,7 +148,8 @@ class Dice(commands.Cog):
             if 8 <= total <= 12:
 
                 won = True
-                multiplier = 1
+                multiplier = 2
+
 
         # RESULT
 
@@ -145,19 +167,6 @@ class Dice(commands.Cog):
                 winnings
             )
 
-            add_history(
-
-                ctx.author.id,
-
-                "Dice",
-
-                "WIN",
-
-                winnings,
-
-                None
-            )
-
             color = discord.Color.green()
 
             result_text = (
@@ -166,27 +175,11 @@ class Dice(commands.Cog):
 
         else:
 
-            remove_cash(
-                ctx.author.id,
-                amount
-            )
+            winnings = 0
 
             record_loss(
                 ctx.author.id,
                 amount
-            )
-
-            add_history(
-
-                ctx.author.id,
-
-                "Dice",
-
-                "LOSS",
-
-                amount,
-
-                None
             )
 
             color = discord.Color.red()
@@ -194,6 +187,7 @@ class Dice(commands.Cog):
             result_text = (
                 "❌ You lost!"
             )
+
 
         embed = discord.Embed(
 
@@ -213,6 +207,7 @@ class Dice(commands.Cog):
 
             color=color
         )
+
 
         if won:
 
@@ -239,6 +234,7 @@ class Dice(commands.Cog):
 
                 inline=False
             )
+
 
         await ctx.send(
             embed=embed
