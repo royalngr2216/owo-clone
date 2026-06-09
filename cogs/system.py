@@ -10,13 +10,189 @@ from utils.economy import (
 
 
 # ─────────────────────────
-# ROLE UPDATE FUNCTION
+# ROLE UPDATE
 # ─────────────────────────
 
 async def update_roles(member, matches):
 
     return
 
+
+# ─────────────────────────
+# HELP DROPDOWN
+# ─────────────────────────
+
+HELP_CATEGORIES = {
+
+    "💰 Economy": (
+
+        "• `.cash [user]`\n"
+        "View balances.\n\n"
+
+        "• `.daily`\n"
+        "Claim daily reward.\n\n"
+
+        "• `.weekly`\n"
+        "Claim weekly reward.\n\n"
+
+        "• `.monthly`\n"
+        "Claim monthly reward.\n\n"
+
+        "• `.give @user amount`\n"
+        "Transfer money.\n\n"
+
+        "• `.rob @user`\n"
+        "Attempt a robbery."
+    ),
+
+    "🎒 Items": (
+
+        "• `.shop`\n"
+        "Open the item shop.\n\n"
+
+        "• `.inventory`\n"
+        "View collected items.\n\n"
+
+        "• `.sell item amount`\n"
+        "Sell inventory items.\n\n"
+
+        "• `.padlock`\n"
+        "View protection status."
+    ),
+
+    "⚒ Workers": (
+
+        "• `.workers`\n"
+        "View all workers.\n\n"
+
+        "• `.claim`\n"
+        "Claim worker earnings.\n\n"
+
+        "• `.upgrade worker-1`\n"
+        "Upgrade a worker."
+    ),
+
+    "🌎 Activities": (
+
+        "• `.job`\n"
+        "Work for money.\n\n"
+
+        "• `.fish`\n"
+        "Go fishing for rewards.\n\n"
+
+        "• `.hunt`\n"
+        "Go hunting for rewards."
+    ),
+
+    "🎮 Games": (
+
+        "• `.randoms @user bo amount`\n"
+        "Pokémon random battle.\n\n"
+
+        "• `.deathroll @user bo amount`\n"
+        "Start a deathroll match.\n\n"
+
+        "• `.crack @user bo amount`\n"
+        "Guess the hidden number."
+    ),
+
+    "🎲 Casino": (
+
+        "• `.dice up amount`\n"
+        "Win on 8-12.\n\n"
+
+        "• `.dice down amount`\n"
+        "Win on 2-6.\n\n"
+
+        "• `.dice 7 amount`\n"
+        "Exact 7 payout.\n\n"
+
+        "• `.cf heads amount`\n"
+        "Coinflip heads.\n\n"
+
+        "• `.cf tails amount`\n"
+        "Coinflip tails."
+    ),
+
+    "📊 Profile": (
+
+        "• `.profile [user]`\n"
+        "View player stats.\n\n"
+
+        "• `.leaderboard`\n"
+        "View richest players."
+    ),
+
+    "⚙ Utility": (
+
+        "• `.ping`\n"
+        "View bot latency.\n\n"
+
+        "• `.stop`\n"
+        "Force stop active game."
+    )
+}
+
+
+class HelpDropdown(discord.ui.Select):
+
+    def __init__(self):
+
+        options = [
+
+            discord.SelectOption(
+                label=category,
+                description=f"View {category} commands"
+            )
+
+            for category in HELP_CATEGORIES
+        ]
+
+        super().__init__(
+
+            placeholder="Select a category...",
+            min_values=1,
+            max_values=1,
+            options=options
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+
+        category = self.values[0]
+
+        embed = discord.Embed(
+
+            title=category,
+
+            description=HELP_CATEGORIES[category],
+
+            color=0x5865F2
+        )
+
+        embed.set_footer(
+            text="ECHLEON Economy System"
+        )
+
+        await interaction.response.edit_message(
+            embed=embed,
+            view=self.view
+        )
+
+
+class HelpView(discord.ui.View):
+
+    def __init__(self):
+
+        super().__init__(timeout=180)
+
+        self.add_item(
+            HelpDropdown()
+        )
+
+
+# ─────────────────────────
+# SYSTEM COG
+# ─────────────────────────
 
 class System(commands.Cog):
 
@@ -34,228 +210,29 @@ class System(commands.Cog):
 
         embed = discord.Embed(
 
-            title="ECHLEON COMMANDS",
+            title="ECHLEON HELP",
 
             description=(
-                "Use the commands below with the prefix `.`"
+
+                "Modern economy system with games, "
+                "workers, activities, inventory and more.\n\n"
+
+                "Select a category below."
+
             ),
 
             color=0x5865F2
         )
 
-
-        # ECONOMY
-
-        embed.add_field(
-
-            name="💰 Economy",
-
-            value=(
-
-                "**`.cash [user]`**\n"
-                "View balances.\n\n"
-
-                "**`.daily`**\n"
-                "Claim daily reward.\n\n"
-
-                "**`.weekly`**\n"
-                "Claim weekly reward.\n\n"
-
-                "**`.monthly`**\n"
-                "Claim monthly reward.\n\n"
-
-                "**`.give @user amount`**\n"
-                "Transfer money.\n\n"
-
-                "**`.rob @user`**\n"
-                "Attempt a robbery.\n\n"
-
-                "**`.shop`**\n"
-                "Open the item shop.\n\n"
-
-                "**`.padlock`**\n"
-                "View protection status.\n\n"
-
-                "**`.job`**\n"
-                "Work for money.\n\n"
-
-                "**`.fish`**\n"
-                "Go fishing for rewards.\n\n"
-
-                "**`.hunt`**\n"
-                "Go hunting for rewards.\n\n"
-
-                "**`.inventory`**\n"
-                "View collected items.\n\n"
-
-                "**`.sell item amount`**\n"
-                "Sell inventory items."
-
-            ),
-
-            inline=False
-        )
-
-
-        # RANDOMS
-
-        embed.add_field(
-
-            name="🐉 Randoms",
-
-            value=(
-
-                "**`.randoms @user bo amount`**\n"
-                "Start a Pokémon random battle.\n\n"
-
-                "`bo` = best of 1 / 3 / 5 / 7 / 9\n\n"
-
-                "**`.pick`**\n"
-                "Pick your Pokémon."
-
-            ),
-
-            inline=False
-        )
-
-
-        # DEATHROLL
-
-        embed.add_field(
-
-            name="💀 Deathroll",
-
-            value=(
-
-                "**`.deathroll @user bo amount`**\n"
-                "Start a deathroll match.\n\n"
-
-                "**`.roll`**\n"
-                "Roll the current number."
-
-            ),
-
-            inline=False
-        )
-
-
-        # CRACK
-
-        embed.add_field(
-
-            name="💥 Crack",
-
-            value=(
-
-                "**`.crack @user bo amount`**\n"
-                "Guess the hidden number.\n\n"
-
-                "**`.guess number`**\n"
-                "Submit your guess."
-
-            ),
-
-            inline=False
-        )
-
-
-        # CASINO
-
-        embed.add_field(
-
-            name="🎲 Casino",
-
-            value=(
-
-                "**`.dice up amount`**\n"
-                "Win on 8-12.\n\n"
-
-                "**`.dice down amount`**\n"
-                "Win on 2-6.\n\n"
-
-                "**`.dice 7 amount`**\n"
-                "Exact 7 payout.\n\n"
-
-                "**`.cf heads amount`**\n"
-                "Coinflip heads.\n\n"
-
-                "**`.cf tails amount`**\n"
-                "Coinflip tails."
-
-            ),
-
-            inline=False
-        )
-
-
-        # WORKERS
-
-        embed.add_field(
-
-            name="⚒ Workers",
-
-            value=(
-
-                "**`.workers`**\n"
-                "View all workers.\n\n"
-
-                "**`.claim`**\n"
-                "Claim worker earnings.\n\n"
-
-                "**`.upgrade worker-1`**\n"
-                "Upgrade a worker."
-
-            ),
-
-            inline=False
-        )
-
-
-        # PROFILE
-
-        embed.add_field(
-
-            name="📊 Profile",
-
-            value=(
-
-                "**`.profile [user]`**\n"
-                "View player stats.\n\n"
-
-                "**`.leaderboard`**\n"
-                "View richest players."
-
-            ),
-
-            inline=False
-        )
-
-
-        # UTILITY
-
-        embed.add_field(
-
-            name="⚙️ Utility",
-
-            value=(
-
-                "**`.stop`**\n"
-                "Force stop active game.\n\n"
-
-                "**`.ping`**\n"
-                "View bot latency."
-
-            ),
-
-            inline=False
-        )
-
-
         embed.set_footer(
             text="ECHLEON Economy System"
         )
 
-        await ctx.send(embed=embed)
+        await ctx.send(
+
+            embed=embed,
+            view=HelpView()
+        )
 
 
     # ─────────────────────────
@@ -274,10 +251,7 @@ class System(commands.Cog):
             member = ctx.author
 
 
-        stats = get_profile(
-            member.id
-        )
-
+        stats = get_profile(member.id)
 
         wins = stats["wins"]
         losses = stats["losses"]
@@ -301,6 +275,11 @@ class System(commands.Cog):
             "user_id": str(member.id)
 
         })
+
+
+        if not user_data:
+
+            user_data = {}
 
 
         padlock_until = user_data.get(
@@ -505,7 +484,7 @@ class System(commands.Cog):
 
             embed = discord.Embed(
 
-                description="Active game stopped.",
+                description="🛑 Active game stopped.",
 
                 color=0xED4245
             )
@@ -514,7 +493,7 @@ class System(commands.Cog):
 
             embed = discord.Embed(
 
-                description="No active game.",
+                description="❌ No active game.",
 
                 color=0xED4245
             )
@@ -538,7 +517,7 @@ class System(commands.Cog):
         embed = discord.Embed(
 
             description=(
-                f"Pong: **{latency}ms**"
+                f"🏓 Pong: **{latency}ms**"
             ),
 
             color=0x57F287
