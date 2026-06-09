@@ -12,8 +12,8 @@ from utils.economy import (
 
 
 PADLOCK_PRICE = 250000
-
 WORKER_PRICE = 5000000
+LOCK_AND_KEY_PRICE = 2500000
 
 
 # ─────────────────────────
@@ -52,6 +52,16 @@ class ShopView(discord.ui.View):
                 description="5M NGR • Passive income worker",
 
                 emoji="⚒"
+
+            ),
+
+            discord.SelectOption(
+
+                label="Lock and Key",
+
+                description="2.5M NGR • 20 rob attempts",
+
+                emoji="🔐"
 
             )
 
@@ -329,6 +339,115 @@ class ShopView(discord.ui.View):
                 embed=embed
             )
 
+            return
+
+
+        # ─────────────────────────
+        # LOCK AND KEY
+        # ─────────────────────────
+
+        if select.values[0] == "Lock and Key":
+
+            if user_data.get("lock_and_key"):
+
+                embed = discord.Embed(
+
+                    description=(
+
+                        "❌ You already own "
+                        "**Lock and Key**."
+
+                    ),
+
+                    color=0xED4245
+                )
+
+                await interaction.response.send_message(
+
+                    embed=embed,
+                    ephemeral=True
+                )
+
+                return
+
+
+            cash = get_cash(
+                interaction.user.id
+            )
+
+
+            if cash < LOCK_AND_KEY_PRICE:
+
+                embed = discord.Embed(
+
+                    description=(
+
+                        "❌ You don't have enough cash.\n\n"
+
+                        f"Required: **{format_cash(LOCK_AND_KEY_PRICE)}**"
+
+                    ),
+
+                    color=0xED4245
+                )
+
+                await interaction.response.send_message(
+
+                    embed=embed,
+                    ephemeral=True
+                )
+
+                return
+
+
+            remove_cash(
+                interaction.user.id,
+                LOCK_AND_KEY_PRICE
+            )
+
+
+            economy_collection.update_one(
+
+                {
+                    "user_id": str(interaction.user.id)
+                },
+
+                {
+                    "$set": {
+                        "lock_and_key": True
+                    }
+                }
+            )
+
+
+            embed = discord.Embed(
+
+                title="🔐 LOCK AND KEY PURCHASED",
+
+                description=(
+
+                    "Your rob attempts have increased.\n\n"
+
+                    "📈 Rob Attempts:\n"
+                    "**10 → 20**"
+
+                ),
+
+                color=0x57F287
+            )
+
+            embed.set_footer(
+
+                text="Permanent Upgrade"
+            )
+
+            await interaction.response.send_message(
+
+                embed=embed
+            )
+
+            return
+
 
 # ─────────────────────────
 # SHOP COMMAND
@@ -379,6 +498,12 @@ class Shop(commands.Cog):
                 padlock_until - current_time
 
             ) // 86400
+
+
+        lock_and_key = user_data.get(
+            "lock_and_key",
+            False
+        )
 
 
         embed = discord.Embed(
@@ -443,6 +568,26 @@ class Shop(commands.Cog):
         )
 
 
+        # LOCK AND KEY
+
+        embed.add_field(
+
+            name="🔐 Lock and Key",
+
+            value=(
+
+                "Increase rob attempts permanently.\n\n"
+
+                "• Price: **1M NGR**\n"
+                "• Rob Attempts: **10 → 20**\n"
+                f"• Owned: **{'Yes' if lock_and_key else 'No'}**"
+
+            ),
+
+            inline=False
+        )
+
+
         embed.set_footer(
 
             text="ECHLEON Economy System"
@@ -461,4 +606,4 @@ async def setup(bot):
 
     await bot.add_cog(
         Shop(bot)
-          )
+        )
