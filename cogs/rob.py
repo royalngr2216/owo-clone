@@ -1,14 +1,20 @@
 from discord.ext import commands
 import discord
 import random
+from datetime import datetime, timedelta
+import pytz
 
 from utils.economy import (
     create_account,
     get_cash,
     add_cash,
     remove_cash,
-    format_cash
+    format_cash,
+    economy_collection
 )
+
+
+IST = pytz.timezone("Asia/Kolkata")
 
 
 class Rob(commands.Cog):
@@ -88,6 +94,100 @@ class Rob(commands.Cog):
 
 
         # ─────────────────────────
+        # ROB LIMIT RESET
+        # ─────────────────────────
+
+        user_data = economy_collection.find_one({
+
+            "user_id": str(ctx.author.id)
+
+        })
+
+
+        rob_uses = user_data.get(
+            "rob_uses",
+            0
+        )
+
+        rob_reset = user_data.get(
+            "rob_reset",
+            0
+        )
+
+
+        now = datetime.now(IST)
+
+        reset_time = now.replace(
+
+            hour=5,
+            minute=30,
+            second=0,
+            microsecond=0
+
+        )
+
+
+        if now < reset_time:
+
+            reset_time -= timedelta(days=1)
+
+
+        current_reset = int(
+            reset_time.timestamp()
+        )
+
+
+        # NEW DAY RESET
+
+        if rob_reset < current_reset:
+
+            rob_uses = 0
+
+            economy_collection.update_one(
+
+                {
+                    "user_id": str(ctx.author.id)
+                },
+
+                {
+                    "$set": {
+
+                        "rob_uses": 0,
+
+                        "rob_reset": current_reset
+                    }
+                }
+            )
+
+
+        # ─────────────────────────
+        # DAILY LIMIT
+        # ─────────────────────────
+
+        if rob_uses >= 10:
+
+            next_reset = reset_time + timedelta(days=1)
+
+            embed = discord.Embed(
+
+                description=(
+
+                    "❌ You used all 10 rob attempts today.\n\n"
+
+                    f"⏰ Reset <t:{int(next_reset.timestamp())}:R>\n"
+                    f"📅 <t:{int(next_reset.timestamp())}:F>"
+
+                ),
+
+                color=0xED4245
+            )
+
+            await ctx.send(embed=embed)
+
+            return
+
+
+        # ─────────────────────────
         # TOO RICH TO ROB
         # ─────────────────────────
 
@@ -131,6 +231,28 @@ class Rob(commands.Cog):
 
 
         # ─────────────────────────
+        # ADD ROB USE
+        # ─────────────────────────
+
+        economy_collection.update_one(
+
+            {
+                "user_id": str(ctx.author.id)
+            },
+
+            {
+                "$inc": {
+                    "rob_uses": 1
+                },
+
+                "$set": {
+                    "rob_reset": current_reset
+                }
+            }
+        )
+
+
+        # ─────────────────────────
         # 40% SUCCESS CHANCE
         # ─────────────────────────
 
@@ -150,15 +272,10 @@ class Rob(commands.Cog):
                 stolen = 1
 
 
-            # REMOVE FROM VICTIM
-
             remove_cash(
                 member.id,
                 stolen
             )
-
-
-            # GIVE TO ROBBER
 
             add_cash(
                 ctx.author.id,
@@ -174,7 +291,10 @@ class Rob(commands.Cog):
 
                     f"{ctx.author.mention} robbed {member.mention}\n\n"
 
-                    f"💰 Stole **{format_cash(stolen)}**"
+                    f"💰 Stole **{format_cash(stolen)}**\n\n"
+
+                    f"📊 Remaining Attempts: "
+                    f"**{10 - (rob_uses + 1)} / 10**"
 
                 ),
 
@@ -197,15 +317,10 @@ class Rob(commands.Cog):
             loss = 1
 
 
-        # REMOVE FROM ROBBER
-
         remove_cash(
             ctx.author.id,
             loss
         )
-
-
-        # GIVE TO VICTIM
 
         add_cash(
             member.id,
@@ -221,7 +336,10 @@ class Rob(commands.Cog):
 
                 f"{ctx.author.mention} got caught robbing {member.mention}\n\n"
 
-                f"💸 Lost **{format_cash(loss)}**"
+                f"💸 Lost **{format_cash(loss)}**\n\n"
+
+                f"📊 Remaining Attempts: "
+                f"**{10 - (rob_uses + 1)} / 10**"
 
             ),
 
