@@ -74,7 +74,22 @@ class System(commands.Cog):
                 "Open the item shop.\n\n"
 
                 "**`.padlock`**\n"
-                "View protection status."
+                "View protection status.\n\n"
+
+                "**`.job`**\n"
+                "Work for money.\n\n"
+
+                "**`.fish`**\n"
+                "Go fishing for rewards.\n\n"
+
+                "**`.hunt`**\n"
+                "Go hunting for rewards.\n\n"
+
+                "**`.inventory`**\n"
+                "View collected items.\n\n"
+
+                "**`.sell item amount`**\n"
+                "Sell inventory items."
 
             ),
 
