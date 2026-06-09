@@ -2,16 +2,19 @@ from discord.ext import commands
 import discord
 
 from utils.economy import (
-    economy_collection,
     create_account,
     get_cash,
     add_cash,
+    remove_cash,
     can_claim_daily,
     can_claim_weekly,
     can_claim_monthly,
     update_daily,
     update_weekly,
     update_monthly,
+    get_next_daily_reset,
+    get_next_weekly_reset,
+    get_next_monthly_reset,
     format_cash
 )
 
@@ -31,20 +34,7 @@ class Economy(commands.Cog):
 
         create_account(ctx.author.id)
 
-        user = economy_collection.find_one(
-            {"user_id": ctx.author.id}
-        ) or {}
-
-        last_daily = user.get(
-            "daily",
-            0
-        )
-
         if not can_claim_daily(ctx.author.id):
-
-            next_claim = int(
-                last_daily + 86400
-            )
 
             embed = discord.Embed(
 
@@ -52,10 +42,8 @@ class Economy(commands.Cog):
 
                     "❌ You already claimed daily.\n\n"
 
-                    f"⏰ Try again "
-                    f"<t:{next_claim}:R>\n"
-
-                    f"📅 <t:{next_claim}:F>"
+                    f"⏰ Next reset:\n"
+                    f"**{get_next_daily_reset()}**"
 
                 ),
 
@@ -103,20 +91,7 @@ class Economy(commands.Cog):
 
         create_account(ctx.author.id)
 
-        user = economy_collection.find_one(
-            {"user_id": ctx.author.id}
-        ) or {}
-
-        last_weekly = user.get(
-            "weekly",
-            0
-        )
-
         if not can_claim_weekly(ctx.author.id):
-
-            next_claim = int(
-                last_weekly + 604800
-            )
 
             embed = discord.Embed(
 
@@ -124,10 +99,8 @@ class Economy(commands.Cog):
 
                     "❌ You already claimed weekly.\n\n"
 
-                    f"⏰ Try again "
-                    f"<t:{next_claim}:R>\n"
-
-                    f"📅 <t:{next_claim}:F>"
+                    f"⏰ Next reset:\n"
+                    f"**{get_next_weekly_reset()}**"
 
                 ),
 
@@ -175,20 +148,7 @@ class Economy(commands.Cog):
 
         create_account(ctx.author.id)
 
-        user = economy_collection.find_one(
-            {"user_id": ctx.author.id}
-        ) or {}
-
-        last_monthly = user.get(
-            "monthly",
-            0
-        )
-
         if not can_claim_monthly(ctx.author.id):
-
-            next_claim = int(
-                last_monthly + 2592000
-            )
 
             embed = discord.Embed(
 
@@ -196,10 +156,8 @@ class Economy(commands.Cog):
 
                     "❌ You already claimed monthly.\n\n"
 
-                    f"⏰ Try again "
-                    f"<t:{next_claim}:R>\n"
-
-                    f"📅 <t:{next_claim}:F>"
+                    f"⏰ Next reset:\n"
+                    f"**{get_next_monthly_reset()}**"
 
                 ),
 
