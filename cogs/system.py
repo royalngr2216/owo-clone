@@ -1,5 +1,6 @@
 from discord.ext import commands
 import discord
+from datetime import datetime
 
 from utils.stats import get_profile
 from utils.economy import (
@@ -13,8 +14,6 @@ from utils.economy import (
 # ─────────────────────────
 
 async def update_roles(member, matches):
-
-    # Optional role system
 
     return
 
@@ -34,20 +33,27 @@ class System(commands.Cog):
     async def help(self, ctx):
 
         embed = discord.Embed(
+
             title="ECHLEON COMMANDS",
+
             description=(
                 "Use the commands below with the prefix `.`"
             ),
+
             color=0x5865F2
         )
+
 
         # ECONOMY
 
         embed.add_field(
+
             name="💰 Economy",
+
             value=(
+
                 "**`.cash [user]`**\n"
-                "View your or another user's balance.\n\n"
+                "View balances.\n\n"
 
                 "**`.daily`**\n"
                 "Claim daily reward.\n\n"
@@ -59,111 +65,179 @@ class System(commands.Cog):
                 "Claim monthly reward.\n\n"
 
                 "**`.give @user amount`**\n"
-                "Transfer money to another user.\n\n"
+                "Transfer money.\n\n"
 
                 "**`.rob @user`**\n"
-                "Attempt to rob another player."
+                "Attempt a robbery.\n\n"
+
+                "**`.shop`**\n"
+                "Open the item shop.\n\n"
+
+                "**`.padlock`**\n"
+                "View protection status."
+
             ),
+
             inline=False
         )
+
 
         # RANDOMS
 
         embed.add_field(
+
             name="🐉 Randoms",
+
             value=(
+
                 "**`.randoms @user bo amount`**\n"
                 "Start a Pokémon random battle.\n\n"
 
                 "`bo` = best of 1 / 3 / 5 / 7 / 9\n\n"
 
                 "**`.pick`**\n"
-                "Pick your random Pokémon."
+                "Pick your Pokémon."
+
             ),
+
             inline=False
         )
+
 
         # DEATHROLL
 
         embed.add_field(
+
             name="💀 Deathroll",
+
             value=(
-                "**`.deathroll @user amount`**\n"
+
+                "**`.deathroll @user bo amount`**\n"
                 "Start a deathroll match.\n\n"
 
                 "**`.roll`**\n"
                 "Roll the current number."
+
             ),
+
             inline=False
         )
+
 
         # CRACK
 
         embed.add_field(
+
             name="💥 Crack",
+
             value=(
-                "**`.crack @user amount`**\n"
+
+                "**`.crack @user bo amount`**\n"
                 "Guess the hidden number.\n\n"
 
                 "**`.guess number`**\n"
                 "Submit your guess."
+
             ),
+
             inline=False
         )
+
 
         # CASINO
 
         embed.add_field(
+
             name="🎲 Casino",
+
             value=(
+
                 "**`.dice up amount`**\n"
-                "Win if total is 8-12.\n\n"
+                "Win on 8-12.\n\n"
 
                 "**`.dice down amount`**\n"
-                "Win if total is 2-6.\n\n"
+                "Win on 2-6.\n\n"
 
                 "**`.dice 7 amount`**\n"
-                "Exact 7 pays higher.\n\n"
+                "Exact 7 payout.\n\n"
 
                 "**`.cf heads amount`**\n"
-                "Coinflip on heads.\n\n"
+                "Coinflip heads.\n\n"
 
                 "**`.cf tails amount`**\n"
-                "Coinflip on tails."
+                "Coinflip tails."
+
             ),
+
             inline=False
         )
+
+
+        # WORKERS
+
+        embed.add_field(
+
+            name="⚒ Workers",
+
+            value=(
+
+                "**`.workers`**\n"
+                "View all workers.\n\n"
+
+                "**`.claim`**\n"
+                "Claim worker earnings.\n\n"
+
+                "**`.upgrade worker-1`**\n"
+                "Upgrade a worker."
+
+            ),
+
+            inline=False
+        )
+
 
         # PROFILE
 
         embed.add_field(
+
             name="📊 Profile",
+
             value=(
+
                 "**`.profile [user]`**\n"
-                "View player statistics.\n\n"
+                "View player stats.\n\n"
 
                 "**`.leaderboard`**\n"
                 "View richest players."
+
             ),
+
             inline=False
         )
+
 
         # UTILITY
 
         embed.add_field(
+
             name="⚙️ Utility",
+
             value=(
+
                 "**`.stop`**\n"
                 "Force stop active game.\n\n"
 
                 "**`.ping`**\n"
                 "View bot latency."
+
             ),
+
             inline=False
         )
 
+
         embed.set_footer(
-            text="Echleon • Discord Gambling Bot"
+            text="ECHLEON Economy System"
         )
 
         await ctx.send(embed=embed)
@@ -184,13 +258,16 @@ class System(commands.Cog):
 
             member = ctx.author
 
+
         stats = get_profile(
             member.id
         )
 
+
         wins = stats["wins"]
         losses = stats["losses"]
         matches = stats["matches"]
+
 
         if matches > 0:
 
@@ -203,17 +280,54 @@ class System(commands.Cog):
 
             winrate = 0
 
+
+        user_data = economy_collection.find_one({
+
+            "user_id": str(member.id)
+
+        })
+
+
+        padlock_until = user_data.get(
+            "padlock_until",
+            0
+        )
+
+
+        current_time = int(
+            datetime.now().timestamp()
+        )
+
+
+        if padlock_until > current_time:
+
+            remaining = (
+                padlock_until - current_time
+            ) // 86400
+
+            protection = (
+                f"🛡 Active ({remaining}d)"
+            )
+
+        else:
+
+            protection = "❌ None"
+
+
         embed = discord.Embed(
+
             title="PROFILE",
-            description=(
-                f"{member.mention}"
-            ),
+
+            description=member.mention,
+
             color=0x2B2D31
         )
+
 
         embed.set_thumbnail(
             url=member.display_avatar.url
         )
+
 
         embed.add_field(
             name="Wins",
@@ -236,7 +350,13 @@ class System(commands.Cog):
         embed.add_field(
             name="Win Rate",
             value=f"**{winrate}%**",
-            inline=False
+            inline=True
+        )
+
+        embed.add_field(
+            name="Protection",
+            value=protection,
+            inline=True
         )
 
         await ctx.send(embed=embed)
@@ -250,23 +370,38 @@ class System(commands.Cog):
     async def leaderboard(self, ctx):
 
         users = list(
-            economy_collection.find()
+
+            economy_collection.find({
+
+                "cash": {
+                    "$gt": 0
+                }
+
+            })
         )
 
+
         users.sort(
+
             key=lambda x: x.get(
                 "cash",
                 0
             ),
+
             reverse=True
         )
 
+
         embed = discord.Embed(
+
             title="LEADERBOARD",
+
             color=0xF1C40F
         )
 
+
         text = ""
+
 
         for index, user in enumerate(users[:10]):
 
@@ -276,6 +411,7 @@ class System(commands.Cog):
                 "cash",
                 0
             )
+
 
             fetched_user = self.bot.get_user(user_id)
 
@@ -287,14 +423,19 @@ class System(commands.Cog):
 
                 name = f"User {user_id}"
 
+
             text += (
-                f"**#{index+1}** {name}\n"
+
+                f"**#{index + 1}** {name}\n"
                 f"{format_cash(cash)}\n\n"
+
             )
+
 
         if text == "":
 
             text = "No data."
+
 
         embed.description = text
 
@@ -314,9 +455,9 @@ class System(commands.Cog):
             crack_games
         )
 
+
         stopped = False
 
-        # RANDOMS
 
         if ctx.channel.id in randoms_games:
 
@@ -326,7 +467,6 @@ class System(commands.Cog):
 
             stopped = True
 
-        # DEATHROLL
 
         if ctx.channel.id in deathroll_games:
 
@@ -336,7 +476,6 @@ class System(commands.Cog):
 
             stopped = True
 
-        # CRACK
 
         if ctx.channel.id in crack_games:
 
@@ -346,25 +485,25 @@ class System(commands.Cog):
 
             stopped = True
 
-        # RESULT
 
         if stopped:
 
             embed = discord.Embed(
-                description=(
-                    "Active game stopped."
-                ),
-                color=discord.Color.red()
+
+                description="Active game stopped.",
+
+                color=0xED4245
             )
 
         else:
 
             embed = discord.Embed(
-                description=(
-                    "No active game."
-                ),
-                color=discord.Color.red()
+
+                description="No active game.",
+
+                color=0xED4245
             )
+
 
         await ctx.send(embed=embed)
 
@@ -380,12 +519,16 @@ class System(commands.Cog):
             self.bot.latency * 1000
         )
 
+
         embed = discord.Embed(
+
             description=(
                 f"Pong: **{latency}ms**"
             ),
-            color=discord.Color.green()
+
+            color=0x57F287
         )
+
 
         await ctx.send(embed=embed)
 
@@ -394,4 +537,4 @@ async def setup(bot):
 
     await bot.add_cog(
         System(bot)
-    )
+        )
