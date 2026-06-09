@@ -7,7 +7,8 @@ from utils.economy import (
     get_cash,
     add_cash,
     remove_cash,
-    format_cash
+    format_cash,
+    parse_amount
 )
 
 from utils.stats import (
@@ -57,40 +58,40 @@ class Crack(commands.Cog):
             return
 
 
-        # PARSE BET
-
-        amount = amount.lower()
-
-
-        if amount.endswith("k"):
-
-            bet = int(amount[:-1]) * 1000
-
-        elif amount.endswith("m"):
-
-            bet = int(amount[:-1]) * 1000000
-
-        else:
-
-            bet = int(amount)
-
-
-        if bet <= 0:
-
-            await ctx.send(
-                "Bet must be greater than 0."
-            )
-
-            return
-
-
+        # ─────────────────────────
         # CREATE ACCOUNTS
+        # ─────────────────────────
 
         create_account(ctx.author.id)
         create_account(opponent.id)
 
 
+        # ─────────────────────────
+        # PARSE BET
+        # ─────────────────────────
+
+        cash = get_cash(
+            ctx.author.id
+        )
+
+        bet = parse_amount(
+            amount,
+            cash
+        )
+
+
+        if bet is None or bet <= 0:
+
+            await ctx.send(
+                "Invalid amount."
+            )
+
+            return
+
+
+        # ─────────────────────────
         # CHECK CASH
+        # ─────────────────────────
 
         if get_cash(ctx.author.id) < bet:
 
@@ -110,7 +111,9 @@ class Crack(commands.Cog):
             return
 
 
+        # ─────────────────────────
         # CREATE GAME
+        # ─────────────────────────
 
         crack_games[ctx.channel.id] = {
 
@@ -132,7 +135,8 @@ class Crack(commands.Cog):
                 f"{ctx.author.mention} ⚔️ "
                 f"{opponent.mention}\n\n"
 
-                f"💵 Wager: **{format_cash(bet)}**\n\n"
+                f"💵 Wager: "
+                f"**{format_cash(bet)}**\n\n"
 
                 f"🎯 Guess a number between "
                 f"**1 and 100**\n\n"
@@ -171,7 +175,9 @@ class Crack(commands.Cog):
             return
 
 
-        game = crack_games[ctx.channel.id]
+        game = crack_games[
+            ctx.channel.id
+        ]
 
 
         if ctx.author != game["turn"]:
@@ -198,7 +204,9 @@ class Crack(commands.Cog):
         p2 = game["player2"]
 
 
-        # CORRECT
+        # ─────────────────────────
+        # CORRECT GUESS
+        # ─────────────────────────
 
         if number == secret:
 
@@ -224,7 +232,6 @@ class Crack(commands.Cog):
                 bet
             )
 
-
             add_cash(
                 winner.id,
                 bet
@@ -233,14 +240,20 @@ class Crack(commands.Cog):
 
             # STATS
 
-            record_win(winner.id, 0)
-            record_loss(loser.id, 0)
+            record_win(
+                winner.id,
+                0
+            )
+
+            record_loss(
+                loser.id,
+                0
+            )
 
 
             winner_stats = get_profile(
                 winner.id
             )
-
 
             loser_stats = get_profile(
                 loser.id
@@ -252,14 +265,13 @@ class Crack(commands.Cog):
                 winner_stats["matches"]
             )
 
-
             await update_roles(
                 loser,
                 loser_stats["matches"]
             )
 
 
-            # WIN EMBED
+            # RESULT EMBED
 
             embed = discord.Embed(
 
@@ -284,13 +296,17 @@ class Crack(commands.Cog):
             await ctx.send(embed=embed)
 
 
-            del crack_games[ctx.channel.id]
+            del crack_games[
+                ctx.channel.id
+            ]
 
 
             return
 
 
+        # ─────────────────────────
         # WRONG GUESS
+        # ─────────────────────────
 
         if number < secret:
 
@@ -301,7 +317,9 @@ class Crack(commands.Cog):
             hint = "📉 Lower"
 
 
+        # ─────────────────────────
         # SWITCH TURN
+        # ─────────────────────────
 
         if game["turn"] == p1:
 
@@ -334,4 +352,4 @@ async def setup(bot):
 
     await bot.add_cog(
         Crack(bot)
-            )
+    )
