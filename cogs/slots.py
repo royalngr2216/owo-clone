@@ -32,9 +32,7 @@ def parse_amount(amount):
         if amount[-1] in multipliers:
 
             return int(
-
                 float(amount[:-1])
-
                 * multipliers[amount[-1]]
             )
 
@@ -97,6 +95,29 @@ PAYOUTS = {
     "💎": 6,
     "👑": 10
 }
+
+
+# ─────────────────────────
+# BUILD SLOT UI
+# ─────────────────────────
+
+def build_slots(top, middle, bottom):
+
+    return (
+
+        "╔════════════════════╗\n"
+        "║   🎰 ECHLEON SLOTS   ║\n"
+        "╚════════════════════╝\n\n"
+
+        "┌─────┬─────┬─────┐\n"
+
+        f"│  {top[0]}  │  {top[1]}  │  {top[2]}  │\n"
+        f"│  {middle[0]}  │  {middle[1]}  │  {middle[2]}  │\n"
+        f"│  {bottom[0]}  │  {bottom[1]}  │  {bottom[2]}  │\n"
+
+        "└─────┴─────┴─────┘"
+
+    )
 
 
 class Slots(commands.Cog):
@@ -169,10 +190,6 @@ class Slots(commands.Cog):
                 return
 
 
-        # ─────────────────────────
-        # INVALID BET
-        # ─────────────────────────
-
         if amount <= 0:
 
             embed = discord.Embed(
@@ -234,36 +251,36 @@ class Slots(commands.Cog):
 
 
         # ─────────────────────────
-        # GENERATE FINAL SYMBOLS
+        # FINAL RESULTS
         # ─────────────────────────
 
         if outcome == "cherry":
 
-            final_slots = ["🍒", "🍒", "🍒"]
+            result = ["🍒", "🍒", "🍒"]
 
         elif outcome == "lemon":
 
-            final_slots = ["🍋", "🍋", "🍋"]
+            result = ["🍋", "🍋", "🍋"]
 
         elif outcome == "clover":
 
-            final_slots = ["🍀", "🍀", "🍀"]
+            result = ["🍀", "🍀", "🍀"]
 
         elif outcome == "bell":
 
-            final_slots = ["🔔", "🔔", "🔔"]
+            result = ["🔔", "🔔", "🔔"]
 
         elif outcome == "diamond":
 
-            final_slots = ["💎", "💎", "💎"]
+            result = ["💎", "💎", "💎"]
 
         elif outcome == "jackpot":
 
-            final_slots = ["👑", "👑", "👑"]
+            result = ["👑", "👑", "👑"]
 
         elif outcome == "troll":
 
-            final_slots = ["💀", "💀", "💀"]
+            result = ["💀", "💀", "💀"]
 
         else:
 
@@ -276,128 +293,119 @@ class Slots(commands.Cog):
                 ["💎", "🍋", "🍀"],
                 ["👑", "💀", "🍒"],
 
-                # rare near misses
-
                 ["👑", "👑", "🍒"],
                 ["💎", "💎", "🍋"]
             ]
 
-            final_slots = random.choice(
+            result = random.choice(
                 lose_patterns
             )
 
 
         # ─────────────────────────
-        # START ANIMATION
+        # START EMBED
         # ─────────────────────────
 
         embed = discord.Embed(
 
-            title="🎰 ECHLEON SLOTS",
-
-            description=(
-
-                "🎲 Rolling...\n\n"
-
-                "❔ ❔ ❔"
-
-            ),
-
             color=0x5865F2
+        )
+
+        embed.description = build_slots(
+
+            ["❔", "❔", "❔"],
+            ["❔", "❔", "❔"],
+            ["❔", "❔", "❔"]
+
+        )
+
+        embed.set_footer(
+            text=f"Bet: {format_cash(amount)}"
         )
 
         msg = await ctx.send(embed=embed)
 
 
         # ─────────────────────────
-        # REEL 1
+        # SPIN REELS
         # ─────────────────────────
 
-        start = asyncio.get_event_loop().time()
+        reels = ["❔", "❔", "❔"]
 
-        while asyncio.get_event_loop().time() - start < 0.5:
 
-            embed.description = (
+        for reel_index in range(3):
 
-                "🎲 Rolling...\n\n"
+            start = asyncio.get_event_loop().time()
 
-                f"{random.choice(SYMBOLS)} ❔ ❔"
+            duration = 0.7
+
+            # suspense if first 2 match
+
+            if reel_index == 2:
+
+                if result[0] == result[1]:
+
+                    duration = 1.2
+
+
+            while asyncio.get_event_loop().time() - start < duration:
+
+                reels[reel_index] = random.choice(
+                    SYMBOLS
+                )
+
+                top = [
+
+                    random.choice(SYMBOLS),
+                    random.choice(SYMBOLS),
+                    random.choice(SYMBOLS)
+                ]
+
+                bottom = [
+
+                    random.choice(SYMBOLS),
+                    random.choice(SYMBOLS),
+                    random.choice(SYMBOLS)
+                ]
+
+                embed.description = build_slots(
+
+                    top,
+                    reels,
+                    bottom
+                )
+
+                await msg.edit(embed=embed)
+
+                await asyncio.sleep(0.05)
+
+
+            reels[reel_index] = result[reel_index]
+
+            top = [
+
+                random.choice(SYMBOLS),
+                random.choice(SYMBOLS),
+                random.choice(SYMBOLS)
+            ]
+
+            bottom = [
+
+                random.choice(SYMBOLS),
+                random.choice(SYMBOLS),
+                random.choice(SYMBOLS)
+            ]
+
+            embed.description = build_slots(
+
+                top,
+                reels,
+                bottom
             )
 
             await msg.edit(embed=embed)
 
-            await asyncio.sleep(0.00001)
-
-
-        reel1 = final_slots[0]
-
-        embed.description = (
-
-            "🎲 Rolling...\n\n"
-
-            f"{reel1} ❔ ❔"
-        )
-
-        await msg.edit(embed=embed)
-
-        await asyncio.sleep(0.15)
-
-
-        # ─────────────────────────
-        # REEL 2
-        # ─────────────────────────
-
-        start = asyncio.get_event_loop().time()
-
-        while asyncio.get_event_loop().time() - start < 0.5:
-
-            embed.description = (
-
-                "🎲 Rolling...\n\n"
-
-                f"{reel1} {random.choice(SYMBOLS)} ❔"
-            )
-
-            await msg.edit(embed=embed)
-
-            await asyncio.sleep(0.00001)
-
-
-        reel2 = final_slots[1]
-
-        embed.description = (
-
-            "🎲 Rolling...\n\n"
-
-            f"{reel1} {reel2} ❔"
-        )
-
-        await msg.edit(embed=embed)
-
-        await asyncio.sleep(0.15)
-
-
-        # ─────────────────────────
-        # REEL 3
-        # ─────────────────────────
-
-        start = asyncio.get_event_loop().time()
-
-        while asyncio.get_event_loop().time() - start < 0.5:
-
-            embed.description = (
-
-                "🎲 Rolling...\n\n"
-
-                f"{reel1} {reel2} {random.choice(SYMBOLS)}"
-            )
-
-            await msg.edit(embed=embed)
-
-            await asyncio.sleep(0.00001)
-
-
-        reel3 = final_slots[2]
+            await asyncio.sleep(0.2)
 
 
         # ─────────────────────────
@@ -406,9 +414,15 @@ class Slots(commands.Cog):
 
         embed = discord.Embed(
 
-            title="🎰 ECHLEON SLOTS",
-
             color=0x5865F2
+        )
+
+        final_ui = build_slots(
+
+            [random.choice(SYMBOLS) for _ in range(3)],
+            result,
+            [random.choice(SYMBOLS) for _ in range(3)]
+
         )
 
 
@@ -420,13 +434,14 @@ class Slots(commands.Cog):
 
             embed.description = (
 
-                f"{reel1} {reel2} {reel3}\n\n"
+                final_ui +
 
-                "☠ EMIEL came and 🍇 you "
-                "in the slot machine.\n\n"
+                "\n\n☠ **EMIEL entered the casino and 🍇 you.**\n"
 
                 f"💸 Lost **{format_cash(amount)}**"
             )
+
+            embed.color = 0xED4245
 
             await msg.edit(embed=embed)
 
@@ -441,10 +456,12 @@ class Slots(commands.Cog):
 
             embed.description = (
 
-                f"{reel1} {reel2} {reel3}\n\n"
+                final_ui +
 
-                f"❌ Lost **{format_cash(amount)}**"
+                f"\n\n❌ Lost **{format_cash(amount)}**"
             )
+
+            embed.color = 0xED4245
 
             await msg.edit(embed=embed)
 
@@ -455,7 +472,7 @@ class Slots(commands.Cog):
         # WIN
         # ─────────────────────────
 
-        symbol = reel1
+        symbol = result[0]
 
         multiplier = PAYOUTS[symbol]
 
@@ -472,12 +489,10 @@ class Slots(commands.Cog):
 
         embed.description = (
 
-            f"{reel1} {reel2} {reel3}\n\n"
+            final_ui +
 
-            f"🏆 Won **{format_cash(winnings)}**\n"
-
-            f"📈 Profit: **{format_cash(profit)}**\n\n"
-
+            f"\n\n🏆 Won **{format_cash(winnings)}**\n"
+            f"📈 Profit: **{format_cash(profit)}**\n"
             f"🎯 Multiplier: **{multiplier}x**"
         )
 
@@ -488,8 +503,12 @@ class Slots(commands.Cog):
 
             embed.description += (
 
-                "\n\n👑 JACKPOT WIN 👑"
+                "\n\n✨ 👑 JACKPOT WIN 👑 ✨"
             )
+
+        else:
+
+            embed.color = 0x57F287
 
 
         await msg.edit(embed=embed)
