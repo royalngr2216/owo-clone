@@ -1,6 +1,5 @@
 from discord.ext import commands
 import discord
-import time
 
 from utils.economy import (
     economy_collection,
@@ -37,7 +36,7 @@ class Economy(commands.Cog):
         ) or {}
 
         last_daily = user.get(
-            "last_daily",
+            "daily",
             0
         )
 
@@ -109,7 +108,7 @@ class Economy(commands.Cog):
         ) or {}
 
         last_weekly = user.get(
-            "last_weekly",
+            "weekly",
             0
         )
 
@@ -181,7 +180,7 @@ class Economy(commands.Cog):
         ) or {}
 
         last_monthly = user.get(
-            "last_monthly",
+            "monthly",
             0
         )
 
