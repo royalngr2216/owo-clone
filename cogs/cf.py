@@ -53,9 +53,22 @@ class Coinflip(commands.Cog):
 
             choice = "tails"
 
-        amount = parse_amount(
-            amount
+        cash = get_cash(
+            ctx.author.id
         )
+
+        amount = parse_amount(
+            amount,
+            cash
+        )
+
+        if amount is None:
+
+            await ctx.send(
+                "Invalid amount."
+            )
+
+            return
 
         if amount <= 0:
 
@@ -64,10 +77,6 @@ class Coinflip(commands.Cog):
             )
 
             return
-
-        cash = get_cash(
-            ctx.author.id
-        )
 
         if cash < amount:
 
