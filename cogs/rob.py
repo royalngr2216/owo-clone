@@ -194,10 +194,21 @@ class Rob(commands.Cog):
 
 
         # ─────────────────────────
+        # MAX ROBS
+        # ─────────────────────────
+
+        max_robs = 10
+
+        if user_data.get("lock_and_key"):
+
+            max_robs = 20
+
+
+        # ─────────────────────────
         # LIMIT REACHED
         # ─────────────────────────
 
-        if rob_uses >= 10:
+        if rob_uses >= max_robs:
 
             next_reset = rob_reset + 43200
 
@@ -205,7 +216,7 @@ class Rob(commands.Cog):
 
                 description=(
 
-                    "❌ You used all 10 rob attempts.\n\n"
+                    f"❌ You used all {max_robs} rob attempts.\n\n"
 
                     f"⏰ Reset <t:{next_reset}:R>\n"
                     f"📅 <t:{next_reset}:F>"
@@ -327,7 +338,7 @@ class Rob(commands.Cog):
                     f"💰 Stole **{format_cash(stolen)}**\n\n"
 
                     f"📊 Remaining Attempts:\n"
-                    f"**{10 - (rob_uses + 1)} / 10**"
+                    f"**{max_robs - (rob_uses + 1)} / {max_robs}**"
 
                 ),
 
@@ -372,7 +383,7 @@ class Rob(commands.Cog):
                 f"💸 Lost **{format_cash(loss)}**\n\n"
 
                 f"📊 Remaining Attempts:\n"
-                f"**{10 - (rob_uses + 1)} / 10**"
+                f"**{max_robs - (rob_uses + 1)} / {max_robs}**"
 
             ),
 
@@ -386,4 +397,4 @@ async def setup(bot):
 
     await bot.add_cog(
         Rob(bot)
-        )
+            )
