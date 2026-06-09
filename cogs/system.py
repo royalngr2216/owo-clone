@@ -26,109 +26,111 @@ HELP_CATEGORIES = {
 
     "💰 Economy": (
 
-        "• `.cash [user]`\n"
+        "**.cash [user]**\n"
         "View balances.\n\n"
 
-        "• `.daily`\n"
+        "**.daily**\n"
         "Claim daily reward.\n\n"
 
-        "• `.weekly`\n"
+        "**.weekly**\n"
         "Claim weekly reward.\n\n"
 
-        "• `.monthly`\n"
+        "**.monthly**\n"
         "Claim monthly reward.\n\n"
 
-        "• `.give @user amount`\n"
+        "**.give @user amount**\n"
         "Transfer money.\n\n"
 
-        "• `.rob @user`\n"
+        "**.rob @user**\n"
         "Attempt a robbery."
     ),
 
     "🎒 Items": (
 
-        "• `.shop`\n"
+        "**.shop**\n"
         "Open the item shop.\n\n"
 
-        "• `.inventory`\n"
+        "**.inventory**\n"
         "View collected items.\n\n"
 
-        "• `.sell item amount`\n"
+        "**.sell item amount**\n"
         "Sell inventory items.\n\n"
+        ".sell all all for sellimg all.\n\n"
 
-        "• `.padlock`\n"
+        "**.padlock**\n"
         "View protection status."
     ),
 
     "⚒ Workers": (
 
-        "• `.workers`\n"
+        "**.workers**\n"
         "View all workers.\n\n"
 
-        "• `.claim`\n"
+        "**.claim**\n"
         "Claim worker earnings.\n\n"
 
-        "• `.upgrade worker-1`\n"
+        "**.upgrade worker-1**\n"
         "Upgrade a worker."
     ),
 
     "🌎 Activities": (
 
-        "• `.job`\n"
+        "**.job**\n"
         "Work for money.\n\n"
 
-        "• `.fish`\n"
+        "**.fish**\n"
         "Go fishing for rewards.\n\n"
 
-        "• `.hunt`\n"
+        "**.hunt**\n"
         "Go hunting for rewards."
     ),
 
     "🎮 Games": (
 
-        "• `.randoms @user bo amount`\n"
+        "**.randoms @user bo amount**\n"
         "Pokémon random battle.\n\n"
 
-        "• `.deathroll @user bo amount`\n"
+        "**.deathroll @user bo amount**\n"
         "Start a deathroll match.\n\n"
 
-        "• `.crack @user bo amount`\n"
+        "**.crack @user bo amount**\n"
         "Guess the hidden number."
     ),
 
     "🎲 Casino": (
 
-        "• `.dice up amount`\n"
+        "**.dice up amount**\n"
         "Win on 8-12.\n\n"
 
-        "• `.dice down amount`\n"
+        "**.dice down amount**\n"
         "Win on 2-6.\n\n"
 
-        "• `.dice 7 amount`\n"
+        "**.dice 7 amount**\n"
         "Exact 7 payout.\n\n"
+        "Get 7x on win.\n\n"
 
-        "• `.cf heads amount`\n"
+        "**.cf heads amount**\n"
         "Coinflip heads.\n\n"
 
-        "• `.cf tails amount`\n"
+        "**.cf tails amount**\n"
         "Coinflip tails."
     ),
 
     "📊 Profile": (
 
-        "• `.profile [user]`\n"
+        "**.profile [user]**\n"
         "View player stats.\n\n"
 
-        "• `.leaderboard`\n"
+        "**.leaderboard**\n"
         "View richest players."
     ),
 
     "⚙ Utility": (
 
-        "• `.ping`\n"
+        "**.ping**\n"
         "View bot latency.\n\n"
 
-        "• `.stop`\n"
+        "**.stop**\n"
         "Force stop active game."
     )
 }
