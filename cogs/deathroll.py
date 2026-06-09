@@ -7,7 +7,8 @@ from utils.economy import (
     get_cash,
     add_cash,
     remove_cash,
-    format_cash
+    format_cash,
+    parse_amount
 )
 
 from utils.stats import (
@@ -53,38 +54,36 @@ class Deathroll(commands.Cog):
             return
 
 
-        amount = amount.lower()
+        create_account(ctx.author.id)
+        create_account(opponent.id)
 
 
-        if amount.endswith("k"):
+        # ─────────────────────────
+        # PARSE AMOUNT
+        # ─────────────────────────
 
-            amount = int(
-                float(amount[:-1]) * 1000
-            )
+        cash = get_cash(
+            ctx.author.id
+        )
 
-        elif amount.endswith("m"):
-
-            amount = int(
-                float(amount[:-1]) * 1000000
-            )
-
-        else:
-
-            amount = int(amount)
+        amount = parse_amount(
+            amount,
+            cash
+        )
 
 
-        if amount <= 0:
+        if amount is None or amount <= 0:
 
             await ctx.send(
-                "Amount must be greater than 0."
+                "Invalid amount."
             )
 
             return
 
 
-        create_account(ctx.author.id)
-        create_account(opponent.id)
-
+        # ─────────────────────────
+        # CHECK CASH
+        # ─────────────────────────
 
         if get_cash(ctx.author.id) < amount:
 
@@ -282,4 +281,4 @@ async def setup(bot):
 
     await bot.add_cog(
         Deathroll(bot)
-    )
+            )
