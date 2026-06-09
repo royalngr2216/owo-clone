@@ -99,25 +99,25 @@ HELP_CATEGORIES = {
 
     "🎲 Casino": (
 
-        "**.dice up amount**\n"
-        "Win on 8-12.\n\n"
+    "**.dice up amount**\n"
+    "Win on 8-12.\n\n"
 
-        "**.dice down amount**\n"
-        "Win on 2-6.\n\n"
+    "**.dice down amount**\n"
+    "Win on 2-6.\n\n"
 
-        "**.dice 7 amount**\n"
-        "Exact 7 payout.\n\n"
-        "Get 7x on win.\n\n"
+    "**.dice 7 amount**\n"
+    "Exact 7 payout.\n\n"
+    "Get 7x on win.\n\n"
 
-        "**.cf heads amount**\n"
-        "Coinflip heads.\n\n"
+    "**.cf heads amount**\n"
+    "Coinflip heads.\n\n"
 
-        "**.cf tails amount**\n"
-        "Coinflip tails."\n\n"
+    "**.cf tails amount**\n"
+    "Coinflip tails.\n\n"
 
-        "**.slots amount**\n"
-        "Slots Game."
-    ),
+    "**.slots amount**\n"
+    "Play the slot machine."
+    ),  
 
     "📊 Profile": (
 
