@@ -3,288 +3,335 @@ import discord
 import random
 
 from utils.economy import (
-create_account,
-get_cash,
-add_cash,
-remove_cash,
-format_cash
+    create_account,
+    get_cash,
+    add_cash,
+    remove_cash,
+    format_cash
 )
 
 from utils.stats import (
-record_win,
-record_loss,
-get_profile
+    record_win,
+    record_loss,
+    get_profile
 )
 
 from cogs.system import update_roles
 from utils.game_state import crack_games
 
+
 class Crack(commands.Cog):
 
-def __init__(self, bot):  
+    def __init__(self, bot):
 
-    self.bot = bot  
+        self.bot = bot
 
-# ─────────────────────────  
-# START GAME  
-# ─────────────────────────  
 
-@commands.command(name="crack")  
-async def crack(  
-    self,  
-    ctx,  
-    opponent: discord.Member,  
-    amount: str  
-):  
+    # ─────────────────────────
+    # START GAME
+    # ─────────────────────────
 
-    if opponent == ctx.author:  
+    @commands.command(name="crack")
+    async def crack(
+        self,
+        ctx,
+        opponent: discord.Member,
+        amount: str
+    ):
 
-        await ctx.send(  
-            "You cannot play yourself."  
-        )  
-        return  
+        if opponent == ctx.author:
 
-    if ctx.channel.id in crack_games:  
+            await ctx.send(
+                "You cannot play yourself."
+            )
 
-        await ctx.send(  
-            "A crack match is already active."  
-        )  
-        return  
+            return
 
-    # PARSE BET  
 
-    amount = amount.lower()  
+        if ctx.channel.id in crack_games:
 
-    if amount.endswith("k"):  
+            await ctx.send(
+                "A crack match is already active."
+            )
 
-        bet = int(amount[:-1]) * 1000  
+            return
 
-    elif amount.endswith("m"):  
 
-        bet = int(amount[:-1]) * 1000000  
+        # PARSE BET
 
-    else:  
+        amount = amount.lower()
 
-        bet = int(amount)  
 
-    if bet <= 0:  
+        if amount.endswith("k"):
 
-        await ctx.send(  
-            "Bet must be greater than 0."  
-        )  
-        return  
+            bet = int(amount[:-1]) * 1000
 
-    # CREATE ACCOUNTS  
+        elif amount.endswith("m"):
 
-    create_account(ctx.author.id)  
-    create_account(opponent.id)  
+            bet = int(amount[:-1]) * 1000000
 
-    # CHECK CASH  
+        else:
 
-    if get_cash(ctx.author.id) < bet:  
+            bet = int(amount)
 
-        await ctx.send(  
-            f"{ctx.author.mention} does not have enough cash."  
-        )  
-        return  
 
-    if get_cash(opponent.id) < bet:  
+        if bet <= 0:
 
-        await ctx.send(  
-            f"{opponent.mention} does not have enough cash."  
-        )  
-        return  
+            await ctx.send(
+                "Bet must be greater than 0."
+            )
 
-    # CREATE GAME  
+            return
 
-    crack_games[ctx.channel.id] = {  
 
-        "player1": ctx.author,  
-        "player2": opponent,  
-        "bet": bet,  
-        "secret": random.randint(1, 100),  
-        "turn": ctx.author  
+        # CREATE ACCOUNTS
 
-    }  
+        create_account(ctx.author.id)
+        create_account(opponent.id)
 
-    embed = discord.Embed(  
 
-        title="💥 CRACK",  
+        # CHECK CASH
 
-        description=(  
+        if get_cash(ctx.author.id) < bet:
 
-            f"{ctx.author.mention} ⚔️ "  
-            f"{opponent.mention}\n\n"  
+            await ctx.send(
+                f"{ctx.author.mention} does not have enough cash."
+            )
 
-            f"💵 Wager: **{format_cash(bet)}**\n\n"  
+            return
 
-            f"🎯 Guess a number between "  
-            f"**1 and 100**\n\n"  
 
-            f"🎮 {ctx.author.mention} goes first\n\n"  
+        if get_cash(opponent.id) < bet:
 
-            f"Use:\n"  
-            f"`.guess number`"  
+            await ctx.send(
+                f"{opponent.mention} does not have enough cash."
+            )
 
-        ),  
+            return
 
-        color=discord.Color.orange()  
-    )  
 
-    await ctx.send(embed=embed)  
+        # CREATE GAME
 
-# ─────────────────────────  
-# GUESS  
-# ─────────────────────────  
+        crack_games[ctx.channel.id] = {
 
-@commands.command(name="guess")  
-async def guess(  
-    self,  
-    ctx,  
-    number: int  
-):  
+            "player1": ctx.author,
+            "player2": opponent,
+            "bet": bet,
+            "secret": random.randint(1, 100),
+            "turn": ctx.author
 
-    if ctx.channel.id not in crack_games:  
+        }
 
-        await ctx.send(  
-            "No active crack game."  
-        )  
-        return  
 
-    game = crack_games[ctx.channel.id]  
+        embed = discord.Embed(
 
-    if ctx.author != game["turn"]:  
+            title="💥 CRACK",
 
-        await ctx.send(  
-            "Not your turn."  
-        )  
-        return  
+            description=(
 
-    if number < 1 or number > 100:  
+                f"{ctx.author.mention} ⚔️ "
+                f"{opponent.mention}\n\n"
 
-        await ctx.send(  
-            "Guess between 1 and 100."  
-        )  
-        return  
+                f"💵 Wager: **{format_cash(bet)}**\n\n"
 
-    secret = game["secret"]  
+                f"🎯 Guess a number between "
+                f"**1 and 100**\n\n"
 
-    p1 = game["player1"]  
-    p2 = game["player2"]  
+                f"🎮 {ctx.author.mention} goes first\n\n"
 
-    # CORRECT  
+                f"Use:\n"
+                f"`.guess number`"
 
-    if number == secret:  
+            ),
 
-        winner = ctx.author  
+            color=discord.Color.orange()
+        )
 
-        if winner == p1:  
-            loser = p2  
-        else:  
-            loser = p1  
 
-        bet = game["bet"]  
+        await ctx.send(embed=embed)
 
-        # MONEY  
 
-        remove_cash(  
-            loser.id,  
-            bet  
-        )  
+    # ─────────────────────────
+    # GUESS
+    # ─────────────────────────
 
-        add_cash(  
-            winner.id,  
-            bet  
-        )  
+    @commands.command(name="guess")
+    async def guess(
+        self,
+        ctx,
+        number: int
+    ):
 
-        # STATS  
+        if ctx.channel.id not in crack_games:
 
-        record_win(winner.id, 0)  
-        record_loss(loser.id, 0)  
+            await ctx.send(
+                "No active crack game."
+            )
 
-        winner_stats = get_profile(  
-            winner.id  
-        )  
+            return
 
-        loser_stats = get_profile(  
-            loser.id  
-        )  
 
-        await update_roles(  
-            winner,  
-            winner_stats["matches"]  
-        )  
+        game = crack_games[ctx.channel.id]
 
-        await update_roles(  
-            loser,  
-            loser_stats["matches"]  
-        )  
 
-        # WIN EMBED  
+        if ctx.author != game["turn"]:
 
-        embed = discord.Embed(  
+            await ctx.send(
+                "Not your turn."
+            )
 
-            title="🏆 CRACK RESULT",  
+            return
 
-            description=(  
 
-                f"🎯 Secret Number: "  
-                f"**{secret}**\n\n"  
+        if number < 1 or number > 100:
 
-                f"{winner.mention} cracked it!\n\n"  
+            await ctx.send(
+                "Guess between 1 and 100."
+            )
 
-                f"💵 Won "  
-                f"**{format_cash(bet)}**"  
+            return
 
-            ),  
 
-            color=discord.Color.green()  
-        )  
+        secret = game["secret"]
 
-        await ctx.send(embed=embed)  
+        p1 = game["player1"]
+        p2 = game["player2"]
 
-        del crack_games[ctx.channel.id]  
 
-        return  
+        # CORRECT
 
-    # WRONG GUESS  
+        if number == secret:
 
-    if number < secret:  
+            winner = ctx.author
 
-        hint = "📈 Higher"  
 
-    else:  
+            if winner == p1:
 
-        hint = "📉 Lower"  
+                loser = p2
 
-    # SWITCH TURN  
+            else:
 
-    if game["turn"] == p1:  
+                loser = p1
 
-        game["turn"] = p2  
 
-    else:  
+            bet = game["bet"]
 
-        game["turn"] = p1  
 
-    embed = discord.Embed(  
+            # MONEY
 
-        description=(  
+            remove_cash(
+                loser.id,
+                bet
+            )
 
-            f"{hint}\n\n"  
 
-            f"🎮 Turn:\n"  
-            f"{game['turn'].mention}"  
+            add_cash(
+                winner.id,
+                bet
+            )
 
-        ),  
 
-        color=discord.Color.red()  
-    )  
+            # STATS
 
-    await ctx.send(embed=embed)
+            record_win(winner.id, 0)
+            record_loss(loser.id, 0)
+
+
+            winner_stats = get_profile(
+                winner.id
+            )
+
+
+            loser_stats = get_profile(
+                loser.id
+            )
+
+
+            await update_roles(
+                winner,
+                winner_stats["matches"]
+            )
+
+
+            await update_roles(
+                loser,
+                loser_stats["matches"]
+            )
+
+
+            # WIN EMBED
+
+            embed = discord.Embed(
+
+                title="🏆 CRACK RESULT",
+
+                description=(
+
+                    f"🎯 Secret Number: "
+                    f"**{secret}**\n\n"
+
+                    f"{winner.mention} cracked it!\n\n"
+
+                    f"💵 Won "
+                    f"**{format_cash(bet)}**"
+
+                ),
+
+                color=discord.Color.green()
+            )
+
+
+            await ctx.send(embed=embed)
+
+
+            del crack_games[ctx.channel.id]
+
+
+            return
+
+
+        # WRONG GUESS
+
+        if number < secret:
+
+            hint = "📈 Higher"
+
+        else:
+
+            hint = "📉 Lower"
+
+
+        # SWITCH TURN
+
+        if game["turn"] == p1:
+
+            game["turn"] = p2
+
+        else:
+
+            game["turn"] = p1
+
+
+        embed = discord.Embed(
+
+            description=(
+
+                f"{hint}\n\n"
+
+                f"🎮 Turn:\n"
+                f"{game['turn'].mention}"
+
+            ),
+
+            color=discord.Color.red()
+        )
+
+
+        await ctx.send(embed=embed)
+
 
 async def setup(bot):
 
-await bot.add_cog(  
-    Crack(bot)  
-)
+    await bot.add_cog(
+        Crack(bot)
+            )
