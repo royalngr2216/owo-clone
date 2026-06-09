@@ -1,13 +1,9 @@
-import time
-from datetime import datetime, timedelta, timezone
-
+import os
 from pymongo import MongoClient
+from datetime import datetime, timedelta
+import pytz
 
-# ─────────────────────────
-# MONGODB
-# ─────────────────────────
-
-MONGO_URI = "YOUR_MONGO_URI"
+MONGO_URI = os.getenv("MONGO_URI")
 
 client = MongoClient(MONGO_URI)
 
@@ -15,7 +11,8 @@ db = client["royal_bot"]
 
 economy_collection = db["economy"]
 
-history_collection = db["history"]
+IST = pytz.timezone("Asia/Kolkata")
+
 
 # ─────────────────────────
 # ACCOUNT
@@ -24,12 +21,10 @@ history_collection = db["history"]
 def create_account(user_id):
 
     user = economy_collection.find_one({
-
         "user_id": str(user_id)
-
     })
 
-    if user is None:
+    if not user:
 
         economy_collection.insert_one({
 
@@ -38,12 +33,11 @@ def create_account(user_id):
             "cash": 0,
 
             "daily": 0,
-
             "weekly": 0,
-
             "monthly": 0
 
         })
+
 
 # ─────────────────────────
 # CASH
@@ -51,37 +45,29 @@ def create_account(user_id):
 
 def get_cash(user_id):
 
-    create_account(user_id)
-
     user = economy_collection.find_one({
-
         "user_id": str(user_id)
-
     })
+
+    if not user:
+        create_account(user_id)
+        return 0
 
     return user.get("cash", 0)
 
 
 def add_cash(user_id, amount):
 
-    create_account(user_id)
-
     economy_collection.update_one(
 
         {
-
             "user_id": str(user_id)
-
         },
 
         {
-
             "$inc": {
-
                 "cash": amount
-
             }
-
         }
 
     )
@@ -89,121 +75,77 @@ def add_cash(user_id, amount):
 
 def remove_cash(user_id, amount):
 
-    create_account(user_id)
-
     economy_collection.update_one(
 
         {
-
             "user_id": str(user_id)
-
         },
 
         {
-
             "$inc": {
-
                 "cash": -amount
-
             }
-
         }
 
     )
 
+
 # ─────────────────────────
-# FORMAT CASH
+# FORMAT
 # ─────────────────────────
 
 def format_cash(amount):
 
-    amount = int(amount)
+    if amount >= 1_000_000_000:
+        return f"${amount/1_000_000_000:.1f}B"
 
-    if amount >= 1000000000:
+    if amount >= 1_000_000:
+        return f"${amount/1_000_000:.1f}M"
 
-        return f"${amount/1000000000:.1f}B"
-
-    if amount >= 1000000:
-
-        return f"${amount/1000000:.1f}M"
-
-    if amount >= 1000:
-
-        return f"${amount/1000:.1f}K"
+    if amount >= 1_000:
+        return f"${amount/1_000:.1f}K"
 
     return f"${amount}"
 
-# ─────────────────────────
-# PARSE AMOUNT
-# ─────────────────────────
-
-def parse_amount(amount):
-
-    amount = str(amount).lower()
-
-    if amount.endswith("k"):
-
-        return int(float(amount[:-1]) * 1000)
-
-    if amount.endswith("m"):
-
-        return int(float(amount[:-1]) * 1000000)
-
-    if amount.endswith("b"):
-
-        return int(float(amount[:-1]) * 1000000000)
-
-    return int(amount)
-
-# ─────────────────────────
-# HISTORY
-# ─────────────────────────
-
-def add_history(user_id, text):
-
-    history_collection.insert_one({
-
-        "user_id": str(user_id),
-
-        "text": text,
-
-        "time": int(time.time())
-
-    })
-
-
-def get_history(user_id):
-
-    return list(
-
-        history_collection.find({
-
-            "user_id": str(user_id)
-
-        })
-
-    )
-
-# ─────────────────────────
-# IST RESET SYSTEM
-# ─────────────────────────
-
-IST = timezone(
-
-    timedelta(hours=5, minutes=30)
-
-)
 
 # ─────────────────────────
 # DAILY
 # ─────────────────────────
 
-def get_next_daily_reset():
+def can_claim_daily(user_id):
+
+    user = economy_collection.find_one({
+        "user_id": str(user_id)
+    })
+
+    if not user:
+        return True
+
+    last = user.get("daily", 0)
+
+    if last == 0:
+        return True
 
     now = datetime.now(IST)
 
     reset = now.replace(
+        hour=5,
+        minute=30,
+        second=0,
+        microsecond=0
+    )
 
+    if now < reset:
+        reset -= timedelta(days=1)
+
+    return datetime.fromtimestamp(last, IST) < reset
+
+
+def get_daily_reset():
+
+    now = datetime.now(IST)
+
+    reset = now.replace(
         hour=5,
         minute=30,
         second=0,
@@ -211,29 +153,9 @@ def get_next_daily_reset():
     )
 
     if now >= reset:
-
         reset += timedelta(days=1)
 
     return int(reset.timestamp())
-
-
-def can_claim_daily(user_id):
-
-    create_account(user_id)
-
-    user = economy_collection.find_one({
-
-        "user_id": str(user_id)
-
-    })
-
-    last_daily = user.get("daily", 0)
-
-    next_reset = get_next_daily_reset()
-
-    previous_reset = next_reset - 86400
-
-    return last_daily < previous_reset
 
 
 def update_daily(user_id):
@@ -241,103 +163,90 @@ def update_daily(user_id):
     economy_collection.update_one(
 
         {
-
             "user_id": str(user_id)
-
         },
 
         {
-
             "$set": {
-
-                "daily": int(time.time())
-
+                "daily": datetime.now().timestamp()
             }
-
         }
 
     )
+
 
 # ─────────────────────────
 # WEEKLY
 # ─────────────────────────
 
-def get_next_weekly_reset():
+def can_claim_weekly(user_id):
+
+    user = economy_collection.find_one({
+        "user_id": str(user_id)
+    })
+
+    if not user:
+        return True
+
+    last = user.get("weekly", 0)
+
+    if last == 0:
+        return True
 
     now = datetime.now(IST)
 
-    day = now.day
+    current_week = (now.day - 1) // 7
 
-    targets = [7, 14, 21, 28]
+    last_time = datetime.fromtimestamp(last, IST)
 
-    next_day = None
+    last_week = (last_time.day - 1) // 7
 
-    for d in targets:
+    return (
+        now.month != last_time.month
+        or current_week != last_week
+    )
 
-        if day < d:
 
-            next_day = d
+def get_weekly_reset():
 
-            break
+    now = datetime.now(IST)
 
-    if next_day is None:
+    if now.day <= 7:
+        target_day = 8
+    elif now.day <= 14:
+        target_day = 15
+    elif now.day <= 21:
+        target_day = 22
+    else:
+        target_day = 1
 
         if now.month == 12:
-
-            reset = datetime(
-
+            return int(datetime(
                 now.year + 1,
                 1,
-                7,
+                1,
                 5,
                 30,
                 tzinfo=IST
-            )
+            ).timestamp())
 
-        else:
-
-            reset = datetime(
-
-                now.year,
-                now.month + 1,
-                7,
-                5,
-                30,
-                tzinfo=IST
-            )
-
-    else:
-
-        reset = datetime(
-
+        return int(datetime(
             now.year,
-            now.month,
-            next_day,
+            now.month + 1,
+            1,
             5,
             30,
             tzinfo=IST
-        )
+        ).timestamp())
 
-    return int(reset.timestamp())
-
-
-def can_claim_weekly(user_id):
-
-    create_account(user_id)
-
-    user = economy_collection.find_one({
-
-        "user_id": str(user_id)
-
-    })
-
-    last_weekly = user.get("weekly", 0)
-
-    next_reset = get_next_weekly_reset()
-
-    previous_reset = next_reset - 604800
-
-    return last_weekly < previous_reset
+    return int(datetime(
+        now.year,
+        now.month,
+        target_day,
+        5,
+        30,
+        tzinfo=IST
+    ).timestamp())
 
 
 def update_weekly(user_id):
@@ -345,35 +254,53 @@ def update_weekly(user_id):
     economy_collection.update_one(
 
         {
-
             "user_id": str(user_id)
-
         },
 
         {
-
             "$set": {
-
-                "weekly": int(time.time())
-
+                "weekly": datetime.now().timestamp()
             }
-
         }
 
     )
+
 
 # ─────────────────────────
 # MONTHLY
 # ─────────────────────────
 
-def get_next_monthly_reset():
+def can_claim_monthly(user_id):
+
+    user = economy_collection.find_one({
+        "user_id": str(user_id)
+    })
+
+    if not user:
+        return True
+
+    last = user.get("monthly", 0)
+
+    if last == 0:
+        return True
+
+    last_time = datetime.fromtimestamp(last, IST)
+
+    now = datetime.now(IST)
+
+    return (
+        now.month != last_time.month
+        or now.year != last_time.year
+    )
+
+
+def get_monthly_reset():
 
     now = datetime.now(IST)
 
     if now.month == 12:
 
         reset = datetime(
-
             now.year + 1,
             1,
             1,
@@ -385,7 +312,6 @@ def get_next_monthly_reset():
     else:
 
         reset = datetime(
-
             now.year,
             now.month + 1,
             1,
@@ -397,43 +323,57 @@ def get_next_monthly_reset():
     return int(reset.timestamp())
 
 
-def can_claim_monthly(user_id):
-
-    create_account(user_id)
-
-    user = economy_collection.find_one({
-
-        "user_id": str(user_id)
-
-    })
-
-    last_monthly = user.get("monthly", 0)
-
-    next_reset = get_next_monthly_reset()
-
-    previous_reset = next_reset - 2592000
-
-    return last_monthly < previous_reset
-
-
 def update_monthly(user_id):
 
     economy_collection.update_one(
 
         {
-
             "user_id": str(user_id)
-
         },
 
         {
-
             "$set": {
-
-                "monthly": int(time.time())
-
+                "monthly": datetime.now().timestamp()
             }
-
         }
 
     )
+
+
+# ─────────────────────────
+# HISTORY
+# ─────────────────────────
+
+def add_history(user_id, text):
+
+    pass
+
+
+def get_history(user_id):
+
+    return []
+
+
+# ─────────────────────────
+# PARSE AMOUNT
+# ─────────────────────────
+
+def parse_amount(amount, balance):
+
+    amount = str(amount).lower()
+
+    if amount == "all":
+        return balance
+
+    try:
+
+        if amount.endswith("k"):
+            return int(float(amount[:-1]) * 1000)
+
+        if amount.endswith("m"):
+            return int(float(amount[:-1]) * 1_000_000)
+
+        return int(amount)
+
+    except:
+        return None
