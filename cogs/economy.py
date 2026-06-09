@@ -5,16 +5,15 @@ from utils.economy import (
     create_account,
     get_cash,
     add_cash,
-    remove_cash,
     can_claim_daily,
     can_claim_weekly,
     can_claim_monthly,
     update_daily,
     update_weekly,
     update_monthly,
-    get_next_daily_reset,
-    get_next_weekly_reset,
-    get_next_monthly_reset,
+    get_daily_reset,
+    get_weekly_reset,
+    get_monthly_reset,
     format_cash
 )
 
@@ -24,6 +23,7 @@ class Economy(commands.Cog):
     def __init__(self, bot):
 
         self.bot = bot
+
 
     # ─────────────────────────
     # DAILY
@@ -36,14 +36,16 @@ class Economy(commands.Cog):
 
         if not can_claim_daily(ctx.author.id):
 
+            next_claim = get_daily_reset()
+
             embed = discord.Embed(
 
                 description=(
 
                     "❌ You already claimed daily.\n\n"
 
-                    f"⏰ Next reset:\n"
-                    f"**{get_next_daily_reset()}**"
+                    f"⏰ Try again <t:{next_claim}:R>\n"
+                    f"📅 <t:{next_claim}:F>"
 
                 ),
 
@@ -82,6 +84,7 @@ class Economy(commands.Cog):
 
         await ctx.send(embed=embed)
 
+
     # ─────────────────────────
     # WEEKLY
     # ─────────────────────────
@@ -93,14 +96,16 @@ class Economy(commands.Cog):
 
         if not can_claim_weekly(ctx.author.id):
 
+            next_claim = get_weekly_reset()
+
             embed = discord.Embed(
 
                 description=(
 
                     "❌ You already claimed weekly.\n\n"
 
-                    f"⏰ Next reset:\n"
-                    f"**{get_next_weekly_reset()}**"
+                    f"⏰ Try again <t:{next_claim}:R>\n"
+                    f"📅 <t:{next_claim}:F>"
 
                 ),
 
@@ -139,6 +144,7 @@ class Economy(commands.Cog):
 
         await ctx.send(embed=embed)
 
+
     # ─────────────────────────
     # MONTHLY
     # ─────────────────────────
@@ -150,14 +156,16 @@ class Economy(commands.Cog):
 
         if not can_claim_monthly(ctx.author.id):
 
+            next_claim = get_monthly_reset()
+
             embed = discord.Embed(
 
                 description=(
 
                     "❌ You already claimed monthly.\n\n"
 
-                    f"⏰ Next reset:\n"
-                    f"**{get_next_monthly_reset()}**"
+                    f"⏰ Try again <t:{next_claim}:R>\n"
+                    f"📅 <t:{next_claim}:F>"
 
                 ),
 
@@ -195,6 +203,7 @@ class Economy(commands.Cog):
         )
 
         await ctx.send(embed=embed)
+
 
     # ─────────────────────────
     # CASH
