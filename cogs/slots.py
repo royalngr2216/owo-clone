@@ -101,21 +101,15 @@ PAYOUTS = {
 # BUILD SLOT UI
 # ─────────────────────────
 
-def build_slots(top, middle, bottom):
+def build_slots(slots):
 
     return (
 
         "╔════════════════════╗\n"
         "║   🎰 ECHLEON SLOTS   ║\n"
-        "╚════════════════════╝\n\n"
-
-        "┌─────┬─────┬─────┐\n"
-
-        f"│  {top[0]}  │  {top[1]}  │  {top[2]}  │\n"
-        f"│  {middle[0]}  │  {middle[1]}  │  {middle[2]}  │\n"
-        f"│  {bottom[0]}  │  {bottom[1]}  │  {bottom[2]}  │\n"
-
-        "└─────┴─────┴─────┘"
+        "╠════════════════════╣\n"
+        f"║   {slots[0]} ┃ {slots[1]} ┃ {slots[2]}   ║\n"
+        "╚════════════════════╝"
 
     )
 
@@ -135,6 +129,7 @@ class Slots(commands.Cog):
     ):
 
         create_account(ctx.author.id)
+
 
         # ─────────────────────────
         # NO AMOUNT
@@ -189,6 +184,10 @@ class Slots(commands.Cog):
 
                 return
 
+
+        # ─────────────────────────
+        # INVALID BET
+        # ─────────────────────────
 
         if amount <= 0:
 
@@ -251,7 +250,7 @@ class Slots(commands.Cog):
 
 
         # ─────────────────────────
-        # FINAL RESULTS
+        # GENERATE RESULT
         # ─────────────────────────
 
         if outcome == "cherry":
@@ -306,17 +305,15 @@ class Slots(commands.Cog):
         # START EMBED
         # ─────────────────────────
 
-        embed = discord.Embed(
+        reels = ["❔", "❔", "❔"]
 
+
+        embed = discord.Embed(
             color=0x5865F2
         )
 
         embed.description = build_slots(
-
-            ["❔", "❔", "❔"],
-            ["❔", "❔", "❔"],
-            ["❔", "❔", "❔"]
-
+            reels
         )
 
         embed.set_footer(
@@ -327,25 +324,23 @@ class Slots(commands.Cog):
 
 
         # ─────────────────────────
-        # SPIN REELS
+        # SPIN ANIMATION
         # ─────────────────────────
-
-        reels = ["❔", "❔", "❔"]
-
 
         for reel_index in range(3):
 
             start = asyncio.get_event_loop().time()
 
-            duration = 0.7
+            duration = 0.6
 
-            # suspense if first 2 match
+
+            # suspense effect
 
             if reel_index == 2:
 
                 if result[0] == result[1]:
 
-                    duration = 1.2
+                    duration = 1.1
 
 
             while asyncio.get_event_loop().time() - start < duration:
@@ -354,75 +349,34 @@ class Slots(commands.Cog):
                     SYMBOLS
                 )
 
-                top = [
-
-                    random.choice(SYMBOLS),
-                    random.choice(SYMBOLS),
-                    random.choice(SYMBOLS)
-                ]
-
-                bottom = [
-
-                    random.choice(SYMBOLS),
-                    random.choice(SYMBOLS),
-                    random.choice(SYMBOLS)
-                ]
-
                 embed.description = build_slots(
-
-                    top,
-                    reels,
-                    bottom
+                    reels
                 )
 
                 await msg.edit(embed=embed)
 
-                await asyncio.sleep(0.05)
+                await asyncio.sleep(0.04)
 
 
             reels[reel_index] = result[reel_index]
 
-            top = [
-
-                random.choice(SYMBOLS),
-                random.choice(SYMBOLS),
-                random.choice(SYMBOLS)
-            ]
-
-            bottom = [
-
-                random.choice(SYMBOLS),
-                random.choice(SYMBOLS),
-                random.choice(SYMBOLS)
-            ]
-
             embed.description = build_slots(
-
-                top,
-                reels,
-                bottom
+                reels
             )
 
             await msg.edit(embed=embed)
 
-            await asyncio.sleep(0.2)
+            await asyncio.sleep(0.15)
 
 
         # ─────────────────────────
         # FINAL RESULT
         # ─────────────────────────
 
+        final_ui = build_slots(result)
+
         embed = discord.Embed(
-
             color=0x5865F2
-        )
-
-        final_ui = build_slots(
-
-            [random.choice(SYMBOLS) for _ in range(3)],
-            result,
-            [random.choice(SYMBOLS) for _ in range(3)]
-
         )
 
 
@@ -518,4 +472,4 @@ async def setup(bot):
 
     await bot.add_cog(
         Slots(bot)
-        )
+    )
