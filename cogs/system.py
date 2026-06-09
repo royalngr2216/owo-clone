@@ -14,8 +14,7 @@ from utils.economy import (
 
 async def update_roles(member, matches):
 
-    # OPTIONAL ROLE SYSTEM
-    # Customize later if wanted
+    # Optional role system
 
     return
 
@@ -26,6 +25,7 @@ class System(commands.Cog):
 
         self.bot = bot
 
+
     # ─────────────────────────
     # HELP
     # ─────────────────────────
@@ -34,113 +34,88 @@ class System(commands.Cog):
     async def help(self, ctx):
 
         embed = discord.Embed(
-            title="📖 **COMMANDS**",
+
+            title="Commands",
+
             description=(
-                "**Use the commands below**\n"
                 "Prefix: `.`"
             ),
+
             color=discord.Color.blurple()
         )
 
-        # ECONOMY
 
         embed.add_field(
-            name="💰 **Economy**",
+
+            name="Economy",
+
             value=(
-                "**`.cash`**\n"
-                "**`.daily`**\n"
-                "**`.weekly`**\n"
-                "**`.monthly`**\n"
-                "**`.rob`**\n"
-                "**`.give`**"
+                "`.cash`\n"
+                "`.daily`\n"
+                "`.weekly`\n"
+                "`.monthly`\n"
+                "`.rob`\n"
+                "`.give`"
             ),
+
             inline=False
         )
 
-        # RANDOMS
 
         embed.add_field(
-            name="🐉 **Randoms**",
+
+            name="Games",
+
             value=(
-                "**`.randoms @user bo amount`**\n"
-                "**`.pick`**"
+                "`.randoms @user bo amount`\n"
+                "`.pick`\n\n"
+
+                "`.deathroll @user amount`\n"
+                "`.roll`\n\n"
+
+                "`.crack @user amount`\n"
+                "`.guess number`\n\n"
+
+                "`.dice up amount`\n"
+                "`.dice 7 amount`\n"
+                "`.dice down amount`\n\n"
+
+                "`.cf heads amount`\n"
+                "`.cf tails amount`"
             ),
+
             inline=False
         )
 
-        # DEATHROLL
 
         embed.add_field(
-            name="💀 **Deathroll**",
+
+            name="Profile",
+
             value=(
-                "**`.deathroll @user amount`**\n"
-                "**`.roll`**"
+                "`.profile`\n"
+                "`.leaderboard`"
             ),
+
             inline=False
         )
 
-        # DICE
 
         embed.add_field(
-            name="🎲 **Dice**",
+
+            name="Utility",
+
             value=(
-                "**`.dice up amount`**\n"
-                "**`.dice 7 amount`**\n"
-                "**`.dice down amount`**"
+                "`.stop`\n"
+                "`.ping`"
             ),
+
             inline=False
         )
 
-        # CRACK
-
-        embed.add_field(
-            name="💥 **Crack**",
-            value=(
-                "**`.crack @user amount`**\n"
-                "**`.guess number`**"
-            ),
-            inline=False
-        )
-
-        # COINFLIP
-
-        embed.add_field(
-            name="🪙 **Coinflip**",
-            value=(
-                "**`.cf heads amount`**\n"
-                "**`.cf tails amount`**"
-            ),
-            inline=False
-        )
-
-        # PROFILE
-
-        embed.add_field(
-            name="📊 **Profile**",
-            value=(
-                "**`.profile`**\n"
-                "**`.leaderboard`**\n"
-                "**`.history`**"
-            ),
-            inline=False
-        )
-
-        # UTILITY
-
-        embed.add_field(
-            name="🛑 **Utility**",
-            value=(
-                "**`.stop`**\n"
-                "**`.ping`**"
-            ),
-            inline=False
-        )
-
-        embed.set_footer(
-            text="Made with discord.py"
-        )
 
         await ctx.send(embed=embed)
+
 
     # ─────────────────────────
     # PROFILE
@@ -157,13 +132,16 @@ class System(commands.Cog):
 
             member = ctx.author
 
+
         stats = get_profile(
             member.id
         )
 
+
         wins = stats["wins"]
         losses = stats["losses"]
         matches = stats["matches"]
+
 
         if matches > 0:
 
@@ -176,43 +154,49 @@ class System(commands.Cog):
 
             winrate = 0
 
+
         embed = discord.Embed(
-            title="📊 PROFILE",
-            description=(
-                f"{member.mention}"
-            ),
+
+            title="Profile",
+
+            description=member.mention,
+
             color=discord.Color.dark_embed()
         )
+
 
         embed.set_thumbnail(
             url=member.display_avatar.url
         )
 
+
         embed.add_field(
-            name="🏆 Wins",
+            name="Wins",
             value=f"**{wins}**",
             inline=True
         )
 
         embed.add_field(
-            name="❌ Losses",
+            name="Losses",
             value=f"**{losses}**",
             inline=True
         )
 
         embed.add_field(
-            name="🎮 Matches",
+            name="Matches",
             value=f"**{matches}**",
             inline=True
         )
 
         embed.add_field(
-            name="📈 Winrate",
+            name="Winrate",
             value=f"**{winrate}%**",
             inline=False
         )
 
+
         await ctx.send(embed=embed)
+
 
     # ─────────────────────────
     # LEADERBOARD
@@ -222,46 +206,81 @@ class System(commands.Cog):
     async def leaderboard(self, ctx):
 
         users = list(
-            economy_collection.find()
+
+            economy_collection.find({
+
+                "cash": {
+                    "$gte": 0
+                }
+
+            })
+
         )
 
+
         users.sort(
+
             key=lambda x: x.get(
                 "cash",
                 0
             ),
+
             reverse=True
         )
 
+
         embed = discord.Embed(
-            title="🏆 LEADERBOARD",
+
+            title="Leaderboard",
+
             color=discord.Color.gold()
         )
 
+
         text = ""
+
 
         for index, user in enumerate(users[:10]):
 
-            user_id = user["user_id"]
+            user_id = int(user["user_id"])
 
             cash = user.get(
                 "cash",
                 0
             )
 
+
+            member = self.bot.get_user(user_id)
+
+
+            if member:
+
+                name = member.name
+
+            else:
+
+                name = f"Unknown User"
+
+
             text += (
+
                 f"**#{index+1}** "
-                f"<@{user_id}>\n"
-                f"💵 {format_cash(cash)}\n\n"
+                f"**{name}**\n"
+
+                f"{format_cash(cash)}\n\n"
+
             )
+
 
         if text == "":
 
             text = "No data."
 
+
         embed.description = text
 
         await ctx.send(embed=embed)
+
 
     # ─────────────────────────
     # STOP
@@ -276,7 +295,9 @@ class System(commands.Cog):
             crack_games
         )
 
+
         stopped = False
+
 
         # RANDOMS
 
@@ -288,6 +309,7 @@ class System(commands.Cog):
 
             stopped = True
 
+
         # DEATHROLL
 
         if ctx.channel.id in deathroll_games:
@@ -297,6 +319,7 @@ class System(commands.Cog):
             ]
 
             stopped = True
+
 
         # CRACK
 
@@ -308,27 +331,30 @@ class System(commands.Cog):
 
             stopped = True
 
+
         # RESULT
 
         if stopped:
 
             embed = discord.Embed(
-                description=(
-                    "🛑 Active game stopped."
-                ),
+
+                description="Game stopped.",
+
                 color=discord.Color.red()
             )
 
         else:
 
             embed = discord.Embed(
-                description=(
-                    "❌ No active game."
-                ),
+
+                description="No active game.",
+
                 color=discord.Color.red()
             )
 
+
         await ctx.send(embed=embed)
+
 
     # ─────────────────────────
     # PING
@@ -341,13 +367,16 @@ class System(commands.Cog):
             self.bot.latency * 1000
         )
 
+
         embed = discord.Embed(
+
             description=(
-                f"🏓 Pong!\n"
-                f"**{latency}ms**"
+                f"Pong: **{latency}ms**"
             ),
+
             color=discord.Color.green()
         )
+
 
         await ctx.send(embed=embed)
 
@@ -356,4 +385,4 @@ async def setup(bot):
 
     await bot.add_cog(
         System(bot)
-    )
+        )
