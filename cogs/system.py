@@ -37,9 +37,7 @@ class System(commands.Cog):
 
             title="Commands",
 
-            description=(
-                "Prefix: `.`"
-            ),
+            description="Prefix: `.`",
 
             color=discord.Color.blurple()
         )
@@ -250,16 +248,17 @@ class System(commands.Cog):
             )
 
 
-            member = self.bot.get_user(user_id)
+            try:
 
+                fetched_user = await self.bot.fetch_user(
+                    user_id
+                )
 
-            if member:
+                name = fetched_user.name
 
-                name = member.name
+            except:
 
-            else:
-
-                name = f"Unknown User"
+                name = f"User {user_id}"
 
 
             text += (
@@ -385,4 +384,4 @@ async def setup(bot):
 
     await bot.add_cog(
         System(bot)
-        )
+    )
