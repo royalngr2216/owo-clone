@@ -1,7 +1,7 @@
 from discord.ext import commands
 import discord
 import random
-from datetime import datetime, timedelta
+from datetime import datetime
 import pytz
 
 from utils.economy import (
@@ -163,33 +163,18 @@ class Rob(commands.Cog):
         )
 
 
-        now = datetime.now(IST)
-
-        reset_time = now.replace(
-
-            hour=5,
-            minute=30,
-            second=0,
-            microsecond=0
-
+        current_time = int(
+            datetime.now(IST).timestamp()
         )
 
 
-        if now < reset_time:
+        # RESET EVERY 12 HOURS
 
-            reset_time -= timedelta(days=1)
-
-
-        current_reset = int(
-            reset_time.timestamp()
-        )
-
-
-        # NEW DAY RESET
-
-        if rob_reset < current_reset:
+        if current_time - rob_reset >= 43200:
 
             rob_uses = 0
+
+            rob_reset = current_time
 
             economy_collection.update_one(
 
@@ -202,28 +187,28 @@ class Rob(commands.Cog):
 
                         "rob_uses": 0,
 
-                        "rob_reset": current_reset
+                        "rob_reset": current_time
                     }
                 }
             )
 
 
         # ─────────────────────────
-        # DAILY LIMIT
+        # LIMIT REACHED
         # ─────────────────────────
 
         if rob_uses >= 10:
 
-            next_reset = reset_time + timedelta(days=1)
+            next_reset = rob_reset + 43200
 
             embed = discord.Embed(
 
                 description=(
 
-                    "❌ You used all 10 rob attempts today.\n\n"
+                    "❌ You used all 10 rob attempts.\n\n"
 
-                    f"⏰ Reset <t:{int(next_reset.timestamp())}:R>\n"
-                    f"📅 <t:{int(next_reset.timestamp())}:F>"
+                    f"⏰ Reset <t:{next_reset}:R>\n"
+                    f"📅 <t:{next_reset}:F>"
 
                 ),
 
@@ -294,14 +279,14 @@ class Rob(commands.Cog):
                 },
 
                 "$set": {
-                    "rob_reset": current_reset
+                    "rob_reset": rob_reset
                 }
             }
         )
 
 
         # ─────────────────────────
-        # 40% SUCCESS CHANCE
+        # SUCCESS CHANCE
         # ─────────────────────────
 
         success = random.randint(1, 100) <= 40
@@ -401,4 +386,4 @@ async def setup(bot):
 
     await bot.add_cog(
         Rob(bot)
-    )
+        )
