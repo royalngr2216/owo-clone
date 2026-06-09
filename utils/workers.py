@@ -12,28 +12,23 @@ from utils.economy import (
 WORKER_LEVELS = {
 
     1: {
-        "income": 100000,
-        "storage": 100000
+        "income": 200000
     },
 
     2: {
-        "income": 125000,
-        "storage": 125000
+        "income": 350000
     },
 
     3: {
-        "income": 150000,
-        "storage": 150000
+        "income": 600000
     },
 
     4: {
-        "income": 200000,
-        "storage": 200000
+        "income": 850000
     },
 
     5: {
-        "income": 250000,
-        "storage": 250000
+        "income": 1000000
     }
 
 }
@@ -93,20 +88,11 @@ def update_workers(user_id):
 
         income = WORKER_LEVELS[level]["income"]
 
-        storage_cap = WORKER_LEVELS[level]["storage"]
-
-
-        # ALREADY FULL
-
-        if stored >= storage_cap:
-
-            continue
-
 
         elapsed = current_time - last_claim
 
 
-        # MONEY PER SECOND
+        # MONEY GENERATED
 
         generated = int(
 
@@ -120,19 +106,15 @@ def update_workers(user_id):
             continue
 
 
-        new_stored = stored + generated
+        # ADD GENERATED MONEY
+
+        worker["stored"] = stored + generated
 
 
-        # STORAGE LIMIT
-
-        if new_stored > storage_cap:
-
-            new_stored = storage_cap
-
-
-        worker["stored"] = new_stored
+        # UPDATE TIME
 
         worker["last_claim"] = current_time
+
 
         updated = True
 
