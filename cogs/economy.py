@@ -35,7 +35,7 @@ class Economy(commands.Cog):
 
         user = economy_collection.find_one(
             {"user_id": ctx.author.id}
-        )
+        ) or {}
 
         if not can_claim_daily(ctx.author.id):
 
@@ -107,7 +107,7 @@ class Economy(commands.Cog):
 
         user = economy_collection.find_one(
             {"user_id": ctx.author.id}
-        )
+        ) or {}
 
         if not can_claim_weekly(ctx.author.id):
 
@@ -179,7 +179,7 @@ class Economy(commands.Cog):
 
         user = economy_collection.find_one(
             {"user_id": ctx.author.id}
-        )
+        ) or {}
 
         if not can_claim_monthly(ctx.author.id):
 
