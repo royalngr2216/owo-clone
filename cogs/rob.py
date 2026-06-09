@@ -91,7 +91,7 @@ class Rob(commands.Cog):
         # 20% FAIL CHANCE
         # ─────────────────────────
 
-        caught = random.randint(1, 100) <= 20
+        caught = random.randint(1, 100) <= 40
 
 
         # ─────────────────────────
@@ -145,7 +145,7 @@ class Rob(commands.Cog):
         # SUCCESS
         # ─────────────────────────
 
-        stolen = int(victim_cash * 0.10)
+        stolen = int(victim_cash * 0.20)
 
         if stolen < 1:
             stolen = 1
