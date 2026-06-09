@@ -113,7 +113,10 @@ HELP_CATEGORIES = {
         "Coinflip heads.\n\n"
 
         "**.cf tails amount**\n"
-        "Coinflip tails."
+        "Coinflip tails."\n\n"
+
+        "**.slots amount**\n"
+        "Slots Game."
     ),
 
     "📊 Profile": (
