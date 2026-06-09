@@ -66,19 +66,19 @@ SYMBOLS = [
 
 OUTCOMES = {
 
-    "lose": 60,
+    "lose": 50,
 
-    "cherry": 15,
+    "cherry": 22,
 
-    "lemon": 8,
+    "lemon": 11,
 
-    "clover": 5,
+    "clover": 4,
 
     "bell": 3,
 
     "diamond": 2,
 
-    "jackpot": 2,
+    "jackpot": 3,
 
     "troll": 5
 }
