@@ -3,6 +3,7 @@ import discord
 import time
 
 from utils.economy import (
+    economy_collection,
     create_account,
     get_cash,
     add_cash,
@@ -32,10 +33,19 @@ class Economy(commands.Cog):
 
         create_account(ctx.author.id)
 
+        user = economy_collection.find_one(
+            {"user_id": ctx.author.id}
+        )
+
         if not can_claim_daily(ctx.author.id):
 
+            last_daily = user.get(
+                "last_daily",
+                0
+            )
+
             next_claim = int(
-                time.time() + 86400
+                last_daily + 86400
             )
 
             embed = discord.Embed(
@@ -95,10 +105,19 @@ class Economy(commands.Cog):
 
         create_account(ctx.author.id)
 
+        user = economy_collection.find_one(
+            {"user_id": ctx.author.id}
+        )
+
         if not can_claim_weekly(ctx.author.id):
 
+            last_weekly = user.get(
+                "last_weekly",
+                0
+            )
+
             next_claim = int(
-                time.time() + 604800
+                last_weekly + 604800
             )
 
             embed = discord.Embed(
@@ -158,10 +177,19 @@ class Economy(commands.Cog):
 
         create_account(ctx.author.id)
 
+        user = economy_collection.find_one(
+            {"user_id": ctx.author.id}
+        )
+
         if not can_claim_monthly(ctx.author.id):
 
+            last_monthly = user.get(
+                "last_monthly",
+                0
+            )
+
             next_claim = int(
-                time.time() + 2592000
+                last_monthly + 2592000
             )
 
             embed = discord.Embed(
