@@ -41,7 +41,8 @@ def create_account(user_id):
             "rob_uses": 0,
             "rob_reset": 0,
 
-            "workers": {}
+            "workers": {},
+            "inventory": {}
 
         })
 
