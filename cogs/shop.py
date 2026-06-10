@@ -14,6 +14,7 @@ from utils.economy import (
 PADLOCK_PRICE = 250000
 WORKER_PRICE = 5000000
 LOCK_AND_KEY_PRICE = 2500000
+SHOVEL_PRICE = 3000000
 
 
 # ─────────────────────────
@@ -63,8 +64,16 @@ class ShopView(discord.ui.View):
 
                 emoji="🔐"
 
-            )
+            ),
 
+            discord.SelectOption(
+
+                label="Shovel",
+
+                emoji="⛏",
+
+                description="3M NGR • Unlock mining"
+            )
         ]
     )
 
@@ -319,10 +328,9 @@ class ShopView(discord.ui.View):
                     f"Purchased **{worker_name}**\n\n"
 
                     "💰 Income:\n"
-                    "**100K NGR / Day**\n\n"
+                    "**200K NGR / Day**\n\n"
 
-                    "📦 Max Storage:\n"
-                    "**100K NGR**"
+                    "📈 Upgradeable up to Level 5"
 
                 ),
 
@@ -449,6 +457,107 @@ class ShopView(discord.ui.View):
             return
 
 
+        # ─────────────────────────
+        # SHOVEL
+        # ─────────────────────────
+
+        if select.values[0] == "Shovel":
+
+            cash = get_cash(
+                interaction.user.id
+            )
+
+
+            if cash < SHOVEL_PRICE:
+
+                embed = discord.Embed(
+
+                    description=(
+
+                        "❌ You don't have enough cash.\n\n"
+
+                        f"Required: "
+                        f"**{format_cash(SHOVEL_PRICE)}**"
+
+                    ),
+
+                    color=0xED4245
+                )
+
+                await interaction.response.send_message(
+
+                    embed=embed,
+                    ephemeral=True
+                )
+
+                return
+
+
+            if user_data.get("shovel", False):
+
+                embed = discord.Embed(
+
+                    description=(
+
+                        "❌ You already own a shovel."
+
+                    ),
+
+                    color=0xED4245
+                )
+
+                await interaction.response.send_message(
+
+                    embed=embed,
+                    ephemeral=True
+                )
+
+                return
+
+
+            remove_cash(
+                interaction.user.id,
+                SHOVEL_PRICE
+            )
+
+
+            economy_collection.update_one(
+
+                {
+                    "user_id": str(interaction.user.id)
+                },
+
+                {
+                    "$set": {
+                        "shovel": True
+                    }
+                }
+            )
+
+
+            embed = discord.Embed(
+
+                title="⛏ SHOVEL PURCHASED",
+
+                description=(
+
+                    "You purchased a shovel.\n\n"
+
+                    "⛏ You can now use `.mine`"
+
+                ),
+
+                color=0x57F287
+            )
+
+
+            await interaction.response.send_message(
+                embed=embed
+            )
+
+            return
+
+
 # ─────────────────────────
 # SHOP COMMAND
 # ─────────────────────────
@@ -506,6 +615,12 @@ class Shop(commands.Cog):
         )
 
 
+        shovel_owned = user_data.get(
+            "shovel",
+            False
+        )
+
+
         embed = discord.Embed(
 
             title="🛒 ECHLEON SHOP",
@@ -554,13 +669,13 @@ class Shop(commands.Cog):
 
                 "Passive income generators.\n\n"
 
-                "• Base Income: **100K/day**\n"
+                "• Level 1 Income: **200K/day**\n"
+                "• Max Level: **5**\n"
                 "• Upgradeable: **Yes**\n"
-                "• Max Workers: **5**\n"
                 f"• Owned: **{len(workers)}/5**\n\n"
 
-                "Workers stop generating "
-                "once storage becomes full."
+                "Workers generate money endlessly "
+                "until claimed."
 
             ),
 
@@ -588,6 +703,26 @@ class Shop(commands.Cog):
         )
 
 
+        # SHOVEL
+
+        embed.add_field(
+
+            name="⛏ Shovel",
+
+            value=(
+
+                "Unlock the mining system.\n\n"
+
+                "• Price: **3M NGR**\n"
+                "• Unlocks: **.mine**\n"
+                f"• Owned: **{'Yes' if shovel_owned else 'No'}**"
+
+            ),
+
+            inline=False
+        )
+
+
         embed.set_footer(
 
             text="ECHLEON Economy System"
@@ -606,4 +741,4 @@ async def setup(bot):
 
     await bot.add_cog(
         Shop(bot)
-        )
+			)
