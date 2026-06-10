@@ -20,7 +20,7 @@ from utils.items import (
 
 IST = pytz.timezone("Asia/Kolkata")
 
-HUNT_COOLDOWN = 7200
+HUNT_COOLDOWN = 1800
 
 HUNT_REWARD = 50000
 
@@ -111,7 +111,7 @@ class Hunt(commands.Cog):
         # BAD EVENT
         # ─────────────────────────
 
-        robbed = random.randint(1, 100) <= 10
+        robbed = random.randint(1, 100) <= 15
 
 
         if robbed:
