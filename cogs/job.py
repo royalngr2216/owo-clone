@@ -16,6 +16,9 @@ from utils.stats import (
     add_stats,
     update_biggest_win
 )
+from utils.achievement_checker import (
+    check_achievements
+)
 
 IST = pytz.timezone("Asia/Kolkata")
 
@@ -209,6 +212,10 @@ class Job(commands.Cog):
         add_stats(
             ctx.author.id,
             total_jobs=1
+        )
+        await check_achievements(
+            self.bot,
+            ctx.author
         )
         await ctx.send(embed=embed)
 
