@@ -12,6 +12,10 @@ from utils.economy import (
     create_account,
     get_cash
 )
+from utils.stats import (
+    add_stats,
+    update_biggest_win
+)
 
 from utils.items import (
     HUNTING_ITEMS
@@ -233,6 +237,12 @@ class Hunt(commands.Cog):
         )
 
 
+        add_stats(
+            ctx.author.id,
+            total_hunts=1
+        )
+
+
         await ctx.send(embed=embed)
 
 
@@ -240,4 +250,4 @@ async def setup(bot):
 
     await bot.add_cog(
         Hunt(bot)
-              )
+    )
