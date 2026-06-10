@@ -248,21 +248,21 @@ class AchievementDropdown(discord.ui.Select):
             else:
 
                 completed = "❌ NOT COMPLETED"
-
-
             text += (
 
-                f"## {achievement['name']}\n"
+    f"**{achievement['name']}**\n"
 
-                f"{achievement['description']}\n\n"
+    f"{achievement['description']}\n\n"
 
-                f"`{bar}` **{percent}%**\n"
+    f"`{bar}` **{percent}%**\n"
 
-                f"{current:,} / {required:,}\n\n"
+    f"**{current:,} / {required:,}**\n\n"
 
-                f"🎁 Reward: **{reward_text}**\n"
+    f"🎁 **Reward:** {reward_text}\n"
 
-                f"{completed}\n\n"
+    f"{completed}\n\n"
+
+    f"━━━━━━━━━━━━━━━━━━\n\n"
             )
 
 
