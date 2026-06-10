@@ -293,6 +293,9 @@ class AchievementView(discord.ui.View):
 
 # ─────────────────────────
 # COG
+# ────────────────────────
+# ─────────────────────────
+# COG
 # ─────────────────────────
 
 class Achievements(commands.Cog):
@@ -302,17 +305,20 @@ class Achievements(commands.Cog):
         self.bot = bot
 
 
-    @commands.command(name="achievements")
+    @commands.command(
+        name="quests",
+        aliases=["quest"]
+    )
 
     async def achievements(self, ctx):
 
         embed = discord.Embed(
 
-            title="🏆 ACHIEVEMENTS",
+            title="🏆 QUESTS",
 
             description=(
 
-                "Complete achievements to unlock\n"
+                "Complete quests to unlock\n"
 
                 "cash rewards, pets and flex titles.\n\n"
 
@@ -335,4 +341,4 @@ async def setup(bot):
 
     await bot.add_cog(
         Achievements(bot)
-          )
+    )
