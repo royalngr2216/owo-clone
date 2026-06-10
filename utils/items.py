@@ -8,23 +8,23 @@ FISHING_ITEMS = [
         "name": "smallfish",
         "display": "Small Fish",
         "emoji": "🐟",
-        "price": 5000,
-        "chance": 15
+        "price": 10000,
+        "chance": 30
     },
 
     {
         "name": "salmon",
         "display": "Salmon",
         "emoji": "🐠",
-        "price": 10000,
-        "chance": 15
+        "price": 25000,
+        "chance": 24
     },
 
     {
         "name": "crab",
         "display": "Crab",
         "emoji": "🦀",
-        "price": 15000,
+        "price": 50000,
         "chance": 20
     },
 
@@ -32,23 +32,23 @@ FISHING_ITEMS = [
         "name": "lobster",
         "display": "Lobster",
         "emoji": "🦞",
-        "price": 25000,
-        "chance": 20
+        "price": 100000,
+        "chance": 11
     },
 
     {
         "name": "pearl",
         "display": "Pearl",
         "emoji": "🦪",
-        "price": 50000,
-        "chance": 20
+        "price": 250000,
+        "chance": 8
     },
 
     {
         "name": "goldenfish",
         "display": "Golden Fish",
         "emoji": "🐡",
-        "price": 100000,
+        "price": 500000,
         "chance": 5
     },
 
@@ -56,8 +56,8 @@ FISHING_ITEMS = [
         "name": "ancientrelic",
         "display": "Ancient Relic",
         "emoji": "⚱️",
-        "price": 250000,
-        "chance": 5
+        "price": 1000000,
+        "chance": 2
     }
 
 ]
@@ -73,23 +73,23 @@ HUNTING_ITEMS = [
         "name": "rabbit",
         "display": "Rabbit",
         "emoji": "🐇",
-        "price": 5000,
-        "chance": 15
+        "price": 10000,
+        "chance": 30
     },
 
     {
         "name": "deer",
         "display": "Deer",
         "emoji": "🦌",
-        "price": 15000,
-        "chance": 15
+        "price": 25000,
+        "chance": 24
     },
 
     {
         "name": "wolfpelt",
         "display": "Wolf Pelt",
         "emoji": "🐺",
-        "price": 30000,
+        "price": 50000,
         "chance": 20
     },
 
@@ -97,23 +97,23 @@ HUNTING_ITEMS = [
         "name": "bearclaw",
         "display": "Bear Claw",
         "emoji": "🐻",
-        "price": 50000,
-        "chance": 20
+        "price": 100000,
+        "chance": 11
     },
 
     {
         "name": "eaglefeather",
         "display": "Eagle Feather",
         "emoji": "🦅",
-        "price": 75000,
-        "chance": 20
+        "price": 250000,
+        "chance": 8
     },
 
     {
         "name": "dragonskull",
         "display": "Dragon Skull",
         "emoji": "☠️",
-        "price": 200000,
+        "price": 500000,
         "chance": 5
     },
 
@@ -121,8 +121,8 @@ HUNTING_ITEMS = [
         "name": "mythichorn",
         "display": "Mythic Horn",
         "emoji": "🦄",
-        "price": 500000,
-        "chance": 5
+        "price": 1000000,
+        "chance": 2
     }
 
 ]
@@ -145,7 +145,7 @@ MINING_ITEMS = [
         "name": "iron",
         "display": "Iron",
         "emoji": "🔩",
-        "price": 35000,
+        "price": 50000,
         "chance": 25
     },
 
@@ -153,7 +153,7 @@ MINING_ITEMS = [
         "name": "gold",
         "display": "Gold",
         "emoji": "⚜️",
-        "price": 75000,
+        "price": 100000,
         "chance": 18
     },
 
