@@ -16,6 +16,10 @@ from utils.stats import (
     update_biggest_win
 )
 
+from utils.achievement_checker import (
+    check_achievements
+)
+
 
 class Coinflip(commands.Cog):
 
@@ -212,6 +216,12 @@ class Coinflip(commands.Cog):
 
 
             color = discord.Color.red()
+
+
+        await check_achievements(
+            self.bot,
+            ctx.author
+        )
 
 
         embed = discord.Embed(
