@@ -17,7 +17,9 @@ from utils.stats import (
     add_stats,
     update_biggest_win
 )
-
+from utils.achievement_checker import (
+    check_achievements
+)
 from utils.items import (
     FISHING_ITEMS
 )
@@ -225,8 +227,11 @@ class Fish(commands.Cog):
             ctx.author.id,
             total_fishes=1
         )
-
-
+        await check_achievements(
+            self.bot,
+            ctx.author
+        )
+        
         # ─────────────────────────
         # EMBED
         # ─────────────────────────
