@@ -13,6 +13,11 @@ from utils.workers import (
     WORKER_LEVELS,
     WORKER_VALUES
 )
+from utils.achievements import (
+    COMMON_ACHIEVEMENTS,
+    RARE_ACHIEVEMENTS,
+    LEGENDARY_ACHIEVEMENTS
+)
 
 # ─────────────────────────
 # ROLE UPDATE
@@ -578,8 +583,61 @@ class System(commands.Cog):
 
             inline=False
         )
+        # ─────────────────────────
+        # COMPLETED ACHIEVEMENTS
+        # ─────────────────────────
+
+        claimed = user_data.get(
+            "claimed_achievements",
+            []
+        )
+
+        achievement_text = ""
 
 
+        for achievement_id in claimed:
+
+            if achievement_id in LEGENDARY_ACHIEVEMENTS:
+
+                achievement_text += (
+
+                    f"🟡 "
+                    f"{LEGENDARY_ACHIEVEMENTS[achievement_id]['name']}\n"
+
+                )
+
+            elif achievement_id in RARE_ACHIEVEMENTS:
+
+                achievement_text += (
+
+                    f"🟣 "
+                    f"{RARE_ACHIEVEMENTS[achievement_id]['name']}\n"
+
+                )
+
+            elif achievement_id in COMMON_ACHIEVEMENTS:
+
+                achievement_text += (
+
+                    f"⚪ "
+                    f"{COMMON_ACHIEVEMENTS[achievement_id]['name']}\n"
+
+                )
+
+
+        if achievement_text == "":
+
+            achievement_text = "❌ None"
+
+
+        embed.add_field(
+
+            name="🏆 Completed Achievements",
+
+            value=achievement_text,
+
+            inline=False
+        )
         # PROTECTION
 
         embed.add_field(
