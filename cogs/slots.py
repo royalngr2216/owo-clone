@@ -11,6 +11,11 @@ from utils.economy import (
     format_cash
 )
 
+from utils.stats import (
+    add_stats,
+    update_biggest_win
+)
+
 
 # ─────────────────────────
 # PARSE MONEY
@@ -228,6 +233,20 @@ class Slots(commands.Cog):
 
 
         # ─────────────────────────
+        # PROFILE STATS
+        # ─────────────────────────
+
+        add_stats(
+
+            ctx.author.id,
+
+            games_played=1,
+
+            total_gambled=amount
+        )
+
+
+        # ─────────────────────────
         # DETERMINE OUTCOME
         # ─────────────────────────
 
@@ -436,6 +455,12 @@ class Slots(commands.Cog):
 
 
         add_cash(
+            ctx.author.id,
+            winnings
+        )
+
+
+        update_biggest_win(
             ctx.author.id,
             winnings
         )
