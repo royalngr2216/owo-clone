@@ -9,7 +9,10 @@ from utils.economy import (
 )
 from utils.items import ALL_ITEMS
 
-from utils.workers import WORKER_LEVELS
+from utils.workers import (
+    WORKER_LEVELS,
+    WORKER_VALUES
+)
 
 # ─────────────────────────
 # ROLE UPDATE
