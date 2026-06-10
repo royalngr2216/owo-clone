@@ -223,19 +223,21 @@ async def check_achievements(bot, user):
 
         else:
 
-            economy_collection.update_one(
+            if reward not in user_data.get("pets", []):
 
-                {
-                    "user_id": str(user.id)
-                },
+                economy_collection.update_one(
 
-                {
-                    "$push": {
+                    {
+                        "user_id": str(user.id)
+                    },
 
-                        "pets": reward
+                    {
+                        "$push": {
+
+                            "pets": reward
+                        }
                     }
-                }
-            )
+                )
 
             reward_text = (
                 f"🐾 {reward.replace('_', ' ').title()}"
@@ -305,10 +307,10 @@ async def check_achievements(bot, user):
         # SEND
         # ─────────────────────────
 
-        try:
+        channel = bot.get_channel(
+            710894803721912350
+        )
 
-            await user.send(embed=embed)
+        if channel:
 
-        except:
-
-            pass
+            await channel.send(embed=embed)
