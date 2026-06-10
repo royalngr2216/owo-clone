@@ -12,8 +12,10 @@ from utils.economy import (
     create_account,
     get_cash
 )
-
-
+from utils.stats import (
+    add_stats,
+    update_biggest_win
+)
 IST = pytz.timezone("Asia/Kolkata")
 
 MINE_COOLDOWN = 10800
@@ -382,7 +384,10 @@ class Mine(commands.Cog):
             color=0x57F287
         )
 
-
+        add_stats(
+            ctx.author.id,
+            total_mines=1
+        )
         await ctx.send(embed=embed)
 
 
