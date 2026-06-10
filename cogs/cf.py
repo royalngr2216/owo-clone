@@ -11,12 +11,18 @@ from utils.economy import (
     format_cash
 )
 
+from utils.stats import (
+    add_stats,
+    update_biggest_win
+)
+
 
 class Coinflip(commands.Cog):
 
     def __init__(self, bot):
 
         self.bot = bot
+
 
     @commands.command(
         aliases=["cf"]
@@ -45,22 +51,27 @@ class Coinflip(commands.Cog):
 
             return
 
+
         if choice == "h":
 
             choice = "heads"
+
 
         if choice == "t":
 
             choice = "tails"
 
+
         cash = get_cash(
             ctx.author.id
         )
+
 
         amount = parse_amount(
             amount,
             cash
         )
+
 
         if amount is None:
 
@@ -70,6 +81,7 @@ class Coinflip(commands.Cog):
 
             return
 
+
         if amount <= 0:
 
             await ctx.send(
@@ -77,6 +89,7 @@ class Coinflip(commands.Cog):
             )
 
             return
+
 
         if cash < amount:
 
@@ -86,9 +99,11 @@ class Coinflip(commands.Cog):
 
             return
 
+
         suspense_msg = await ctx.send(
             "Flipping the coin... 🪙"
         )
+
 
         suspense_texts = [
 
@@ -98,6 +113,7 @@ class Coinflip(commands.Cog):
 
         ]
 
+
         for text in suspense_texts:
 
             await suspense_msg.edit(
@@ -105,6 +121,7 @@ class Coinflip(commands.Cog):
             )
 
             await asyncio.sleep(0.05)
+
 
         # GIFS
 
@@ -115,12 +132,14 @@ class Coinflip(commands.Cog):
             "VN20250413_143452.gif"
         )
 
+
         tails_gif = (
             "https://cdn.discordapp.com/attachments/"
             "1356735875517775995/"
             "1360903389403283496/"
             "VN20250413_142456_2.gif"
         )
+
 
         # RESULT
 
@@ -129,6 +148,19 @@ class Coinflip(commands.Cog):
             "tails"
         ])
 
+
+        # PROFILE STATS
+
+        add_stats(
+
+            ctx.author.id,
+
+            games_played=1,
+
+            total_gambled=amount
+        )
+
+
         if result == "heads":
 
             gif = heads_gif
@@ -136,6 +168,7 @@ class Coinflip(commands.Cog):
         else:
 
             gif = tails_gif
+
 
         # WIN
 
@@ -146,12 +179,21 @@ class Coinflip(commands.Cog):
                 amount
             )
 
+
+            update_biggest_win(
+                ctx.author.id,
+                amount
+            )
+
+
             outcome = (
                 f"✅ {ctx.author.mention} won "
                 f"**{format_cash(amount)}**"
             )
 
+
             color = discord.Color.green()
+
 
         # LOSE
 
@@ -162,12 +204,15 @@ class Coinflip(commands.Cog):
                 amount
             )
 
+
             outcome = (
                 f"❌ {ctx.author.mention} lost "
                 f"**{format_cash(amount)}**"
             )
 
+
             color = discord.Color.red()
+
 
         embed = discord.Embed(
 
@@ -183,9 +228,11 @@ class Coinflip(commands.Cog):
             color=color
         )
 
+
         embed.set_image(
             url=gif
         )
+
 
         await suspense_msg.edit(
 
