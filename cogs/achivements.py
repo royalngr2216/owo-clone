@@ -11,7 +11,8 @@ from utils.stats import get_profile
 
 from utils.economy import (
     economy_collection,
-    format_cash
+    format_cash,
+    add_cash
 )
 
 
@@ -231,7 +232,22 @@ class AchievementDropdown(discord.ui.Select):
                 ).title()
 
 
-            completed = "✅ COMPLETED" if current >= required else "❌ NOT COMPLETED"
+            claimed = user_data.get(
+                "claimed_achievements",
+                []
+            )
+
+            if achievement_id in claimed:
+
+                completed = "🏆 CLAIMED"
+
+            elif current >= required:
+
+                completed = "✅ READY TO CLAIM"
+
+            else:
+
+                completed = "❌ NOT COMPLETED"
 
 
             text += (
