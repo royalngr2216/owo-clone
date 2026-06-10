@@ -311,6 +311,22 @@ async def check_achievements(bot, user):
             710894803721912350
         )
 
-        if channel:
+        try:
 
-            await channel.send(embed=embed)
+            if channel:
+
+                await channel.send(
+                    embed=embed
+                )
+
+            else:
+
+                print(
+                    "Achievement channel not found."
+                )
+
+        except Exception as e:
+
+            print(
+                f"Achievement send error: {e}"
+            )
