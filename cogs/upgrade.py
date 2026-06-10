@@ -9,6 +9,9 @@ from utils.economy import (
     create_account
 )
 
+from utils.achievement_checker import (
+    check_achievements
+)
 
 UPGRADE_COSTS = {
 
@@ -197,8 +200,18 @@ class Upgrade(commands.Cog):
         await ctx.send(embed=embed)
 
 
+        # ─────────────────────────
+        # ACHIEVEMENTS
+        # ─────────────────────────
+
+        await check_achievements(
+            self.bot,
+            ctx.author
+        )
+
+
 async def setup(bot):
 
     await bot.add_cog(
         Upgrade(bot)
-      )
+    )
