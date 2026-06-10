@@ -42,7 +42,9 @@ def create_account(user_id):
             "rob_reset": 0,
 
             "workers": {},
-            "inventory": {}
+            "inventory": {},
+            "claimed_achievements": [],
+            "pets": []
 
         })
 
