@@ -16,6 +16,9 @@ from utils.stats import (
     add_stats,
     update_biggest_win
 )
+from utils.achievement_checker import (
+    check_achievements
+)
 
 from utils.items import (
     HUNTING_ITEMS
@@ -241,8 +244,10 @@ class Hunt(commands.Cog):
             ctx.author.id,
             total_hunts=1
         )
-
-
+        await check_achievements(
+            self.bot,
+            ctx.author
+        )
         await ctx.send(embed=embed)
 
 
