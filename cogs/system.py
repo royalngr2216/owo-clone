@@ -428,7 +428,7 @@ class System(commands.Cog):
 
             text += (
 
-                f"**#{index + 1}** {name}\n"
+                f"**#{index + 1} {name}**\n"
                 f"{format_cash(cash)}\n\n"
 
             )
