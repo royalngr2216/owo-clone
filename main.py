@@ -91,6 +91,51 @@ async def on_ready():
         f"Logged in as {bot.user}"
     )
 
+
+# ─────────────────────────
+# ERROR HANDLER
+# ─────────────────────────
+
+@bot.event
+async def on_command_error(ctx, error):
+
+    print("\n========== COMMAND ERROR ==========")
+
+    traceback.print_exception(
+        type(error),
+        error,
+        error.__traceback__
+    )
+
+    print("===================================\n")
+
+    try:
+
+        await ctx.send(
+            f"❌ Error: {error}"
+        )
+
+    except:
+
+        pass
+
+
+# ─────────────────────────
+# DISCONNECT LOGS
+# ─────────────────────────
+
+@bot.event
+async def on_disconnect():
+
+    print("⚠ Bot disconnected from Discord.")
+
+
+@bot.event
+async def on_resumed():
+
+    print("✅ Bot reconnected to Discord.")
+
+
 # START BOT
 
 if __name__ == "__main__":
@@ -99,4 +144,7 @@ if __name__ == "__main__":
 
     token = os.getenv("TOKEN")
 
-    bot.run(token)
+    bot.run(
+        token,
+        reconnect=True
+        )
