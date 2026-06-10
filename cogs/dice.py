@@ -16,6 +16,9 @@ from utils.stats import (
     add_stats,
     update_biggest_win
 )
+from utils.achievement_checker import (
+    check_achievements
+)
 
 
 class Dice(commands.Cog):
@@ -253,9 +256,11 @@ class Dice(commands.Cog):
 
                 inline=False
             )
-
-
-        await ctx.send(
+            await check_achievements(
+                self.bot,
+                ctx.author
+            )
+            await ctx.send(
             embed=embed
         )
 
