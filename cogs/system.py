@@ -83,6 +83,9 @@ HELP_CATEGORIES = {
 
         "**.hunt**\n"
         "Go hunting for rewards."
+
+        "**.mine**\n"
+        "Go mining for very high rewards."
     ),
 
     "🎮 Games": (
