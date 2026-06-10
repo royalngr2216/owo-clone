@@ -13,6 +13,11 @@ from utils.economy import (
     get_cash
 )
 
+from utils.stats import (
+    add_stats,
+    update_biggest_win
+)
+
 from utils.items import (
     FISHING_ITEMS
 )
@@ -212,6 +217,20 @@ class Fish(commands.Cog):
         )
 
 
+        # ─────────────────────────
+        # PROFILE STATS
+        # ─────────────────────────
+
+        add_stats(
+            ctx.author.id,
+            total_fishes=1
+        )
+
+
+        # ─────────────────────────
+        # EMBED
+        # ─────────────────────────
+
         embed = discord.Embed(
 
             title="🎣 FISHING",
@@ -240,4 +259,4 @@ async def setup(bot):
 
     await bot.add_cog(
         Fish(bot)
-          )
+    )
