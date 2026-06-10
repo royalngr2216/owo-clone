@@ -144,7 +144,7 @@ MINING_ITEMS = [
     {
         "name": "iron",
         "display": "Iron",
-        "emoji": "⛓",
+        "emoji": "🔩",
         "price": 35000,
         "chance": 25
     },
@@ -152,7 +152,7 @@ MINING_ITEMS = [
     {
         "name": "gold",
         "display": "Gold",
-        "emoji": "🥇",
+        "emoji": "⚜️",
         "price": 75000,
         "chance": 18
     },
@@ -168,7 +168,7 @@ MINING_ITEMS = [
     {
         "name": "emerald",
         "display": "Emerald",
-        "emoji": "🟢",
+        "emoji": "🔮",
         "price": 500000,
         "chance": 7
     },
@@ -176,7 +176,7 @@ MINING_ITEMS = [
     {
         "name": "ruby",
         "display": "Ruby",
-        "emoji": "🔴",
+        "emoji": "♦️",
         "price": 1000000,
         "chance": 4
     },
