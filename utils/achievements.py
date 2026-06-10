@@ -14,7 +14,9 @@ COMMON_ACHIEVEMENTS = {
 
         "required": 100,
 
-        "reward": 5_000_000
+        "reward": 5_000_000,
+
+        "rarity": "common"
     },
 
     "miner_1": {
@@ -27,7 +29,9 @@ COMMON_ACHIEVEMENTS = {
 
         "required": 100,
 
-        "reward": 5_000_000
+        "reward": 5_000_000,
+
+        "rarity": "common"
     },
 
     "fisher_1": {
@@ -40,7 +44,9 @@ COMMON_ACHIEVEMENTS = {
 
         "required": 100,
 
-        "reward": 5_000_000
+        "reward": 5_000_000,
+
+        "rarity": "common"
     },
 
     "worker_1": {
@@ -53,7 +59,9 @@ COMMON_ACHIEVEMENTS = {
 
         "required": 100,
 
-        "reward": 5_000_000
+        "reward": 5_000_000,
+
+        "rarity": "common"
     },
 
     "gambler_1": {
@@ -66,7 +74,9 @@ COMMON_ACHIEVEMENTS = {
 
         "required": 500,
 
-        "reward": 5_000_000
+        "reward": 5_000_000,
+
+        "rarity": "common"
     }
 }
 
@@ -87,7 +97,9 @@ RARE_ACHIEVEMENTS = {
 
         "required": 1000,
 
-        "reward": "bat_pet"
+        "reward": "bat_pet",
+
+        "rarity": "rare"
     },
 
     "corporate_slave": {
@@ -100,7 +112,9 @@ RARE_ACHIEVEMENTS = {
 
         "required": 1000,
 
-        "reward": "cat_pet"
+        "reward": "cat_pet",
+
+        "rarity": "rare"
     },
 
     "sea_predator": {
@@ -113,7 +127,9 @@ RARE_ACHIEVEMENTS = {
 
         "required": 1000,
 
-        "reward": "shark_pet"
+        "reward": "shark_pet",
+
+        "rarity": "rare"
     },
 
     "apex_hunter": {
@@ -126,7 +142,9 @@ RARE_ACHIEVEMENTS = {
 
         "required": 1000,
 
-        "reward": "cobra_pet"
+        "reward": "cobra_pet",
+
+        "rarity": "rare"
     },
 
     "work_empire": {
@@ -139,7 +157,9 @@ RARE_ACHIEVEMENTS = {
 
         "required": 5,
 
-        "reward": 10_000_000
+        "reward": 10_000_000,
+
+        "rarity": "rare"
     }
 }
 
@@ -160,7 +180,9 @@ LEGENDARY_ACHIEVEMENTS = {
 
         "required": 100_000_000,
 
-        "reward": 10_000_000
+        "reward": 10_000_000,
+
+        "rarity": "legendary"
     },
 
     "gambler": {
@@ -173,7 +195,9 @@ LEGENDARY_ACHIEVEMENTS = {
 
         "required": 100_000_000,
 
-        "reward": 25_000_000
+        "reward": 25_000_000,
+
+        "rarity": "legendary"
     },
 
     "honoured_one": {
@@ -186,7 +210,9 @@ LEGENDARY_ACHIEVEMENTS = {
 
         "required": 1_000_000_000,
 
-        "reward": "dragon_pet"
+        "reward": "dragon_pet",
+
+        "rarity": "legendary"
     },
 
     "immortal": {
@@ -199,7 +225,9 @@ LEGENDARY_ACHIEVEMENTS = {
 
         "required": 20,
 
-        "reward": 20_000_000
+        "reward": 20_000_000,
+
+        "rarity": "legendary"
     },
 
     "unluckiest_man_alive": {
@@ -212,7 +240,9 @@ LEGENDARY_ACHIEVEMENTS = {
 
         "required": 10,
 
-        "reward": 10_000_000
+        "reward": 10_000_000,
+
+        "rarity": "legendary"
     }
 }
 
