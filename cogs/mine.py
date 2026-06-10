@@ -53,7 +53,7 @@ ORES = {
     },
 
     "ruby": {
-        "emoji": ♦️",
+        "emoji": "♦️",
         "chance": 4
     },
 
