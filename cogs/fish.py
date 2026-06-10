@@ -20,7 +20,7 @@ from utils.items import (
 
 IST = pytz.timezone("Asia/Kolkata")
 
-FISH_COOLDOWN = 7200
+FISH_COOLDOWN = 1800
 
 FISH_REWARD = 50000
 
