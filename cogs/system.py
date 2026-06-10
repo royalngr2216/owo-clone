@@ -7,7 +7,9 @@ from utils.economy import (
     economy_collection,
     format_cash
 )
+from utils.items import ALL_ITEMS
 
+from utils.workers import WORKER_LEVELS
 
 # ─────────────────────────
 # ROLE UPDATE
@@ -82,7 +84,7 @@ HELP_CATEGORIES = {
         "Go fishing for rewards.\n\n"
 
         "**.hunt**\n"
-        "Go hunting for rewards."
+        "Go hunting for rewards.\n\n"
 
         "**.mine**\n"
         "Go mining for very high rewards."
@@ -290,6 +292,107 @@ class System(commands.Cog):
             user_data = {}
 
 
+        # ─────────────────────────
+        # BASIC STATS
+        # ─────────────────────────
+
+        cash = user_data.get(
+            "cash",
+            0
+        )
+
+        games_played = user_data.get(
+            "games_played",
+            0
+        )
+
+        total_gambled = user_data.get(
+            "total_gambled",
+            0
+        )
+
+        biggest_win = user_data.get(
+            "biggest_win",
+            0
+        )
+
+        total_mines = user_data.get(
+            "total_mines",
+            0
+        )
+
+        total_fishes = user_data.get(
+            "total_fishes",
+            0
+        )
+
+        total_hunts = user_data.get(
+            "total_hunts",
+            0
+        )
+
+        total_jobs = user_data.get(
+            "total_jobs",
+            0
+        )
+
+
+        # ─────────────────────────
+        # INVENTORY VALUE
+        # ─────────────────────────
+
+        inventory = user_data.get(
+            "inventory",
+            {}
+        )
+
+        inventory_value = 0
+
+
+        for item_name, amount in inventory.items():
+
+            if item_name in ALL_ITEMS:
+
+                inventory_value += (
+
+                    ALL_ITEMS[item_name]["price"]
+
+                    * amount
+                )
+
+
+        # ─────────────────────────
+        # WORKERS
+        # ─────────────────────────
+
+        workers = user_data.get(
+            "workers",
+            {}
+        )
+
+        workers_owned = len(workers)
+
+        worker_income = 0
+
+
+        for worker in workers.values():
+
+            level = worker.get(
+                "level",
+                1
+            )
+
+            worker_income += (
+
+                WORKER_LEVELS[level]["income"]
+
+            )
+
+
+        # ─────────────────────────
+        # PADLOCK
+        # ─────────────────────────
+
         padlock_until = user_data.get(
             "padlock_until",
             0
@@ -316,9 +419,13 @@ class System(commands.Cog):
             protection = "❌ None"
 
 
+        # ─────────────────────────
+        # EMBED
+        # ─────────────────────────
+
         embed = discord.Embed(
 
-            title="PROFILE",
+            title=f"{member.name.upper()}'S PROFILE",
 
             description=member.mention,
 
@@ -331,38 +438,118 @@ class System(commands.Cog):
         )
 
 
-        embed.add_field(
-            name="Wins",
-            value=f"**{wins}**",
-            inline=True
-        )
+        # CASH
 
         embed.add_field(
-            name="Losses",
-            value=f"**{losses}**",
-            inline=True
+
+            name="💰 Cash",
+
+            value=f"**{format_cash(cash)}**",
+
+            inline=False
         )
 
-        embed.add_field(
-            name="Matches",
-            value=f"**{matches}**",
-            inline=True
-        )
+
+        # INVENTORY
 
         embed.add_field(
-            name="Win Rate",
-            value=f"**{winrate}%**",
-            inline=True
+
+            name="📦 Inventory Value",
+
+            value=f"**{format_cash(inventory_value)}**",
+
+            inline=False
         )
 
+
+        # GAMBLING
+
         embed.add_field(
-            name="Protection",
+
+            name="🎰 Gambling",
+
+            value=(
+
+                f"🎮 Games: **{games_played}**\n"
+                f"💸 Gambled: **{format_cash(total_gambled)}**\n"
+                f"🏆 Biggest Win: "
+                f"**{format_cash(biggest_win)}**"
+
+            ),
+
+            inline=False
+        )
+
+
+        # WORKERS
+
+        embed.add_field(
+
+            name="⚒ Workers",
+
+            value=(
+
+                f"👷 Owned: **{workers_owned}**\n"
+                f"💵 Income/Day: "
+                f"**{format_cash(worker_income)}**"
+
+            ),
+
+            inline=False
+        )
+
+
+        # ACTIVITIES
+
+        embed.add_field(
+
+            name="🌎 Activities",
+
+            value=(
+
+                f"⛏ {total_mines}  "
+                f"🎣 {total_fishes}  "
+                f"🏹 {total_hunts}  "
+                f"💼 {total_jobs}"
+
+            ),
+
+            inline=False
+        )
+
+
+        # PVP STATS
+
+        embed.add_field(
+
+            name="🏆 PvP Stats",
+
+            value=(
+
+                f"✅ Wins: **{wins}**\n"
+                f"❌ Losses: **{losses}**\n"
+                f"🎮 Matches: **{matches}**\n"
+                f"📈 Winrate: **{winrate}%**"
+
+            ),
+
+            inline=False
+        )
+
+
+        # PROTECTION
+
+        embed.add_field(
+
+            name="🛡 Protection",
+
             value=protection,
-            inline=True
+
+            inline=False
         )
+
 
         await ctx.send(embed=embed)
-
 
     # ─────────────────────────
     # LEADERBOARD
