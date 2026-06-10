@@ -263,6 +263,7 @@ class System(commands.Cog):
 
         stats = get_profile(member.id)
 
+
         wins = stats["wins"]
         losses = stats["losses"]
         matches = stats["matches"]
@@ -293,7 +294,7 @@ class System(commands.Cog):
 
 
         # ─────────────────────────
-        # BASIC STATS
+        # CASH
         # ─────────────────────────
 
         cash = user_data.get(
@@ -301,37 +302,42 @@ class System(commands.Cog):
             0
         )
 
-        games_played = user_data.get(
+
+        # ─────────────────────────
+        # PROFILE STATS
+        # ─────────────────────────
+
+        games_played = stats.get(
             "games_played",
             0
         )
 
-        total_gambled = user_data.get(
+        total_gambled = stats.get(
             "total_gambled",
             0
         )
 
-        biggest_win = user_data.get(
+        biggest_win = stats.get(
             "biggest_win",
             0
         )
 
-        total_mines = user_data.get(
+        total_mines = stats.get(
             "total_mines",
             0
         )
 
-        total_fishes = user_data.get(
+        total_fishes = stats.get(
             "total_fishes",
             0
         )
 
-        total_hunts = user_data.get(
+        total_hunts = stats.get(
             "total_hunts",
             0
         )
 
-        total_jobs = user_data.get(
+        total_jobs = stats.get(
             "total_jobs",
             0
         )
@@ -516,9 +522,8 @@ class System(commands.Cog):
 
             inline=False
         )
-
-
-        # Protection
+        
+        # PROTECTION
 
         embed.add_field(
 
