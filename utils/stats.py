@@ -38,9 +38,76 @@ def create_profile(user_id):
         "total_lost": 0,
 
         "streak": 0,
-        "best_streak": 0
+        "best_streak": 0,
+
+        # NEW PROFILE STATS
+
+        "games_played": 0,
+        "total_gambled": 0,
+        "biggest_win": 0,
+
+        "total_mines": 0,
+        "total_fishes": 0,
+        "total_hunts": 0,
+        "total_jobs": 0
+    })
+
+
+# ─────────────────────────
+# ADD STATS
+# ─────────────────────────
+
+def add_stats(user_id, **stats):
+
+    create_profile(user_id)
+
+    stats_collection.update_one(
+
+        {
+            "user_id": str(user_id)
+        },
+
+        {
+            "$inc": stats
+        }
+    )
+
+
+# ─────────────────────────
+# BIGGEST WIN
+# ─────────────────────────
+
+def update_biggest_win(user_id, amount):
+
+    create_profile(user_id)
+
+    user = stats_collection.find_one({
+
+        "user_id": str(user_id)
 
     })
+
+
+    current = user.get(
+        "biggest_win",
+        0
+    )
+
+
+    if amount > current:
+
+        stats_collection.update_one(
+
+            {
+                "user_id": str(user_id)
+            },
+
+            {
+                "$set": {
+                    "biggest_win": amount
+                }
+            }
+        )
 
 
 # ─────────────────────────
@@ -208,6 +275,40 @@ def get_profile(user_id):
         "best_streak": user.get(
             "best_streak",
             0
-        )
+        ),
 
+        "games_played": user.get(
+            "games_played",
+            0
+        ),
+
+        "total_gambled": user.get(
+            "total_gambled",
+            0
+        ),
+
+        "biggest_win": user.get(
+            "biggest_win",
+            0
+        ),
+
+        "total_mines": user.get(
+            "total_mines",
+            0
+        ),
+
+        "total_fishes": user.get(
+            "total_fishes",
+            0
+        ),
+
+        "total_hunts": user.get(
+            "total_hunts",
+            0
+        ),
+
+        "total_jobs": user.get(
+            "total_jobs",
+            0
+        )
     }
