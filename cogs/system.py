@@ -138,7 +138,10 @@ HELP_CATEGORIES = {
         "View player stats.\n\n"
 
         "**.leaderboard**\n"
-        "View richest players."
+        "View richest players.\n\n"
+
+         "**.quests**\n"
+        "View all quests and rewards."
     ),
 
     "⚙ Utility": (
