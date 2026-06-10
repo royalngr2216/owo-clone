@@ -15,7 +15,9 @@ from utils.stats import (
     add_stats,
     update_biggest_win
 )
-
+from utils.achievement_checker import (
+    check_achievements
+)
 
 # ─────────────────────────
 # PARSE MONEY
@@ -488,8 +490,10 @@ class Slots(commands.Cog):
         else:
 
             embed.color = 0x57F287
-
-
+        await check_achievements(
+            self.bot,
+            ctx.author
+            )
         await msg.edit(embed=embed)
 
 
