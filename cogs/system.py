@@ -60,7 +60,7 @@ HELP_CATEGORIES = {
 
         "**.sell item amount**\n"
         "Sell inventory items.\n\n"
-        ".sell all all for sellimg all.\n\n"
+        ".sell all all for selling all.\n\n"
 
         "**.padlock**\n"
         "View protection status."
@@ -107,25 +107,25 @@ HELP_CATEGORIES = {
 
     "🎲 Casino": (
 
-    "**.dice up amount**\n"
-    "Win on 8-12.\n\n"
+        "**.dice up amount**\n"
+        "Win on 8-12.\n\n"
 
-    "**.dice down amount**\n"
-    "Win on 2-6.\n\n"
+        "**.dice down amount**\n"
+        "Win on 2-6.\n\n"
 
-    "**.dice 7 amount**\n"
-    "Exact 7 payout.\n\n"
-    "Get 7x on win.\n\n"
+        "**.dice 7 amount**\n"
+        "Exact 7 payout.\n\n"
+        "Get 7x on win.\n\n"
 
-    "**.cf heads amount**\n"
-    "Coinflip heads.\n\n"
+        "**.cf heads amount**\n"
+        "Coinflip heads.\n\n"
 
-    "**.cf tails amount**\n"
-    "Coinflip tails.\n\n"
+        "**.cf tails amount**\n"
+        "Coinflip tails.\n\n"
 
-    "**.slots amount**\n"
-    "Play the slot machine."
-    ),  
+        "**.slots amount**\n"
+        "Play the slot machine."
+    ),
 
     "📊 Profile": (
 
@@ -266,7 +266,6 @@ class System(commands.Cog):
 
         stats = get_profile(member.id)
 
-
         wins = stats["wins"]
         losses = stats["losses"]
         matches = stats["matches"]
@@ -382,6 +381,7 @@ class System(commands.Cog):
         workers_owned = len(workers)
 
         worker_income = 0
+        workers_value = 0
 
 
         for worker in workers.values():
@@ -396,6 +396,45 @@ class System(commands.Cog):
                 WORKER_LEVELS[level]["income"]
 
             )
+
+            workers_value += (
+
+                WORKER_VALUES[level]
+
+            )
+
+
+        # ─────────────────────────
+        # SHOP VALUE
+        # ─────────────────────────
+
+        shop_value = 0
+
+
+        if user_data.get("shovel"):
+
+            shop_value += 3_000_000
+
+
+        if user_data.get("lock_and_key"):
+
+            shop_value += 2_500_000
+
+
+        # ─────────────────────────
+        # NET WORTH
+        # ─────────────────────────
+
+        networth = (
+
+            cash
+
+            + inventory_value
+
+            + workers_value
+
+            + shop_value
+        )
 
 
         # ─────────────────────────
@@ -471,6 +510,18 @@ class System(commands.Cog):
         )
 
 
+        # NET WORTH
+
+        embed.add_field(
+
+            name="💎 Net Worth",
+
+            value=f"**{format_cash(networth)}**",
+
+            inline=False
+        )
+
+
         # GAMBLING
 
         embed.add_field(
@@ -499,6 +550,8 @@ class System(commands.Cog):
             value=(
 
                 f"👷 Owned: **{workers_owned}**\n"
+                f"💰 Value: "
+                f"**{format_cash(workers_value)}**\n"
                 f"💵 Income/Day: "
                 f"**{format_cash(worker_income)}**"
 
@@ -525,7 +578,8 @@ class System(commands.Cog):
 
             inline=False
         )
-        
+
+
         # PROTECTION
 
         embed.add_field(
@@ -539,6 +593,7 @@ class System(commands.Cog):
 
 
         await ctx.send(embed=embed)
+
 
     # ─────────────────────────
     # LEADERBOARD
@@ -715,4 +770,4 @@ async def setup(bot):
 
     await bot.add_cog(
         System(bot)
-        )
+    )
