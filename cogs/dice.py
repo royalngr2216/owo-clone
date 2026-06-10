@@ -12,7 +12,9 @@ from utils.economy import (
 
 from utils.stats import (
     record_win,
-    record_loss
+    record_loss,
+    add_stats,
+    update_biggest_win
 )
 
 
@@ -111,6 +113,18 @@ class Dice(commands.Cog):
         )
 
 
+        # PROFILE STATS
+
+        add_stats(
+
+            ctx.author.id,
+
+            games_played=1,
+
+            total_gambled=amount
+        )
+
+
         dice1 = random.randint(1, 6)
         dice2 = random.randint(1, 6)
 
@@ -163,6 +177,11 @@ class Dice(commands.Cog):
             )
 
             record_win(
+                ctx.author.id,
+                winnings
+            )
+
+            update_biggest_win(
                 ctx.author.id,
                 winnings
             )
