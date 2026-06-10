@@ -12,7 +12,10 @@ from utils.economy import (
     create_account,
     get_cash
 )
-
+from utils.stats import (
+    add_stats,
+    update_biggest_win
+)
 
 IST = pytz.timezone("Asia/Kolkata")
 
@@ -203,7 +206,10 @@ class Job(commands.Cog):
             color=0x57F287
         )
 
-
+        add_stats(
+            ctx.author.id,
+            total_jobs=1
+        )
         await ctx.send(embed=embed)
 
 
