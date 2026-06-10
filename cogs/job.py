@@ -16,7 +16,7 @@ from utils.economy import (
 
 IST = pytz.timezone("Asia/Kolkata")
 
-JOB_COOLDOWN = 7200
+JOB_COOLDOWN = 3600
 
 JOB_REWARD = 100000
 
@@ -136,6 +136,36 @@ class Job(commands.Cog):
                     f"You went for work but "
                     f"**FURRY** 🍇 you and "
                     f"took **{format_cash(loss)}**."
+
+                ),
+
+                color=0xED4245
+            )
+
+            await ctx.send(embed=embed)
+
+            return
+
+        # ─────────────────────────
+        # AZURE EVENT
+        # ─────────────────────────
+
+        azure = random.randint(1, 100) <= 5
+
+
+        if azure:
+
+            embed = discord.Embed(
+
+                title="🧌 ZEW AZURE APPEARED",
+
+                description=(
+
+                    "Jew Azure arrived and stole"
+                    "all of your money.\n\n"
+
+                    f"💸 Azure took "
+                    f"**{format_cash(JOB_REWARD)}**"
 
                 ),
 
