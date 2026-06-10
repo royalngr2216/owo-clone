@@ -127,6 +127,69 @@ HUNTING_ITEMS = [
 
 ]
 
+# ─────────────────────────
+# MINING ITEMS
+# ─────────────────────────
+
+MINING_ITEMS = [
+
+    {
+        "name": "stone",
+        "display": "Stone",
+        "emoji": "🪨",
+        "price": 15000,
+        "chance": 35
+    },
+
+    {
+        "name": "iron",
+        "display": "Iron",
+        "emoji": "⛓",
+        "price": 35000,
+        "chance": 25
+    },
+
+    {
+        "name": "gold",
+        "display": "Gold",
+        "emoji": "🥇",
+        "price": 75000,
+        "chance": 18
+    },
+
+    {
+        "name": "diamond",
+        "display": "Diamond",
+        "emoji": "💎",
+        "price": 200000,
+        "chance": 10
+    },
+
+    {
+        "name": "emerald",
+        "display": "Emerald",
+        "emoji": "🟢",
+        "price": 500000,
+        "chance": 7
+    },
+
+    {
+        "name": "ruby",
+        "display": "Ruby",
+        "emoji": "🔴",
+        "price": 1000000,
+        "chance": 4
+    },
+
+    {
+        "name": "void_crystal",
+        "display": "Void Crystal",
+        "emoji": "🌌",
+        "price": 5000000,
+        "chance": 1
+    }
+
+]
 
 # ─────────────────────────
 # ALL ITEMS
@@ -139,5 +202,9 @@ for item in FISHING_ITEMS:
     ALL_ITEMS[item["name"]] = item
 
 for item in HUNTING_ITEMS:
+
+    ALL_ITEMS[item["name"]] = item
+
+for item in MINING_ITEMS:
 
     ALL_ITEMS[item["name"]] = item
