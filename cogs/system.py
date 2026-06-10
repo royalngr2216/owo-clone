@@ -507,10 +507,10 @@ class System(commands.Cog):
 
             value=(
 
-                f"⛏ {total_mines}  "
-                f"🎣 {total_fishes}  "
-                f"🏹 {total_hunts}  "
-                f"💼 {total_jobs}"
+                f"⛏ **{total_mines}**  "
+                f"🎣 **{total_fishes}**  "
+                f"🏹 **{total_hunts}**  "
+                f"💼 **{total_jobs}**"
 
             ),
 
@@ -518,26 +518,7 @@ class System(commands.Cog):
         )
 
 
-        # PVP STATS
-
-        embed.add_field(
-
-            name="🏆 PvP Stats",
-
-            value=(
-
-                f"✅ Wins: **{wins}**\n"
-                f"❌ Losses: **{losses}**\n"
-                f"🎮 Matches: **{matches}**\n"
-                f"📈 Winrate: **{winrate}%**"
-
-            ),
-
-            inline=False
-        )
-
-
-        # PROTECTION
+        # Protection
 
         embed.add_field(
 
