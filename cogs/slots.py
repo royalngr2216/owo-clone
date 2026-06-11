@@ -256,7 +256,7 @@ class Slots(commands.Cog):
                 result[0], result[1], result[2],
                 ctx.author, amount,
                 color=COLOR_TROLL,
-                result_line=f"☠️ EMIEL entered the casino.\n💸 Lost **{format_cash(amount)}**",
+                result_line=f"☠️ EMIEL entered the casino and <a:sex:1514766414248939610> you.\n💸 Lost **{format_cash(amount)}**",
             )
             await msg.edit(embed=embed)
             return
@@ -266,7 +266,7 @@ class Slots(commands.Cog):
             result_line = (
                 f"<:komedi:1482793353748680956> **So close!**\n-🪙 {format_cash(amount)}"
                 if near_miss
-                else f"<:bj:1492588515253551144> Better luck next time!\n-🪙 {format_cash(amount)}"
+                else f"<:bj:1492588515253551144> Better luck next time!\n"
             )
             embed = build_embed(
                 result[0], result[1], result[2],
@@ -288,13 +288,13 @@ class Slots(commands.Cog):
 
         if outcome == "jackpot":
             result_line = (
-                f"✨ **JACKPOT!** `{multiplier}x`\n"
+                f"<:3845happycat:1072237341357387786> **JACKPOT!** `{multiplier}x`\n"
                 f"+🪙 {format_cash(profit)}"
             )
             color = COLOR_JACKPOT
         else:
             result_line = (
-                f"🏆 **You won!** `{multiplier}x`\n"
+                f"<:Pray:1509654308705145033> **You won!** `{multiplier}x`\n"
                 f"+🪙 {format_cash(profit)}"
             )
             color = COLOR_WIN
