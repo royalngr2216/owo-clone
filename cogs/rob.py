@@ -1,6 +1,7 @@
 from discord.ext import commands
 import discord
 import random
+import asyncio
 from datetime import datetime
 import pytz
 
@@ -13,388 +14,200 @@ from utils.economy import (
     economy_collection
 )
 
-
 IST = pytz.timezone("Asia/Kolkata")
+
+
+# ─────────────────────────
+# HEIST FRAMES
+# ─────────────────────────
+
+HEIST_FRAMES = [
+    ("🕵️ **Casing the target...**",    "👀 You watch their movements from the shadows.",   0x95A5A6),
+    ("🔓 **Picking the lock...**",      "🤫 One click... two clicks...",                   0xE67E22),
+    ("💨 **Making the move...**",       "🏃 You slip inside. No turning back now.",         0x5865F2),
+]
 
 
 class Rob(commands.Cog):
 
     def __init__(self, bot):
-
         self.bot = bot
 
-
     @commands.command(name="rob")
-    async def rob(
-        self,
-        ctx,
-        member: discord.Member = None
-    ):
+    async def rob(self, ctx, member: discord.Member = None):
 
-        # ─────────────────────────
-        # NO USER
-        # ─────────────────────────
+        # ─── VALIDATION ───
 
         if member is None:
-
-            embed = discord.Embed(
-
+            await ctx.send(embed=discord.Embed(
                 description="❌ Mention someone to rob.",
-
                 color=0xED4245
-            )
-
-            await ctx.send(embed=embed)
-
+            ))
             return
-
-
-        # ─────────────────────────
-        # SELF ROB
-        # ─────────────────────────
 
         if member.id == ctx.author.id:
-
-            embed = discord.Embed(
-
+            await ctx.send(embed=discord.Embed(
                 description="❌ You cannot rob yourself.",
-
                 color=0xED4245
-            )
-
-            await ctx.send(embed=embed)
-
+            ))
             return
-
-
-        # ─────────────────────────
-        # BOT CHECK
-        # ─────────────────────────
 
         if member.bot:
-
-            embed = discord.Embed(
-
+            await ctx.send(embed=discord.Embed(
                 description="❌ You cannot rob bots.",
-
                 color=0xED4245
-            )
-
-            await ctx.send(embed=embed)
-
+            ))
             return
-
 
         create_account(ctx.author.id)
         create_account(member.id)
 
         robber_cash = get_cash(ctx.author.id)
-
         victim_cash = get_cash(member.id)
 
-
-        # ─────────────────────────
-        # PADLOCK CHECK
-        # ─────────────────────────
-
-        victim_data = economy_collection.find_one({
-
-            "user_id": str(member.id)
-
-        })
-
-        padlock_until = victim_data.get(
-            "padlock_until",
-            0
-        )
-
-        current_time = int(
-            datetime.now().timestamp()
-        )
+        # ─── PADLOCK CHECK ───
+        victim_data = economy_collection.find_one({"user_id": str(member.id)})
+        padlock_until = victim_data.get("padlock_until", 0)
+        current_time = int(datetime.now().timestamp())
 
         if padlock_until > current_time:
-
             remaining = padlock_until - current_time
-
-            days = remaining // 86400
-
+            days  = remaining // 86400
             hours = (remaining % 86400) // 3600
-
-            embed = discord.Embed(
-
-                title="🛡 PADLOCK ACTIVE",
-
+            await ctx.send(embed=discord.Embed(
+                title="🛡️ PADLOCK ACTIVE",
                 description=(
-
-                    f"{member.mention} is protected from robbing.\n\n"
-
-                    f"⏰ Remaining Time:\n"
-                    f"**{days}d {hours}h**"
-
+                    f"{member.mention} is shielded from robbery.\n\n"
+                    f"⏰ Protection remaining: **{days}d {hours}h**"
                 ),
-
                 color=0x5865F2
-            )
-
-            await ctx.send(embed=embed)
-
+            ))
             return
 
+        # ─── ROB LIMIT ───
+        user_data = economy_collection.find_one({"user_id": str(ctx.author.id)})
+        rob_uses  = user_data.get("rob_uses", 0)
+        rob_reset = user_data.get("rob_reset", 0)
+        current_time_ist = int(datetime.now(IST).timestamp())
 
-        # ─────────────────────────
-        # ROB LIMIT RESET
-        # ─────────────────────────
-
-        user_data = economy_collection.find_one({
-
-            "user_id": str(ctx.author.id)
-
-        })
-
-
-        rob_uses = user_data.get(
-            "rob_uses",
-            0
-        )
-
-        rob_reset = user_data.get(
-            "rob_reset",
-            0
-        )
-
-
-        current_time = int(
-            datetime.now(IST).timestamp()
-        )
-
-
-        # RESET EVERY 12 HOURS
-
-        if current_time - rob_reset >= 43200:
-
-            rob_uses = 0
-
-            rob_reset = current_time
-
+        if current_time_ist - rob_reset >= 43200:
+            rob_uses  = 0
+            rob_reset = current_time_ist
             economy_collection.update_one(
-
-                {
-                    "user_id": str(ctx.author.id)
-                },
-
-                {
-                    "$set": {
-
-                        "rob_uses": 0,
-
-                        "rob_reset": current_time
-                    }
-                }
+                {"user_id": str(ctx.author.id)},
+                {"$set": {"rob_uses": 0, "rob_reset": current_time_ist}}
             )
 
-
-        # ─────────────────────────
-        # MAX ROBS
-        # ─────────────────────────
-
-        max_robs = 10
-
-        if user_data.get("lock_and_key"):
-
-            max_robs = 20
-
-
-        # ─────────────────────────
-        # LIMIT REACHED
-        # ─────────────────────────
+        max_robs = 20 if user_data.get("lock_and_key") else 10
 
         if rob_uses >= max_robs:
-
             next_reset = rob_reset + 43200
-
-            embed = discord.Embed(
-
+            await ctx.send(embed=discord.Embed(
                 description=(
-
                     f"❌ You used all {max_robs} rob attempts.\n\n"
-
                     f"⏰ Reset <t:{next_reset}:R>\n"
                     f"📅 <t:{next_reset}:F>"
-
                 ),
-
                 color=0xED4245
-            )
-
-            await ctx.send(embed=embed)
-
+            ))
             return
 
-
-        # ─────────────────────────
-        # TOO RICH TO ROB
-        # ─────────────────────────
-
+        # ─── TOO RICH ───
         if robber_cash > 200000:
-
-            embed = discord.Embed(
-
+            await ctx.send(embed=discord.Embed(
                 description=(
-
                     "❌ You are too rich to rob people.\n\n"
-
-                    "Rob is only available for users under "
-                    "**200K NGR**."
-
+                    "Rob is only for users under **200K NGR**."
                 ),
-
                 color=0xED4245
-            )
-
-            await ctx.send(embed=embed)
-
+            ))
             return
 
-
-        # ─────────────────────────
-        # VICTIM TOO BROKE
-        # ─────────────────────────
-
+        # ─── VICTIM TOO BROKE ───
         if victim_cash < 100:
-
-            embed = discord.Embed(
-
+            await ctx.send(embed=discord.Embed(
                 description="❌ That user is too broke to rob.",
-
                 color=0xED4245
-            )
-
-            await ctx.send(embed=embed)
-
+            ))
             return
 
-
-        # ─────────────────────────
-        # ADD ROB USE
-        # ─────────────────────────
-
+        # ─── CHARGE ROB USE ───
         economy_collection.update_one(
-
-            {
-                "user_id": str(ctx.author.id)
-            },
-
-            {
-                "$inc": {
-                    "rob_uses": 1
-                },
-
-                "$set": {
-                    "rob_reset": rob_reset
-                }
-            }
+            {"user_id": str(ctx.author.id)},
+            {"$inc": {"rob_uses": 1}, "$set": {"rob_reset": rob_reset}}
         )
 
+        attempts_left = max_robs - (rob_uses + 1)
 
         # ─────────────────────────
-        # SUCCESS CHANCE
+        # HEIST ANIMATION
+        # ─────────────────────────
+
+        embed = discord.Embed(
+            title=f"🕵️ HEIST — {member.name.upper()}",
+            description=(
+                f"{HEIST_FRAMES[0][0]}\n"
+                f"{HEIST_FRAMES[0][1]}"
+            ),
+            color=HEIST_FRAMES[0][2]
+        )
+        embed.set_footer(text=f"ECHLEON  •  Attempts left: {attempts_left}/{max_robs}")
+        msg = await ctx.send(embed=embed)
+
+        for title, subtitle, color in HEIST_FRAMES[1:]:
+            await asyncio.sleep(0.85)
+            embed.description = f"{title}\n{subtitle}"
+            embed.color = color
+            try:
+                await msg.edit(embed=embed)
+            except:
+                pass
+
+        await asyncio.sleep(0.9)
+
+        # ─────────────────────────
+        # OUTCOME
         # ─────────────────────────
 
         success = random.randint(1, 100) <= 40
 
-
-        # ─────────────────────────
-        # SUCCESS
-        # ─────────────────────────
-
         if success:
-
-            stolen = int(victim_cash * 0.05)
-
-            if stolen < 1:
-
-                stolen = 1
-
-
-            remove_cash(
-                member.id,
-                stolen
-            )
-
-            add_cash(
-                ctx.author.id,
-                stolen
-            )
-
+            stolen = max(1, int(victim_cash * 0.05))
+            remove_cash(member.id,        stolen)
+            add_cash(ctx.author.id,       stolen)
 
             embed = discord.Embed(
-
-                title="🦹 ROB SUCCESS",
-
+                title="🦹 HEIST SUCCESSFUL",
                 description=(
-
-                    f"{ctx.author.mention} robbed {member.mention}\n\n"
-
-                    f"💰 Stole **{format_cash(stolen)}**\n\n"
-
-                    f"📊 Remaining Attempts:\n"
-                    f"**{max_robs - (rob_uses + 1)} / {max_robs}**"
-
+                    f"You slipped in, grabbed what you could,\n"
+                    f"and vanished before {member.mention} noticed."
                 ),
-
                 color=0x57F287
             )
+            embed.add_field(name="💰 Stolen",               value=f"**{format_cash(stolen)}**",            inline=True)
+            embed.add_field(name="📊 Attempts remaining",   value=f"**{attempts_left} / {max_robs}**",     inline=True)
+            embed.set_footer(text=f"Victim balance: {format_cash(victim_cash - stolen)} NGR remaining")
 
-            await ctx.send(embed=embed)
+        else:
+            loss = max(1, int(robber_cash * 0.50))
+            remove_cash(ctx.author.id,  loss)
+            add_cash(member.id,         loss)
 
-            return
+            embed = discord.Embed(
+                title="🚔 CAUGHT IN THE ACT",
+                description=(
+                    f"You tripped an alarm and got pinned down.\n"
+                    f"{member.mention} called the guards — you paid the price."
+                ),
+                color=0xED4245
+            )
+            embed.add_field(name="💸 Fine paid",             value=f"**{format_cash(loss)}**",              inline=True)
+            embed.add_field(name="📊 Attempts remaining",    value=f"**{attempts_left} / {max_robs}**",     inline=True)
+            embed.set_footer(text="Plan better next time.")
 
-
-        # ─────────────────────────
-        # FAILED ROB
-        # ─────────────────────────
-
-        loss = int(robber_cash * 0.50)
-
-        if loss < 1:
-
-            loss = 1
-
-
-        remove_cash(
-            ctx.author.id,
-            loss
-        )
-
-        add_cash(
-            member.id,
-            loss
-        )
-
-
-        embed = discord.Embed(
-
-            title="🚔 ROB FAILED",
-
-            description=(
-
-                f"{ctx.author.mention} got caught robbing {member.mention}\n\n"
-
-                f"💸 Lost **{format_cash(loss)}**\n\n"
-
-                f"📊 Remaining Attempts:\n"
-                f"**{max_robs - (rob_uses + 1)} / {max_robs}**"
-
-            ),
-
-            color=0xED4245
-        )
-
-        await ctx.send(embed=embed)
+        await msg.edit(embed=embed)
 
 
 async def setup(bot):
-
-    await bot.add_cog(
-        Rob(bot)
-            )
+    await bot.add_cog(Rob(bot))
+    
