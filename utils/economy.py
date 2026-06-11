@@ -35,6 +35,8 @@ def create_account(user_id):
             "daily": 0,
             "weekly": 0,
             "monthly": 0,
+            "give_sent_today": 0,
+            "give_reset": 0,
 
             "padlock_until": 0,
 
