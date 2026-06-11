@@ -1,6 +1,7 @@
 from discord.ext import commands
 import discord
 import random
+import asyncio
 from datetime import datetime
 import pytz
 
@@ -12,32 +13,53 @@ from utils.economy import (
     create_account,
     get_cash
 )
-from utils.stats import (
-    add_stats,
-    update_biggest_win
-)
-from utils.achievement_checker import (
-    check_achievements
-)
-
-from utils.items import (
-    HUNTING_ITEMS
-)
-
+from utils.stats import add_stats, update_biggest_win
+from utils.achievement_checker import check_achievements
+from utils.items import HUNTING_ITEMS
 
 IST = pytz.timezone("Asia/Kolkata")
 
 HUNT_COOLDOWN = 1800
-
 HUNT_REWARD = 50000
+
+
+# ─────────────────────────
+# HELPERS
+# ─────────────────────────
+
+def progress_bar(step, total=5):
+    filled = int((step / total) * 10)
+    bar = "█" * filled + "░" * (10 - filled)
+    pct = int((step / total) * 100)
+    return f"`[{bar}] {pct}%`"
+
+
+def get_rarity(chance):
+    if chance >= 20:
+        return ("⬜ Common",   0x95A5A6)
+    if chance >= 8:
+        return ("🟩 Uncommon", 0x57F287)
+    if chance >= 3:
+        return ("🟦 Rare",     0x5865F2)
+    return ("🌟 LEGENDARY",    0xF1C40F)
+
+
+# ─────────────────────────
+# HUNT ANIMATION FRAMES
+# ─────────────────────────
+
+HUNT_FRAMES = [
+    ("🌲 **Entering the forest...**",      "👣 You step into the wilderness.",         1),
+    ("👣 **Tracking footprints...**",       "🔍 You follow a trail deeper in.",         3),
+    ("🏔️ **Deep in the wild...**",         "🌿 The air grows still. Something nearby.", 4),
+    ("🎯 **Target spotted!**",              "🏹 You draw your bow...",                  5),
+]
 
 
 class Hunt(commands.Cog):
 
     def __init__(self, bot):
-
         self.bot = bot
-
 
     @commands.command(name="hunt")
     async def hunt(self, ctx):
@@ -45,214 +67,147 @@ class Hunt(commands.Cog):
         create_account(ctx.author.id)
 
         user_data = economy_collection.find_one({
-
             "user_id": str(ctx.author.id)
-
         })
 
+        last_hunt = user_data.get("last_hunt", 0)
+        current_time = int(datetime.now(IST).timestamp())
 
-        last_hunt = user_data.get(
-            "last_hunt",
-            0
-        )
-
-
-        current_time = int(
-            datetime.now(IST).timestamp()
-        )
-
-
-        # ─────────────────────────
-        # COOLDOWN
-        # ─────────────────────────
-
+        # ─── COOLDOWN ───
         if current_time - last_hunt < HUNT_COOLDOWN:
-
-            remaining = (
-
-                HUNT_COOLDOWN -
-
-                (current_time - last_hunt)
-
-            )
-
-
+            remaining = HUNT_COOLDOWN - (current_time - last_hunt)
             next_time = current_time + remaining
-
-
             embed = discord.Embed(
-
                 description=(
-
                     "❌ Hunting cooldown active.\n\n"
-
                     f"⏰ Try again <t:{next_time}:R>"
-
                 ),
-
                 color=0xED4245
             )
-
             await ctx.send(embed=embed)
-
             return
 
-
-        # SAVE TIME
-
+        # ─── SAVE TIME ───
         economy_collection.update_one(
-
-            {
-                "user_id": str(ctx.author.id)
-            },
-
-            {
-                "$set": {
-                    "last_hunt": current_time
-                }
-            }
+            {"user_id": str(ctx.author.id)},
+            {"$set": {"last_hunt": current_time}}
         )
 
-
-        # ─────────────────────────
-        # BAD EVENT
-        # ─────────────────────────
-
+        # ─── DETERMINE OUTCOME NOW (before animation) ───
         robbed = random.randint(1, 100) <= 15
 
-
-        if robbed:
-
-            loss = 100000
-
-            cash = get_cash(ctx.author.id)
-
-            if cash < loss:
-
-                loss = cash
-
-
-            remove_cash(
-                ctx.author.id,
-                loss
-            )
-
-
-            embed = discord.Embed(
-
-                title="🏹 HUNT FAILED",
-
-                description=(
-
-                    f"You tried hunting but "
-                    f"**Royal NGR** 🍇 you and "
-                    f"took **{format_cash(loss)}**."
-
-                ),
-
-                color=0xED4245
-            )
-
-            await ctx.send(embed=embed)
-
-            return
-
-
-        # ─────────────────────────
-        # MONEY REWARD
-        # ─────────────────────────
-
-        add_cash(
-            ctx.author.id,
-            HUNT_REWARD
-        )
-
-
-        # ─────────────────────────
-        # ITEM DROP
-        # ─────────────────────────
-
         roll = random.randint(1, 100)
-
         current = 0
-
-        selected_item = None
-
-
+        selected_item = HUNTING_ITEMS[0]
         for item in HUNTING_ITEMS:
-
             current += item["chance"]
-
             if roll <= current:
-
                 selected_item = item
-
                 break
 
-
-        inventory = user_data.get(
-            "inventory",
-            {}
-        )
-
-
-        item_name = selected_item["name"]
-
-        inventory[item_name] = (
-
-            inventory.get(item_name, 0) + 1
-
-        )
-
-
-        economy_collection.update_one(
-
-            {
-                "user_id": str(ctx.author.id)
-            },
-
-            {
-                "$set": {
-                    "inventory": inventory
-                }
-            }
-        )
-
-
+        # ─── ANIMATION ───
         embed = discord.Embed(
-
             title="🏹 HUNTING",
-
             description=(
-
-                f"You went hunting.\n\n"
-
-                f"💰 Earned:\n"
-                f"**{format_cash(HUNT_REWARD)}**\n\n"
-
-                f"🎁 Found:\n"
-                f"{selected_item['emoji']} "
-                f"**{selected_item['display']}**"
-
+                f"{HUNT_FRAMES[0][0]}\n"
+                f"{HUNT_FRAMES[0][1]}\n\n"
+                f"{progress_bar(HUNT_FRAMES[0][2])}"
             ),
+            color=0x2ECC71
+        )
+        embed.set_footer(text="ECHLEON • Activity")
+        msg = await ctx.send(embed=embed)
 
-            color=0x57F287
+        for i, (title, subtitle, step) in enumerate(HUNT_FRAMES[1:], 1):
+            await asyncio.sleep(0.75)
+            embed.description = (
+                f"{title}\n"
+                f"{subtitle}\n\n"
+                f"{progress_bar(step)}"
+            )
+            try:
+                await msg.edit(embed=embed)
+            except:
+                pass
+
+        await asyncio.sleep(0.85)
+
+        # ─── BAD EVENT ───
+        if robbed:
+            loss = 100000
+            cash = get_cash(ctx.author.id)
+            if cash < loss:
+                loss = cash
+            remove_cash(ctx.author.id, loss)
+
+            embed = discord.Embed(
+                title="🏹 AMBUSHED!",
+                description=(
+                    "You were deep in the forest when...\n\n"
+                    "**Royal NGR** 🍇 jumped out from the bushes\n"
+                    "and robbed you before you could react!"
+                ),
+                color=0xED4245
+            )
+            embed.add_field(
+                name="💸 Lost",
+                value=f"**{format_cash(loss)}**",
+                inline=True
+            )
+            embed.set_footer(text="Better luck next hunt!")
+            await msg.edit(embed=embed)
+            return
+
+        # ─── SUCCESS ───
+        add_cash(ctx.author.id, HUNT_REWARD)
+
+        # ─── FIX: atomic inventory update ───
+        economy_collection.update_one(
+            {"user_id": str(ctx.author.id)},
+            {"$inc": {f"inventory.{selected_item['name']}": 1}}
         )
 
+        rarity_label, rarity_color = get_rarity(selected_item["chance"])
 
-        add_stats(
-            ctx.author.id,
-            total_hunts=1
+        # ─── LEGENDARY EXTRA SUSPENSE ───
+        if selected_item["chance"] <= 2:
+            await asyncio.sleep(0.5)
+            embed.description = "✨ **Something rare is glowing...**\n\n`[██████████] 100%`"
+            embed.color = 0xF1C40F
+            try:
+                await msg.edit(embed=embed)
+            except:
+                pass
+            await asyncio.sleep(0.8)
+
+        # ─── RESULT EMBED ───
+        embed = discord.Embed(
+            title="🏹 HUNT SUCCESS",
+            color=rarity_color
         )
-        await check_achievements(
-            self.bot,
-            ctx.author
+        embed.add_field(
+            name="💰 Earned",
+            value=f"**{format_cash(HUNT_REWARD)}**",
+            inline=True
         )
-        await ctx.send(embed=embed)
+        embed.add_field(
+            name=f"{selected_item['emoji']} Found",
+            value=f"**{selected_item['display']}**",
+            inline=True
+        )
+        embed.add_field(
+            name="✨ Rarity",
+            value=rarity_label,
+            inline=True
+        )
+        embed.set_footer(text=f"ECHLEON • Hunt  •  Item value: {format_cash(selected_item['price'])}")
+
+        await msg.edit(embed=embed)
+
+        add_stats(ctx.author.id, total_hunts=1)
+        await check_achievements(self.bot, ctx.author)
 
 
 async def setup(bot):
-
-    await bot.add_cog(
-        Hunt(bot)
-    )
+    await bot.add_cog(Hunt(bot))
+    
