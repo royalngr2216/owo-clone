@@ -708,19 +708,11 @@ class System(commands.Cog):
                 "cash",
                 0
             )
-
-
-            fetched_user = self.bot.get_user(user_id)
-
-            if fetched_user:
-
+            try:
+                fetched_user = await self.bot.fetch_user(user_id)
                 name = fetched_user.name
-
-            else:
-
+            except:
                 name = f"User {user_id}"
-
-
             text += (
 
                 f"**#{index + 1} {name}**\n"
