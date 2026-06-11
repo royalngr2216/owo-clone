@@ -56,7 +56,7 @@ class Economy(commands.Cog):
 
             return
 
-        amount = 10000
+        amount = 100000
 
         add_cash(
             ctx.author.id,
@@ -116,7 +116,7 @@ class Economy(commands.Cog):
 
             return
 
-        amount = 100000
+        amount = 1000000
 
         add_cash(
             ctx.author.id,
