@@ -1,13 +1,21 @@
 from discord.ext import commands
 import discord
 
+from datetime import datetime
+import pytz
+
 from utils.economy import (
     get_cash,
     add_cash,
     remove_cash,
     format_cash,
-    parse_amount
+    parse_amount,
+    economy_collection
 )
+
+IST = pytz.timezone("Asia/Kolkata")
+
+GIVE_LIMIT = 5_000_000
 
 
 class GiveView(discord.ui.View):
@@ -51,6 +59,78 @@ class GiveView(discord.ui.View):
         )
 
 
+        user_data = economy_collection.find_one({
+
+            "user_id": str(self.sender.id)
+
+        })
+
+
+        current_time = int(
+            datetime.now(IST).timestamp()
+        )
+
+
+        last_reset = user_data.get(
+            "give_reset",
+            0
+        )
+
+
+        if current_time >= last_reset:
+
+            economy_collection.update_one(
+
+                {
+                    "user_id": str(self.sender.id)
+                },
+
+                {
+                    "$set": {
+
+                        "give_sent_today": 0,
+
+                        "give_reset": current_time + 86400
+                    }
+                }
+            )
+
+            user_data["give_sent_today"] = 0
+
+
+        sent_today = user_data.get(
+
+            "give_sent_today",
+
+            0
+        )
+
+
+        if sent_today + self.amount > GIVE_LIMIT:
+
+            embed = discord.Embed(
+
+                description=(
+
+                    "❌ Daily gift limit exceeded.\n\n"
+
+                    f"Daily Limit: "
+                    f"**{format_cash(GIVE_LIMIT)}**"
+
+                ),
+
+                color=discord.Color.red()
+            )
+
+            await interaction.response.edit_message(
+
+                embed=embed,
+                view=None
+            )
+
+            return
+
+
         if cash < self.amount:
 
             embed = discord.Embed(
@@ -76,8 +156,24 @@ class GiveView(discord.ui.View):
 
 
         add_cash(
+
             self.receiver.id,
             self.amount
+        )
+
+
+        economy_collection.update_one(
+
+            {
+                "user_id": str(self.sender.id)
+            },
+
+            {
+                "$inc": {
+
+                    "give_sent_today": self.amount
+                }
+            }
         )
 
 
@@ -98,6 +194,7 @@ class GiveView(discord.ui.View):
 
 
         await interaction.response.edit_message(
+
             embed=embed,
             view=None
         )
