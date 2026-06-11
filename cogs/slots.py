@@ -35,12 +35,10 @@ def parse_amount(amount: str):
 
 
 # ─────────────────────────
-# SYMBOLS & CONFIG
+# CONFIG
 # ─────────────────────────
 
-# Your animated slot emoji from the developer portal.
-# Discord renders it as a spinning GIF on any reel that hasn't landed yet —
-# exactly like OwO's <a:slot_gif:...>.
+# Your animated slot emoji — spins itself in Discord while unrevealed
 SPINNING = "<a:slots:1514761192193789982>"
 
 PAYOUTS = {
@@ -63,28 +61,59 @@ OUTCOMES = {
     "troll":    5,
 }
 
+# Embed colors per state
+COLOR_SPIN    = 0x5865F2   # blurple — spinning
+COLOR_WIN     = 0x57F287   # green   — won
+COLOR_JACKPOT = 0xF1C40F   # gold    — jackpot
+COLOR_LOSE    = 0xED4245   # red     — lost
+COLOR_TROLL   = 0x36393F   # dark    — troll
+
 
 # ─────────────────────────
-# BUILD SLOT UI
+# BUILD EMBED
 # ─────────────────────────
 
-def build_slots(r0, r1, r2, author_name: str, bet: int, footer: str = ""):
+def build_embed(
+    r0, r1, r2,
+    author: discord.Member,
+    bet: int,
+    *,
+    color: int = COLOR_SPIN,
+    result_line: str = "",
+) -> discord.Embed:
     """
-    Matches OwO's plain-text layout:
+    Single embed used for every state (spinning + final result).
 
-      **  `___SLOTS___`**
-      `  ` 🍒 <spinning> <spinning> `  `  PlayerName bet 🪙 500
-        `|         |`
-        `|         |`   and won 🪙 750
+    Layout:
+      Title      🎰  S L O T S
+      Description  the three reels, large and centred
+      Fields     Bet | Result (only shown when result_line is set)
+      Footer     avatar + username
     """
-    line2 = f"` ` {r0} {r1} {r2} ` `   **{author_name}** bet 🪙 {format_cash(bet)}"
-    line4 = "`|         |`" + (f"   {footer}" if footer else "")
-    return "\n".join([
-        "**  `___SLOTS___`**",
-        line2,
-        "`|         |`",
-        line4,
-    ])
+    # Reels row — spaced out so they look big and centred
+    reels_row = f"╔══════════════╗\n║  {r0}  {r1}  {r2}  ║\n╚══════════════╝"
+
+    embed = discord.Embed(
+        title="🎰  S L O T S",
+        description=reels_row,
+        color=color,
+    )
+
+    # Always show bet
+    embed.add_field(name="Bet", value=f"🪙 **{format_cash(bet)}**", inline=True)
+
+    # Result field — blank placeholder keeps layout stable while spinning
+    if result_line:
+        embed.add_field(name="Result", value=result_line, inline=True)
+    else:
+        embed.add_field(name="Result", value="*Spinning…*", inline=True)
+
+    embed.set_footer(
+        text=author.display_name,
+        icon_url=author.display_avatar.url,
+    )
+
+    return embed
 
 
 class Slots(commands.Cog):
@@ -96,16 +125,19 @@ class Slots(commands.Cog):
     async def slots(self, ctx, amount: str = None):
 
         create_account(ctx.author.id)
-        name = ctx.author.display_name
 
         # ── No argument ──────────────────────────────────────────────────
         if amount is None:
-            await ctx.send(
-                embed=discord.Embed(
-                    description="❌ Enter a bet amount.  Example: `.slots 100k`",
-                    color=0xED4245,
-                )
+            embed = discord.Embed(
+                title="🎰 Slots",
+                description=(
+                    "You need to enter a bet amount.\n\n"
+                    "**Usage:** `.slots <amount>`\n"
+                    "**Example:** `.slots 100k`  •  `.slots all`"
+                ),
+                color=COLOR_LOSE,
             )
+            await ctx.send(embed=embed)
             return
 
         # ── Parse bet ────────────────────────────────────────────────────
@@ -117,20 +149,30 @@ class Slots(commands.Cog):
             amount = parse_amount(amount)
             if amount is None:
                 await ctx.send(
-                    embed=discord.Embed(description="❌ Invalid amount.", color=0xED4245)
+                    embed=discord.Embed(
+                        title="🎰 Slots",
+                        description="❌ That's not a valid amount.",
+                        color=COLOR_LOSE,
+                    )
                 )
                 return
 
         if amount <= 0:
             await ctx.send(
-                embed=discord.Embed(description="❌ Bet must be above 0.", color=0xED4245)
+                embed=discord.Embed(
+                    title="🎰 Slots",
+                    description="❌ Bet must be greater than 0.",
+                    color=COLOR_LOSE,
+                )
             )
             return
 
         if cash < amount:
             await ctx.send(
                 embed=discord.Embed(
-                    description="❌ You don't have enough cash.", color=0xED4245
+                    title="🎰 Slots",
+                    description=f"❌ You only have 🪙 **{format_cash(cash)}** — not enough to bet that.",
+                    color=COLOR_LOSE,
                 )
             )
             return
@@ -170,8 +212,8 @@ class Slots(commands.Cog):
                 ["🔔", "🍒", "💀"],
                 ["💎", "🍋", "🍀"],
                 ["👑", "💀", "🍒"],
-                ["👑", "👑", "🍒"],  # near-miss
-                ["💎", "💎", "🍋"],  # near-miss
+                ["👑", "👑", "🍒"],   # near-miss
+                ["💎", "💎", "🍋"],   # near-miss
             ]
             result = random.choice(lose_patterns)
 
@@ -179,49 +221,63 @@ class Slots(commands.Cog):
 
         # ── ANIMATION ────────────────────────────────────────────────────
         #
-        # Mirrors OwO's setTimeout chain exactly.
-        # The animated emoji spins itself in Discord — no looping needed.
+        # 3-edit chain (same as OwO's setTimeout approach).
+        # The animated emoji self-animates in Discord — no loop needed.
         #
-        #   send          →  spinning  spinning  spinning
-        #   +1.0 s edit   →  reel0     spinning  spinning
-        #   +0.7 s edit   →  reel0     reel1     spinning
-        #   +1.0 s edit   →  reel0     reel1     reel2   + footer
-        #
-        # Near-miss: last delay stretches to 2.0 s for extra suspense.
+        #   send        →  🌀 🌀 🌀   spinning…
+        #   +1.0 s      →  r0 🌀 🌀
+        #   +0.7 s      →  r0 r1 🌀
+        #   +1.0 s      →  r0 r1 r2  + result
 
         S = SPINNING
 
         # Step 0 — send, all spinning
-        msg = await ctx.send(build_slots(S, S, S, name, amount))
+        embed = build_embed(S, S, S, ctx.author, amount)
+        msg = await ctx.send(embed=embed)
 
-        # Step 1 — reel 0 lands (+1.0 s)
+        # Step 1 — reel 0 lands
         await asyncio.sleep(1.0)
-        await msg.edit(content=build_slots(result[0], S, S, name, amount))
+        embed = build_embed(result[0], S, S, ctx.author, amount)
+        await msg.edit(embed=embed)
 
-        # Step 2 — reel 1 lands (+0.7 s)
+        # Step 2 — reel 1 lands
         await asyncio.sleep(0.7)
-        await msg.edit(content=build_slots(result[0], result[1], S, name, amount))
+        embed = build_embed(result[0], result[1], S, ctx.author, amount)
+        await msg.edit(embed=embed)
 
-        # Step 3 — reel 2 lands + result footer (+1.0 s, or +2.0 s near-miss)
+        # Step 3 — reel 2 lands (longer wait on near-miss for suspense)
         await asyncio.sleep(2.0 if near_miss else 1.0)
 
-        # ── Final frame ──────────────────────────────────────────────────
+        # ── Final embed ──────────────────────────────────────────────────
 
+        # TROLL
         if outcome == "troll":
-            footer = "☠ EMIEL entered the casino and 🍇 you."
-            await msg.edit(content=build_slots(result[0], result[1], result[2], name, amount, footer))
-            return
-
-        if outcome == "lose":
-            footer = (
-                f"💔 SO close...  lost 🪙 {format_cash(amount)}"
-                if near_miss
-                else f"❌ and lost 🪙 {format_cash(amount)}"
+            embed = build_embed(
+                result[0], result[1], result[2],
+                ctx.author, amount,
+                color=COLOR_TROLL,
+                result_line=f"☠️ EMIEL entered the casino.\n💸 Lost **{format_cash(amount)}**",
             )
-            await msg.edit(content=build_slots(result[0], result[1], result[2], name, amount, footer))
+            await msg.edit(embed=embed)
             return
 
-        # Win
+        # LOSE
+        if outcome == "lose":
+            result_line = (
+                f"<:komedi:1482793353748680956> **So close!**\n-🪙 {format_cash(amount)}"
+                if near_miss
+                else f"<:bj:1492588515253551144> Better luck next time!\n-🪙 {format_cash(amount)}"
+            )
+            embed = build_embed(
+                result[0], result[1], result[2],
+                ctx.author, amount,
+                color=COLOR_LOSE,
+                result_line=result_line,
+            )
+            await msg.edit(embed=embed)
+            return
+
+        # WIN
         symbol     = result[0]
         multiplier = PAYOUTS[symbol]
         winnings   = int(amount * multiplier)
@@ -230,13 +286,26 @@ class Slots(commands.Cog):
         add_cash(ctx.author.id, winnings)
         update_biggest_win(ctx.author.id, winnings)
 
-        footer = (
-            f"✨ JACKPOT!  won 🪙 {format_cash(winnings)}"
-            if outcome == "jackpot"
-            else f"and won 🪙 {format_cash(winnings)}  ({multiplier}x)"
-        )
+        if outcome == "jackpot":
+            result_line = (
+                f"✨ **JACKPOT!** `{multiplier}x`\n"
+                f"+🪙 {format_cash(profit)}"
+            )
+            color = COLOR_JACKPOT
+        else:
+            result_line = (
+                f"🏆 **You won!** `{multiplier}x`\n"
+                f"+🪙 {format_cash(profit)}"
+            )
+            color = COLOR_WIN
 
-        await msg.edit(content=build_slots(result[0], result[1], result[2], name, amount, footer))
+        embed = build_embed(
+            result[0], result[1], result[2],
+            ctx.author, amount,
+            color=color,
+            result_line=result_line,
+        )
+        await msg.edit(embed=embed)
         await check_achievements(self.bot, ctx.author)
 
 
