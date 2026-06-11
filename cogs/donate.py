@@ -234,13 +234,7 @@ class Donate(commands.Cog):
 
                 f"Donate "
                 f"**{format_cash(amount)}**\n"
-                f"to {member.mention}?\n\n"
-
-                f"🍇 Emiel will steal:\n"
-                f"**{format_cash(stolen_amount)}**\n\n"
-
-                f"💰 They will receive:\n"
-                f"**{format_cash(received_amount)}**"
+                f"to {member.mention}?"
 
             ),
 
