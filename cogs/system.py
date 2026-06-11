@@ -49,7 +49,10 @@ HELP_CATEGORIES = {
         "Claim monthly reward.\n\n"
 
         "**.give @user amount**\n"
-        "Transfer money.\n\n"
+        "Transfer money but has limits.\n\n"
+
+        "**.donate @user amount**\n"
+        "Donates money.\n\n"
 
         "**.rob @user**\n"
         "Attempt a robbery."
