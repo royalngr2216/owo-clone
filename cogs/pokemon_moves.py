@@ -1,14 +1,11 @@
 from discord.ext import commands
 import discord
 import aiohttp
-import sqlite3
 
-DB_PATH = "pokemon.db"
-
-def get_db():
-    con = sqlite3.connect(DB_PATH)
-    con.row_factory = sqlite3.Row
-    return con
+# ─────────────────────────────────────────────────────────────────
+# MONGODB IMPORT
+# ─────────────────────────────────────────────────────────────────
+from utils.pokemon_db import db
 
 def gif_url(name: str) -> str:
     clean = name.lower().replace(" ", "").replace(".", "").replace("'", "")
@@ -87,22 +84,18 @@ class PokemonMoves(commands.Cog):
 
         # ── Ownership check ──────────────────────────────────────
         pname = pokemon_name.strip().lower()
-        with get_db() as con:
-            row = con.execute(
-                "SELECT id, display FROM pokemon_collection "
-                "WHERE user_id=? AND name=? LIMIT 1",
-                (uid, pname),
-            ).fetchone()
+        
+        # Check MongoDB to see if they own the Pokemon
+        poke_doc = db.pokemon_collection.find_one({"user_id": uid, "name": pname})
 
-        if row is None:
+        if not poke_doc:
             await ctx.send(embed=discord.Embed(
                 description=f"❌ You don't own a **{pokemon_name.title()}**! Catch one first.",
                 color=0xED4245,
             ))
             return
 
-        poke_id      = row["id"]
-        poke_display = row["display"]
+        poke_display = poke_doc.get("display", pname.title())
 
         # ── Parse moves ──────────────────────────────────────────
         raw_moves = [m.strip() for m in move_args.split(",") if m.strip()]
@@ -147,14 +140,14 @@ class PokemonMoves(commands.Cog):
             ))
             return
 
-        # Pad to 4 slots (None for empty)
-        slots = [m["name"] for m in taught] + [None] * (4 - len(taught))
+        # No need to pad with None in MongoDB, we just save the list of slugs
+        move_slugs = [m["name"] for m in taught]
 
-        with get_db() as con:
-            con.execute(
-                "UPDATE pokemon_collection SET move1=?, move2=?, move3=?, move4=? WHERE id=?",
-                (*slots, poke_id),
-            )
+        # Update the moves array in MongoDB
+        db.pokemon_collection.update_one(
+            {"user_id": uid, "name": pname},
+            {"$set": {"moves": move_slugs}}
+        )
 
         # ── Success embed ────────────────────────────────────────
         embed = discord.Embed(
@@ -167,7 +160,7 @@ class PokemonMoves(commands.Cog):
         for i, m in enumerate(taught, 1):
             power_txt = f"⚡ {m['power']}" if m["power"] else "— (status)"
             move_lines.append(
-                f"`{i}.` **{m['display']}**  •  {m['type'].title()}  •  {power_txt}"
+                f"`{i}.` **{m['display']}** •  {m['type'].title()}  •  {power_txt}"
             )
         embed.add_field(name="📋 Moveset", value="\n".join(move_lines), inline=False)
 
@@ -197,24 +190,22 @@ class PokemonMoves(commands.Cog):
         target = member or ctx.author
         pname  = pokemon_name.strip().lower()
 
-        with get_db() as con:
-            row = con.execute(
-                "SELECT display, move1, move2, move3, move4 FROM pokemon_collection "
-                "WHERE user_id=? AND name=? LIMIT 1",
-                (str(target.id), pname),
-            ).fetchone()
+        # Fetch the Pokémon document from MongoDB
+        poke_doc = db.pokemon_collection.find_one({"user_id": str(target.id), "name": pname})
 
-        if row is None:
+        if not poke_doc:
             await ctx.send(embed=discord.Embed(
                 description=f"**{target.display_name}** doesn't own a **{pokemon_name.title()}**.",
                 color=0xED4245,
             ))
             return
 
-        moves = [row[f"move{i}"] for i in range(1, 5) if row[f"move{i}"]]
+        # Fetch the moves array, defaulting to an empty list if none exist
+        moves = poke_doc.get("moves", [])
+        display = poke_doc.get("display", pname.title())
 
         embed = discord.Embed(
-            title=f"📋 {row['display']}'s Moveset",
+            title=f"📋 {display}'s Moveset",
             color=0x5865F2,
         )
         embed.set_thumbnail(url=gif_url(pname))
@@ -230,7 +221,6 @@ class PokemonMoves(commands.Cog):
         embed.set_footer(text=f"Owned by {target.display_name}")
         await ctx.send(embed=embed)
 
-
 async def setup(bot):
     await bot.add_cog(PokemonMoves(bot))
-      
+    
