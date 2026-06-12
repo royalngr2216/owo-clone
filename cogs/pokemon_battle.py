@@ -4,7 +4,7 @@ import asyncio
 import random
 import sqlite3
 
-from pokemon_team import get_team, fetch_pokemon_data
+from cogs.pokemon_team import get_team, fetch_pokemon_data
 from utils.economy import get_cash, add_cash, remove_cash, format_cash
 
 DB_PATH = "pokemon.db"
