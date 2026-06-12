@@ -1,18 +1,11 @@
+
 from discord.ext import commands
 import discord
 import asyncio
 import random
-import sqlite3
 
 from cogs.pokemon_team import get_team, fetch_pokemon_data
 from utils.economy import get_cash, add_cash, remove_cash, format_cash
-
-DB_PATH = "pokemon.db"
-
-def get_db():
-    con = sqlite3.connect(DB_PATH)
-    con.row_factory = sqlite3.Row
-    return con
 
 def gif_url(name: str) -> str:
     clean = name.lower().replace(" ", "").replace(".", "").replace("'", "")
