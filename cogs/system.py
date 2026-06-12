@@ -110,7 +110,7 @@ HELP_CATEGORIES = {
     "🐉 Pokémon": (
         "**.catch <name>**\n"
         "Catch the wild Pokémon in the channel.\n\n"
-        "**.pokemon [user]**\n"
+        "**.pokemons [user]**\n"
         "View your Pokémon collection.\n\n"
         "**.team [p1, p2, ...]**\n"
         "View or set your active team (up to 6).\n\n"
@@ -120,8 +120,12 @@ HELP_CATEGORIES = {
         "View a Pokémon's current moveset.\n\n"
         "**.battle @user [amount]**\n"
         "Challenge someone to a Pokémon battle.\n\n"
-        "**.setspawnchannel**\n"
-        "Admin: set the Pokémon spawn channel.\n\n"
+        "**.pokemart**\n"
+        "Shows Pokemart.\n\n"
+        "**.pokemon sell "name" "price"**\n"
+        "Sell a pokemon in pokemart.\n\n"
+        "**.pokemon buy @user "name"**\n"
+        "Buys a pokemon in pokemart.\n\n"
         "**.spawntest**\n"
         "Admin: force a Pokémon spawn now."
     ),
