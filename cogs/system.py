@@ -107,28 +107,33 @@ HELP_CATEGORIES = {
         "Play the slot machine."
     ),
 
-    "🐉 Pokémon": (
+        "🐉 Pokemon": (
         "**.catch <name>**\n"
-        "Catch the wild Pokémon in the channel.\n\n"
+        "Catch the wild Pokemon currently in the channel.\n\n"
         "**.pokemons [user]**\n"
-        "View your Pokémon collection.\n\n"
+        "View your (or another trainer's) Pokémon collection.\n\n"
         "**.team [p1, p2, ...]**\n"
-        "View or set your active team (up to 6).\n\n"
+        "View or set your active battle team (up to 6 Pokémon).\n\n"
         "**.moves <pokémon> <m1, m2...>**\n"
-        "Teach a Pokémon moves from its learnset.\n\n"
-        "**.moveset <pokémon>**\n"
-        "View a Pokémon's current moveset.\n\n"
+        "Teach a Pokémon up to 4 moves from its official learnset.\n\n"
+        "**.moveset <pokémon> [user]**\n"
+        "View a Pokémon's current assigned moveset.\n\n"
         "**.battle @user [amount]**\n"
-        "Challenge someone to a Pokémon battle.\n\n"
+        "Challenge a trainer to a Pokémon battle (with an optional cash wager).\n\n"
         "**.pokemart**\n"
-        "Shows Pokemart.\n\n"
-        "**.pokemon sell [pokemon] price**\n"
-        "Sell a pokemon in pokemart.\n\n"
-        "**.pokemon buy @user [pokemon]**\n"
-        "Buys a pokemon in pokemart.\n\n"
+        "Browse the global Pokémon marketplace for active listings.\n\n"
+        "**.pokecheck @user**\n"
+        "View all market listings posted by a specific trainer.\n\n"
+        "**.pokemon sell <pokemon> <price>**\n"
+        "List one of your Pokémon for sale in the market.\n\n"
+        "**.pokemon buy @user <pokemon>**\n"
+        "Buy a listed Pokémon from another trainer.\n\n"
+        "**.setspawnchannel**\n"
+        "Admin: Set the current channel for automatic 20-minute Pokémon spawns.\n\n"
         "**.spawntest**\n"
-        "Admin: force a Pokémon spawn now."
-    ),
+        "Admin: Force a wild Pokémon to spawn immediately."
+        )
+    
 
     "📊 Profile": (
         "**.profile [user]**\n"
