@@ -132,7 +132,7 @@ HELP_CATEGORIES = {
         "Admin: Set the current channel for automatic 20-minute Pokémon spawns.\n\n"
         "**.spawntest**\n"
         "Admin: Force a wild Pokémon to spawn immediately."
-        )
+        ),
     
 
     "📊 Profile": (
