@@ -1,15 +1,15 @@
 from discord.ext import commands
 from discord.ext import tasks
-from utils.pokemon_db import (
-    add_pokemon,
-    owns_pokemon,
-    pokemon_spawn_channels,
-    get_pokemon
-)
 import discord
 import random
 import asyncio
 import aiohttp
+import datetime
+
+# ─────────────────────────────────────────────────────────────────
+# MONGODB IMPORT
+# ─────────────────────────────────────────────────────────────────
+from utils.pokemon_db import db
 
 # ─────────────────────────────────────────────────────────────────
 # GIF / SPRITE URLS
@@ -22,10 +22,6 @@ def gif_url(name: str) -> str:
 def sprite_url(name: str) -> str:
     clean = name.lower().replace(" ", "").replace(".", "").replace("'", "")
     return f"https://play.pokemonshowdown.com/sprites/gen5/{clean}.png"
-
-# ─────────────────────────────────────────────────────────────────
-# DATABASE
-# ─────────────────────────────────────────────────────────────────
 
 # ─────────────────────────────────────────────────────────────────
 # POKEAPI
@@ -69,11 +65,13 @@ class PokemonSpawn(commands.Cog):
 
     @tasks.loop(hours=1)
     async def spawn_loop(self):
-        rows = pokemon_spawn_channels.find()
-        for row in rows:
-            ch = self.bot.get_channel(
-                int(row["channel_id"])
-            )
+        if db is None:
+            return
+            
+        # Fetch all registered spawn channels from MongoDB
+        channels = db.pokemon_spawn_channels.find()
+        for doc in channels:
+            ch = self.bot.get_channel(int(doc["channel_id"]))
             if ch:
                 await self.do_spawn(ch)
 
@@ -133,10 +131,12 @@ class PokemonSpawn(commands.Cog):
 
         # ── One-species-per-player check ──────────────────────────
         uid = str(ctx.author.id)
-        already = owns_pokemon(
-            uid,
-            spawn["name"]
-        )
+        
+        # Check MongoDB if player already owns this Pokémon
+        already = db.pokemon_collection.find_one({
+            "user_id": uid, 
+            "name": spawn["name"]
+        })
 
         if already:
             await ctx.send(embed=discord.Embed(
@@ -153,12 +153,15 @@ class PokemonSpawn(commands.Cog):
         # Correct and not a duplicate — mark caught immediately (race-condition safe)
         spawn["caught"] = True
 
-        add_pokemon(
-            uid,
-            spawn["name"],
-            spawn["display"],
-            spawn["id"]
-        )
+        # Save the newly caught Pokémon to MongoDB
+        db.pokemon_collection.insert_one({
+            "user_id": uid,
+            "name": spawn["name"],
+            "display": spawn["display"],
+            "pokedex_id": spawn["id"],
+            "moves": [], # Default to no moves set
+            "caught_at": datetime.datetime.utcnow()
+        })
 
         embed = discord.Embed(
             title=f"Gotcha! {spawn['display']} was caught! 🎉",
@@ -178,9 +181,9 @@ class PokemonSpawn(commands.Cog):
     @commands.command(name="pokemons", aliases=["pc", "collection"])
     async def pokemon_collection(self, ctx, member: discord.Member = None):
         target = member or ctx.author
-        rows = get_pokemon(
-            str(target.id)
-        )
+        
+        # Fetch collection from MongoDB, sorted by newest catch first
+        rows = list(db.pokemon_collection.find({"user_id": str(target.id)}).sort("caught_at", -1))
 
         if not rows:
             await ctx.send(embed=discord.Embed(
@@ -201,7 +204,7 @@ class PokemonSpawn(commands.Cog):
             embed.set_thumbnail(url=target.display_avatar.url)
             for row in pages[p]:
                 embed.add_field(
-                    name=row["display"],
+                    name=f"{row['display']}",
                     value=f"[🎞]({gif_url(row['name'])}) `#{row['pokedex_id']:03}`",
                     inline=True,
                 )
@@ -242,19 +245,13 @@ class PokemonSpawn(commands.Cog):
     @commands.command(name="setspawnchannel")
     @commands.has_permissions(manage_guild=True)
     async def set_spawn_channel(self, ctx):
-        pokemon_spawn_channels.update_one(
-
-            {
-        "channel_id": str(ctx.channel.id)
-            },
-            {
-                "$set": {
-                    "channel_id": str(ctx.channel.id),
-                    "guild_id": str(ctx.guild.id)
-                } 
-            },
+        # Update or insert the channel for this specific guild
+        db.pokemon_spawn_channels.update_one(
+            {"channel_id": str(ctx.channel.id)},
+            {"$set": {"guild_id": str(ctx.guild.id)}},
             upsert=True
         )
+        
         await ctx.send(embed=discord.Embed(
             description=f"✅ Pokémon will now spawn in {ctx.channel.mention} every hour!",
             color=0x57F287,
