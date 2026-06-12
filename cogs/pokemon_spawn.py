@@ -257,12 +257,6 @@ class PokemonSpawn(commands.Cog):
             color=0x57F287,
         ))
 
-    @commands.command(name="spawntest")
-    @commands.has_permissions(manage_guild=True)
-    async def spawn_test(self, ctx):
-        await self.do_spawn(ctx.channel)
-
-
 async def setup(bot):
     await bot.add_cog(PokemonSpawn(bot))
     
