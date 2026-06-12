@@ -2,5 +2,5 @@ discord.py
 flask
 pymongo
 dnspython
-aiohttp
 pytz
+aiohttp>=3.9.0
