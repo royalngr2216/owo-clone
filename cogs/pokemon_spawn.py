@@ -7,7 +7,7 @@ import aiohttp
 import sqlite3
 
 # ─────────────────────────────────────────────────────────────────
-# GIF URL  (same source as randoms.py)
+# GIF / SPRITE URLS
 # ─────────────────────────────────────────────────────────────────
 
 def gif_url(name: str) -> str:
@@ -15,7 +15,6 @@ def gif_url(name: str) -> str:
     return f"https://play.pokemonshowdown.com/sprites/xyani/{clean}.gif"
 
 def sprite_url(name: str) -> str:
-    """Small static sprite for lists."""
     clean = name.lower().replace(" ", "").replace(".", "").replace("'", "")
     return f"https://play.pokemonshowdown.com/sprites/gen5/{clean}.png"
 
@@ -53,6 +52,15 @@ def init_db():
             CREATE TABLE IF NOT EXISTS spawn_channels (
                 channel_id TEXT PRIMARY KEY,
                 guild_id   TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS pokemon_market (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                seller_id   TEXT    NOT NULL,
+                name        TEXT    NOT NULL,
+                display     TEXT    NOT NULL,
+                pokedex_id  INTEGER NOT NULL,
+                price       INTEGER NOT NULL,
+                listed_at   TEXT    DEFAULT (datetime('now'))
             );
         """)
 
@@ -120,13 +128,14 @@ class PokemonSpawn(commands.Cog):
         embed = discord.Embed(
             title="A wild Pokémon appeared! 🌿",
             description=(
-                f"**Who is that Pokémon?**\n\n"
-                f"Type `.catch {poke['display']}` to catch it!\n"
-                f"First one to type it correctly wins!"
+                "**Who's that Pokémon?** 🤔\n\n"
+                "Type `.catch <pokémon name>` to catch it!\n"
+                "First trainer to guess correctly wins!\n\n"
+                "⚠️ You can only catch each species **once**!"
             ),
             color=0xF1C40F,
         )
-        # GIF shown — name hidden until caught
+        # GIF shown — name is intentionally hidden so players must guess
         embed.set_image(url=gif_url(poke["name"]))
         embed.set_footer(text="Be fast! Only one trainer can catch it.")
         await channel.send(embed=embed)
@@ -147,7 +156,7 @@ class PokemonSpawn(commands.Cog):
 
         if guess is None:
             await ctx.send(embed=discord.Embed(
-                description=f"❓ Type the Pokémon's name!\nExample: `.catch Charizard`",
+                description="❓ Type the Pokémon's name!\nExample: `.catch Charizard`",
                 color=0xED4245,
             ))
             return
@@ -159,20 +168,41 @@ class PokemonSpawn(commands.Cog):
             ), delete_after=4)
             return
 
-        # Correct! Mark caught immediately (race-condition safe)
+        # ── One-species-per-player check ──────────────────────────
+        uid = str(ctx.author.id)
+        with get_db() as con:
+            already = con.execute(
+                "SELECT id FROM pokemon_collection WHERE user_id=? AND name=? LIMIT 1",
+                (uid, spawn["name"]),
+            ).fetchone()
+
+        if already:
+            await ctx.send(embed=discord.Embed(
+                title="Already caught! 🚫",
+                description=(
+                    f"**{ctx.author.display_name}**, you already own a **{spawn['display']}**!\n"
+                    "Each trainer can only catch one of each species.\n\n"
+                    "Let someone else catch it! 🎯"
+                ),
+                color=0xFFA500,
+            ), delete_after=8)
+            return
+
+        # Correct and not a duplicate — mark caught immediately (race-condition safe)
         spawn["caught"] = True
 
         with get_db() as con:
             con.execute(
                 "INSERT INTO pokemon_collection (user_id, name, display, pokedex_id) VALUES (?,?,?,?)",
-                (str(ctx.author.id), spawn["name"], spawn["display"], spawn["id"]),
+                (uid, spawn["name"], spawn["display"], spawn["id"]),
             )
 
         embed = discord.Embed(
             title=f"Gotcha! {spawn['display']} was caught! 🎉",
             description=(
                 f"**{ctx.author.display_name}** caught **{spawn['display']}**!\n\n"
-                f"Use `.team` to add it, `.moves` to teach it moves!"
+                f"Use `.team` to add it, `.moves` to teach it moves!\n"
+                f"Want to sell? Use `.pokemon sell {spawn['display']} <price>`"
             ),
             color=0x57F287,
         )
@@ -182,7 +212,7 @@ class PokemonSpawn(commands.Cog):
 
     # ── .pokemon [user] ───────────────────────────────────────────
 
-    @commands.command(name="pokemon", aliases=["pc", "collection"])
+    @commands.command(name="pokemons", aliases=["pc", "collection"])
     async def pokemon_collection(self, ctx, member: discord.Member = None):
         target = member or ctx.author
         with get_db() as con:
@@ -199,7 +229,6 @@ class PokemonSpawn(commands.Cog):
             ))
             return
 
-        # 9 per page — 3 per row using embed fields with small sprites in name
         per_page = 9
         pages = [rows[i:i+per_page] for i in range(0, len(rows), per_page)]
         page = 0
@@ -271,4 +300,4 @@ class PokemonSpawn(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(PokemonSpawn(bot))
-              
+    
