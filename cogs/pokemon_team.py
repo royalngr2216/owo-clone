@@ -1,19 +1,15 @@
 from discord.ext import commands
 import discord
-import sqlite3
 import aiohttp
+import asyncio
+import re
+import datetime
 
 # ─────────────────────────────────────────────────────────────────
 # IMPORTS — uses the same MongoDB economy as the rest of the bot
 # ─────────────────────────────────────────────────────────────────
 from utils.economy import get_cash, add_cash, remove_cash, format_cash, parse_amount
-
-DB_PATH = "pokemon.db"
-
-def get_db():
-    con = sqlite3.connect(DB_PATH)
-    con.row_factory = sqlite3.Row
-    return con
+from utils.pokemon_db import db
 
 def gif_url(name: str) -> str:
     clean = name.lower().replace(" ", "").replace(".", "").replace("'", "")
@@ -24,34 +20,24 @@ def gif_url(name: str) -> str:
 # ─────────────────────────────────────────────────────────────────
 
 def get_team(user_id: str) -> list[str]:
-    with get_db() as con:
-        row = con.execute(
-            "SELECT slot1,slot2,slot3,slot4,slot5,slot6 FROM pokemon_teams WHERE user_id=?",
-            (user_id,),
-        ).fetchone()
-    if row is None:
+    if db is None: return []
+    doc = db.pokemon_teams.find_one({"user_id": user_id})
+    if not doc:
         return []
-    return [row[f"slot{i}"] for i in range(1, 7) if row[f"slot{i}"]]
+    return doc.get("team", [])
 
 def owns_pokemon(user_id: str, name: str) -> bool:
-    with get_db() as con:
-        row = con.execute(
-            "SELECT id FROM pokemon_collection WHERE user_id=? AND name=? LIMIT 1",
-            (user_id, name.lower()),
-        ).fetchone()
-    return row is not None
+    if db is None: return False
+    doc = db.pokemon_collection.find_one({"user_id": user_id, "name": name.lower()})
+    return doc is not None
 
-def get_pokemon_moves(user_id: str, name: str) -> list[dict]:
+def get_pokemon_moves(user_id: str, name: str) -> list[str]:
     """Return the saved moveset for a specific Pokémon."""
-    with get_db() as con:
-        row = con.execute(
-            "SELECT move1,move2,move3,move4 FROM pokemon_collection "
-            "WHERE user_id=? AND name=? LIMIT 1",
-            (user_id, name.lower()),
-        ).fetchone()
-    if row is None:
+    if db is None: return []
+    doc = db.pokemon_collection.find_one({"user_id": user_id, "name": name.lower()})
+    if not doc:
         return []
-    return [row[f"move{i}"] for i in range(1, 5) if row[f"move{i}"]]
+    return doc.get("moves", [])
 
 async def fetch_pokemon_data(name: str, user_id: str = None) -> dict | None:
     """
@@ -162,18 +148,14 @@ class PokemonTeam(commands.Cog):
             )
             embed.set_thumbnail(url=ctx.author.display_avatar.url)
             for i, name in enumerate(slots, 1):
-                with get_db() as con:
-                    row = con.execute(
-                        "SELECT move1,move2,move3,move4 FROM pokemon_collection "
-                        "WHERE user_id=? AND name=? LIMIT 1",
-                        (uid, name),
-                    ).fetchone()
+                doc = db.pokemon_collection.find_one({"user_id": uid, "name": name})
+                
                 moves_txt = "No moves set"
-                if row:
-                    m = [row[f"move{j}"].replace("-", " ").title()
-                         for j in range(1, 5) if row[f"move{j}"]]
+                if doc and doc.get("moves"):
+                    m = [move.replace("-", " ").title() for move in doc["moves"]]
                     if m:
                         moves_txt = " • ".join(m)
+                        
                 embed.add_field(
                     name=f"`{i}.` {name.title()}",
                     value=f"[🎞]({gif_url(name)})  {moves_txt}",
@@ -200,16 +182,12 @@ class PokemonTeam(commands.Cog):
             ))
             return
 
-        padded = names + [None] * (6 - len(names))
-        with get_db() as con:
-            con.execute("""
-                INSERT INTO pokemon_teams (user_id,slot1,slot2,slot3,slot4,slot5,slot6)
-                VALUES (?,?,?,?,?,?,?)
-                ON CONFLICT(user_id) DO UPDATE SET
-                    slot1=excluded.slot1, slot2=excluded.slot2,
-                    slot3=excluded.slot3, slot4=excluded.slot4,
-                    slot5=excluded.slot5, slot6=excluded.slot6
-            """, (uid, *padded))
+        # Update in MongoDB
+        db.pokemon_teams.update_one(
+            {"user_id": uid},
+            {"$set": {"team": names}},
+            upsert=True
+        )
 
         embed = discord.Embed(
             title="✅ Team Updated!",
@@ -256,7 +234,6 @@ class PokemonTeam(commands.Cog):
                 ))
                 return
 
-            # Parse: last token is price, everything before is the name
             parts = args.rsplit(" ", 1)
             if len(parts) < 2:
                 await ctx.send(embed=discord.Embed(
@@ -278,7 +255,6 @@ class PokemonTeam(commands.Cog):
 
             uid = str(ctx.author.id)
 
-            # Must own the Pokémon
             if not owns_pokemon(uid, poke_name):
                 await ctx.send(embed=discord.Embed(
                     description=f"❌ You don't own a **{poke_name_raw.title()}**!",
@@ -286,12 +262,7 @@ class PokemonTeam(commands.Cog):
                 ))
                 return
 
-            # Can't already have it listed
-            with get_db() as con:
-                existing = con.execute(
-                    "SELECT id FROM pokemon_market WHERE seller_id=? AND name=?",
-                    (uid, poke_name),
-                ).fetchone()
+            existing = db.pokemon_market.find_one({"seller_id": uid, "name": poke_name})
 
             if existing:
                 await ctx.send(embed=discord.Embed(
@@ -300,12 +271,7 @@ class PokemonTeam(commands.Cog):
                 ))
                 return
 
-            # Get display & pokedex_id from collection
-            with get_db() as con:
-                prow = con.execute(
-                    "SELECT display, pokedex_id FROM pokemon_collection WHERE user_id=? AND name=? LIMIT 1",
-                    (uid, poke_name),
-                ).fetchone()
+            prow = db.pokemon_collection.find_one({"user_id": uid, "name": poke_name})
 
             if not prow:
                 await ctx.send(embed=discord.Embed(
@@ -314,15 +280,17 @@ class PokemonTeam(commands.Cog):
                 ))
                 return
 
-            display = prow["display"]
-            pokedex_id = prow["pokedex_id"]
+            display = prow.get("display", poke_name.title())
+            pokedex_id = prow.get("pokedex_id", 0)
 
-            # Add to market
-            with get_db() as con:
-                con.execute(
-                    "INSERT INTO pokemon_market (seller_id, name, display, pokedex_id, price) VALUES (?,?,?,?,?)",
-                    (uid, poke_name, display, pokedex_id, price),
-                )
+            db.pokemon_market.insert_one({
+                "seller_id": uid,
+                "name": poke_name,
+                "display": display,
+                "pokedex_id": pokedex_id,
+                "price": price,
+                "listed_at": datetime.datetime.utcnow()
+            })
 
             embed = discord.Embed(
                 title="🏪 Pokémon Listed!",
@@ -350,9 +318,6 @@ class PokemonTeam(commands.Cog):
 
             seller = ctx.message.mentions[0]
 
-            # Strip the mention from args to get the Pokémon name
-            # args may look like "@Alice Excadrill" or "<@123456> Excadrill"
-            import re
             poke_name_raw = re.sub(r"<@!?\d+>", "", args).strip()
             if not poke_name_raw:
                 await ctx.send(embed=discord.Embed(
@@ -372,12 +337,7 @@ class PokemonTeam(commands.Cog):
                 ))
                 return
 
-            # Look up the listing
-            with get_db() as con:
-                listing = con.execute(
-                    "SELECT * FROM pokemon_market WHERE seller_id=? AND name=?",
-                    (seller_id, poke_name),
-                ).fetchone()
+            listing = db.pokemon_market.find_one({"seller_id": seller_id, "name": poke_name})
 
             if not listing:
                 await ctx.send(embed=discord.Embed(
@@ -390,7 +350,6 @@ class PokemonTeam(commands.Cog):
             display = listing["display"]
             pokedex_id = listing["pokedex_id"]
 
-            # Buyer must not already own this species
             if owns_pokemon(buyer_id, poke_name):
                 await ctx.send(embed=discord.Embed(
                     description=f"❌ You already own a **{display}**! Each trainer can only have one of each species.",
@@ -398,7 +357,6 @@ class PokemonTeam(commands.Cog):
                 ))
                 return
 
-            # Check buyer has enough cash
             buyer_cash = get_cash(buyer_id)
             if buyer_cash < price:
                 await ctx.send(embed=discord.Embed(
@@ -413,59 +371,31 @@ class PokemonTeam(commands.Cog):
                 return
 
             # ── Execute the trade ──────────────────────────────────
-            # 1. Deduct from buyer
             remove_cash(buyer_id, price)
-            # 2. Pay seller
             add_cash(seller_id, price)
-            # 3. Move Pokémon from seller's collection to buyer's
-            with get_db() as con:
-                # Copy with moves intact
-                seller_poke = con.execute(
-                    "SELECT move1,move2,move3,move4 FROM pokemon_collection "
-                    "WHERE user_id=? AND name=? LIMIT 1",
-                    (seller_id, poke_name),
-                ).fetchone()
+            
+            seller_poke = db.pokemon_collection.find_one({"user_id": seller_id, "name": poke_name})
+            moves = seller_poke.get("moves", []) if seller_poke else []
 
-                move1 = seller_poke["move1"] if seller_poke else None
-                move2 = seller_poke["move2"] if seller_poke else None
-                move3 = seller_poke["move3"] if seller_poke else None
-                move4 = seller_poke["move4"] if seller_poke else None
-
-                con.execute(
-                    "INSERT INTO pokemon_collection (user_id, name, display, pokedex_id, move1, move2, move3, move4) "
-                    "VALUES (?,?,?,?,?,?,?,?)",
-                    (buyer_id, poke_name, display, pokedex_id, move1, move2, move3, move4),
+            db.pokemon_collection.insert_one({
+                "user_id": buyer_id,
+                "name": poke_name,
+                "display": display,
+                "pokedex_id": pokedex_id,
+                "moves": moves
+            })
+            
+            db.pokemon_collection.delete_one({"user_id": seller_id, "name": poke_name})
+            db.pokemon_market.delete_one({"seller_id": seller_id, "name": poke_name})
+            
+            seller_team_doc = db.pokemon_teams.find_one({"user_id": seller_id})
+            if seller_team_doc:
+                current_team = seller_team_doc.get("team", [])
+                new_team = [p for p in current_team if p.lower() != poke_name]
+                db.pokemon_teams.update_one(
+                    {"user_id": seller_id},
+                    {"$set": {"team": new_team}}
                 )
-                # Remove from seller's collection
-                con.execute(
-                    "DELETE FROM pokemon_collection WHERE user_id=? AND name=? LIMIT 1",
-                    (seller_id, poke_name),
-                )
-                # Remove from market
-                con.execute(
-                    "DELETE FROM pokemon_market WHERE seller_id=? AND name=?",
-                    (seller_id, poke_name),
-                )
-                # Remove from seller's team if it was in there
-                team_row = con.execute(
-                    "SELECT * FROM pokemon_teams WHERE user_id=?",
-                    (seller_id,),
-                ).fetchone()
-                if team_row:
-                    new_slots = []
-                    for i in range(1, 7):
-                        slot_val = team_row[f"slot{i}"]
-                        if slot_val and slot_val.lower() != poke_name:
-                            new_slots.append(slot_val)
-                    padded = new_slots + [None] * (6 - len(new_slots))
-                    con.execute("""
-                        INSERT INTO pokemon_teams (user_id,slot1,slot2,slot3,slot4,slot5,slot6)
-                        VALUES (?,?,?,?,?,?,?)
-                        ON CONFLICT(user_id) DO UPDATE SET
-                            slot1=excluded.slot1, slot2=excluded.slot2,
-                            slot3=excluded.slot3, slot4=excluded.slot4,
-                            slot5=excluded.slot5, slot6=excluded.slot6
-                    """, (seller_id, *padded))
 
             embed = discord.Embed(
                 title=f"✅ Trade Complete! {display} has a new trainer!",
@@ -482,7 +412,6 @@ class PokemonTeam(commands.Cog):
             embed.set_footer(text=f"Pokédex #{pokedex_id}")
             await ctx.send(embed=embed)
 
-            # DM the seller
             try:
                 seller_embed = discord.Embed(
                     title="💰 Your Pokémon was sold!",
@@ -494,7 +423,7 @@ class PokemonTeam(commands.Cog):
                 )
                 await seller.send(embed=seller_embed)
             except Exception:
-                pass  # DMs might be off
+                pass
 
         else:
             await ctx.send(embed=discord.Embed(
@@ -509,10 +438,8 @@ class PokemonTeam(commands.Cog):
     @commands.command(name="pokemart")
     async def pokemart(self, ctx):
         """Browse all Pokémon currently listed for sale."""
-        with get_db() as con:
-            listings = con.execute(
-                "SELECT * FROM pokemon_market ORDER BY listed_at DESC"
-            ).fetchall()
+        # Using MongoDB sort method to replace SQL ORDER BY
+        listings = list(db.pokemon_market.find().sort("listed_at", -1))
 
         if not listings:
             await ctx.send(embed=discord.Embed(
@@ -569,7 +496,6 @@ class PokemonTeam(commands.Cog):
                 and reaction.message.id == msg.id
             )
 
-        import asyncio
         while True:
             try:
                 reaction, user = await self.bot.wait_for("reaction_add", timeout=60, check=check)
@@ -593,11 +519,7 @@ class PokemonTeam(commands.Cog):
     async def pokecheck(self, ctx, member: discord.Member = None):
         """See what a specific trainer has listed in the market."""
         target = member or ctx.author
-        with get_db() as con:
-            listings = con.execute(
-                "SELECT * FROM pokemon_market WHERE seller_id=? ORDER BY listed_at DESC",
-                (str(target.id),),
-            ).fetchall()
+        listings = list(db.pokemon_market.find({"seller_id": str(target.id)}).sort("listed_at", -1))
 
         if not listings:
             await ctx.send(embed=discord.Embed(
