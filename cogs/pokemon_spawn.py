@@ -63,7 +63,7 @@ class PokemonSpawn(commands.Cog):
 
     # ── Hourly spawn ──────────────────────────────────────────────
 
-    @tasks.loop(hours=1)
+    @tasks.loop(minutes=10)
     async def spawn_loop(self):
         if db is None:
             return
