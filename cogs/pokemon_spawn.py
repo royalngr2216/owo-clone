@@ -1,10 +1,15 @@
 from discord.ext import commands
 from discord.ext import tasks
+from utils.pokemon_db import (
+    add_pokemon,
+    owns_pokemon,
+    pokemon_spawn_channels,
+    get_pokemon
+)
 import discord
 import random
 import asyncio
 import aiohttp
-import sqlite3
 
 # ─────────────────────────────────────────────────────────────────
 # GIF / SPRITE URLS
@@ -21,48 +26,6 @@ def sprite_url(name: str) -> str:
 # ─────────────────────────────────────────────────────────────────
 # DATABASE
 # ─────────────────────────────────────────────────────────────────
-
-DB_PATH = "pokemon.db"
-
-def get_db():
-    con = sqlite3.connect(DB_PATH)
-    con.row_factory = sqlite3.Row
-    return con
-
-def init_db():
-    with get_db() as con:
-        con.executescript("""
-            CREATE TABLE IF NOT EXISTS pokemon_collection (
-                id          INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id     TEXT    NOT NULL,
-                name        TEXT    NOT NULL,
-                display     TEXT    NOT NULL,
-                pokedex_id  INTEGER NOT NULL,
-                move1       TEXT    DEFAULT NULL,
-                move2       TEXT    DEFAULT NULL,
-                move3       TEXT    DEFAULT NULL,
-                move4       TEXT    DEFAULT NULL,
-                caught_at   TEXT    DEFAULT (datetime('now'))
-            );
-            CREATE TABLE IF NOT EXISTS pokemon_teams (
-                user_id TEXT PRIMARY KEY,
-                slot1 TEXT, slot2 TEXT, slot3 TEXT,
-                slot4 TEXT, slot5 TEXT, slot6 TEXT
-            );
-            CREATE TABLE IF NOT EXISTS spawn_channels (
-                channel_id TEXT PRIMARY KEY,
-                guild_id   TEXT NOT NULL
-            );
-            CREATE TABLE IF NOT EXISTS pokemon_market (
-                id          INTEGER PRIMARY KEY AUTOINCREMENT,
-                seller_id   TEXT    NOT NULL,
-                name        TEXT    NOT NULL,
-                display     TEXT    NOT NULL,
-                pokedex_id  INTEGER NOT NULL,
-                price       INTEGER NOT NULL,
-                listed_at   TEXT    DEFAULT (datetime('now'))
-            );
-        """)
 
 # ─────────────────────────────────────────────────────────────────
 # POKEAPI
@@ -97,7 +60,6 @@ class PokemonSpawn(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        init_db()
         self.spawn_loop.start()
 
     def cog_unload(self):
@@ -107,10 +69,11 @@ class PokemonSpawn(commands.Cog):
 
     @tasks.loop(hours=1)
     async def spawn_loop(self):
-        with get_db() as con:
-            rows = con.execute("SELECT channel_id FROM spawn_channels").fetchall()
+        rows = pokemon_spawn_channels.find()
         for row in rows:
-            ch = self.bot.get_channel(int(row["channel_id"]))
+            ch = self.bot.get_channel(
+                int(row["channel_id"])
+            )
             if ch:
                 await self.do_spawn(ch)
 
@@ -170,11 +133,10 @@ class PokemonSpawn(commands.Cog):
 
         # ── One-species-per-player check ──────────────────────────
         uid = str(ctx.author.id)
-        with get_db() as con:
-            already = con.execute(
-                "SELECT id FROM pokemon_collection WHERE user_id=? AND name=? LIMIT 1",
-                (uid, spawn["name"]),
-            ).fetchone()
+        already = owns_pokemon(
+            uid,
+            spawn["name"]
+        )
 
         if already:
             await ctx.send(embed=discord.Embed(
@@ -191,11 +153,12 @@ class PokemonSpawn(commands.Cog):
         # Correct and not a duplicate — mark caught immediately (race-condition safe)
         spawn["caught"] = True
 
-        with get_db() as con:
-            con.execute(
-                "INSERT INTO pokemon_collection (user_id, name, display, pokedex_id) VALUES (?,?,?,?)",
-                (uid, spawn["name"], spawn["display"], spawn["id"]),
-            )
+        add_pokemon(
+            uid,
+            spawn["name"],
+            spawn["display"],
+            spawn["id"]
+        )
 
         embed = discord.Embed(
             title=f"Gotcha! {spawn['display']} was caught! 🎉",
@@ -215,12 +178,9 @@ class PokemonSpawn(commands.Cog):
     @commands.command(name="pokemons", aliases=["pc", "collection"])
     async def pokemon_collection(self, ctx, member: discord.Member = None):
         target = member or ctx.author
-        with get_db() as con:
-            rows = con.execute(
-                "SELECT display, name, pokedex_id FROM pokemon_collection "
-                "WHERE user_id=? ORDER BY caught_at DESC",
-                (str(target.id),),
-            ).fetchall()
+        rows = get_pokemon(
+            str(target.id)
+        )
 
         if not rows:
             await ctx.send(embed=discord.Embed(
@@ -241,7 +201,7 @@ class PokemonSpawn(commands.Cog):
             embed.set_thumbnail(url=target.display_avatar.url)
             for row in pages[p]:
                 embed.add_field(
-                    name=f"{row['display']}",
+                    name=row["display"],
                     value=f"[🎞]({gif_url(row['name'])}) `#{row['pokedex_id']:03}`",
                     inline=True,
                 )
@@ -282,11 +242,19 @@ class PokemonSpawn(commands.Cog):
     @commands.command(name="setspawnchannel")
     @commands.has_permissions(manage_guild=True)
     async def set_spawn_channel(self, ctx):
-        with get_db() as con:
-            con.execute(
-                "INSERT OR REPLACE INTO spawn_channels (channel_id, guild_id) VALUES (?,?)",
-                (str(ctx.channel.id), str(ctx.guild.id)),
-            )
+        pokemon_spawn_channels.update_one(
+
+            {
+        "channel_id": str(ctx.channel.id)
+            },
+            {
+                "$set": {
+                    "channel_id": str(ctx.channel.id),
+                    "guild_id": str(ctx.guild.id)
+                } 
+            },
+            upsert=True
+        )
         await ctx.send(embed=discord.Embed(
             description=f"✅ Pokémon will now spawn in {ctx.channel.mention} every hour!",
             color=0x57F287,
