@@ -1,4 +1,11 @@
-from utils.economy import db
+import os
+from pymongo import MongoClient
+
+MONGO_URI = os.getenv("MONGO_URI")
+
+client = MongoClient(MONGO_URI)
+
+db = client["royal_bot"]
 
 pokemon_collection = db["pokemon"]
 pokemon_market = db["pokemon_market"]
@@ -12,9 +19,7 @@ pokemon_spawn_channels = db["pokemon_spawn_channels"]
 def create_pokemon_profile(user_id):
 
     user = pokemon_collection.find_one({
-
         "user_id": str(user_id)
-
     })
 
     if not user:
@@ -94,7 +99,7 @@ def add_pokemon(
 
                 "pokemon": {
 
-                    "name": name,
+                    "name": name.lower(),
 
                     "display": display,
 
@@ -201,6 +206,28 @@ def set_team(
     )
 
 
+def remove_from_team(
+    user_id,
+    pokemon_name
+):
+
+    team = get_team(
+        user_id
+    )
+
+    team = [
+
+        p for p in team
+
+        if p.lower() != pokemon_name.lower()
+    ]
+
+    set_team(
+        user_id,
+        team
+    )
+
+
 # ─────────────────────────
 # MOVES
 # ─────────────────────────
@@ -259,3 +286,88 @@ def get_moves(
             )
 
     return []
+
+
+# ─────────────────────────
+# POKEMON DATA
+# ─────────────────────────
+
+def get_pokemon_data(
+    user_id,
+    pokemon_name
+):
+
+    user = get_player(
+        user_id
+    )
+
+    for poke in user.get(
+        "pokemon",
+        []
+    ):
+
+        if poke["name"] == pokemon_name.lower():
+
+            return poke
+
+    return None
+
+
+# ─────────────────────────
+# TRANSFER
+# ─────────────────────────
+
+def transfer_pokemon(
+    seller_id,
+    buyer_id,
+    pokemon_name
+):
+
+    seller = get_player(
+        seller_id
+    )
+
+    pokemon_data = None
+
+    for poke in seller["pokemon"]:
+
+        if poke["name"] == pokemon_name.lower():
+
+            pokemon_data = poke
+            break
+
+    if not pokemon_data:
+        return False
+
+    pokemon_collection.update_one(
+
+        {
+            "user_id": str(seller_id)
+        },
+
+        {
+            "$pull": {
+
+                "pokemon": {
+
+                    "name": pokemon_name.lower()
+                }
+            }
+        }
+    )
+
+    pokemon_collection.update_one(
+
+        {
+            "user_id": str(buyer_id)
+        },
+
+        {
+            "$push": {
+
+                "pokemon": pokemon_data
+            }
+        }
+    )
+
+    return True
