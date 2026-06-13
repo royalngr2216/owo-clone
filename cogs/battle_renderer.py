@@ -616,3 +616,10 @@ async def make_battle_file(state) -> "discord.File":
         turn_num  = state.turn_num,
     )
     return discord.File(buf, filename="battle.png")
+
+# Add this to the very bottom of cogs/battle_renderer.py
+
+async def setup(bot):
+    """Placeholder to prevent the automated extension loader from crashing."""
+    pass
+    
