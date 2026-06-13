@@ -531,31 +531,123 @@ class MainBattleView(discord.ui.View):
         self.state = state
         self.cog   = cog
 
-    @discord.ui.button(label="⚔️ Choose Action", style=discord.ButtonStyle.primary, row=0)
-    async def btn_action(self, interaction: discord.Interaction, _):
-        if interaction.user not in self.state.players:
-            return await interaction.response.send_message("You're not in this battle!", ephemeral=True)
+        p0_name = self.state.players[0].display_name
+        p1_name = self.state.players[1].display_name
+
+        # ── Player 0 (Red) Dropdowns ──
+        p0_moves = self._build_move_opts(0)
+        sel_m0 = discord.ui.Select(placeholder=f"🔴 {p0_name}'s Moves...", options=p0_moves, row=0)
+        sel_m0.callback = self._cb_m0
+        self.add_item(sel_m0)
+
+        p0_switches = self._build_switch_opts(0)
+        if p0_switches:
+            sel_s0 = discord.ui.Select(placeholder=f"🔄 {p0_name}'s Team...", options=p0_switches, row=1)
+            sel_s0.callback = self._cb_s0
+            self.add_item(sel_s0)
+
+        # ── Player 1 (Blue) Dropdowns ──
+        p1_moves = self._build_move_opts(1)
+        sel_m1 = discord.ui.Select(placeholder=f"🔵 {p1_name}'s Moves...", options=p1_moves, row=2)
+        sel_m1.callback = self._cb_m1
+        self.add_item(sel_m1)
+
+        p1_switches = self._build_switch_opts(1)
+        if p1_switches:
+            sel_s1 = discord.ui.Select(placeholder=f"🔄 {p1_name}'s Team...", options=p1_switches, row=3)
+            sel_s1.callback = self._cb_s1
+            self.add_item(sel_s1)
+
+        # ── Utility Buttons ──
+        btn_team = discord.ui.Button(label="📊 Team Status", style=discord.ButtonStyle.secondary, row=4)
+        btn_team.callback = self.btn_team
+        self.add_item(btn_team)
+
+        btn_sur = discord.ui.Button(label="🏳️ Surrender", style=discord.ButtonStyle.danger, row=4)
+        btn_sur.callback = self.btn_surrender
+        self.add_item(btn_sur)
+
+    def _build_move_opts(self, p_idx):
+        opts = []
+        for m in self.state.pokemon[p_idx]["moves"]:
+            prio = get_priority(m["name"])
+            acc  = get_accuracy(m["name"])
+            acc_str  = f" | Acc: {acc}%" if acc is not None else " | Acc: —"
+            prio_str = f" | Prio +{prio}" if prio > 0 else (f" | Prio {prio}" if prio < 0 else "")
+            pwr  = f"⚡{m['power']}" if m["power"] else "Status"
+            
+            has_flinch = m["name"].lower().replace(" ","-") in FLINCH_MOVES
+            has_status = m["name"].lower().replace(" ","-") in STATUS_MOVES
+            tags = ""
+            if has_flinch: tags += " 😵"
+            if has_status: tags += " 🌡"
+            
+            opts.append(discord.SelectOption(
+                label=f"{m['display']}{tags}",
+                description=f"{m['type'].title()} • {pwr}{acc_str}{prio_str}",
+                value=m["name"]
+            ))
+        return opts
+
+    def _build_switch_opts(self, p_idx):
+        opts = []
+        for pk in self.state.teams[p_idx]:
+            if pk["name"] == self.state.pokemon[p_idx]["name"]:
+                continue
+            slot = self.state._team_slot(p_idx, pk["name"])
+            if slot is None:
+                continue
+            hp_cur = self.state.team_hp[p_idx][slot][0]
+            hp_max = self.state.team_hp[p_idx][slot][1]
+            if hp_cur > 0:
+                opts.append(discord.SelectOption(
+                    label=pk["display"],
+                    description=f"HP: {hp_cur}/{hp_max}",
+                    value=pk["name"]
+                ))
+        return opts
+
+    async def _process_action(self, interaction: discord.Interaction, p_idx: int, act_type: str, val: str):
+        # Prevent players from touching the other person's dropdowns
+        if interaction.user.id != self.state.players[p_idx].id:
+            return await interaction.response.send_message("❌ Use your own dropdown menus!", ephemeral=True)
+            
         if interaction.user.id in self.state.actions:
-            return await interaction.response.send_message("✅ Already locked in! Waiting for opponent...", ephemeral=True)
+            return await interaction.response.send_message("✅ You already locked in your action!", ephemeral=True)
 
-        p_idx = 0 if interaction.user.id == self.state.players[0].id else 1
-        view  = ActionSelectView(self.state, self.cog, p_idx)
-        panel = team_panel(self.state, p_idx)
-        await interaction.response.send_message(
-            f"**Your team status:**\n{panel}\n\nChoose your action:",
-            view=view, ephemeral=True
-        )
+        if act_type == "move":
+            data = next(m for m in self.state.pokemon[p_idx]["moves"] if m["name"] == val)
+        else:
+            data = next(p for p in self.state.teams[p_idx] if p["name"] == val)
 
-    @discord.ui.button(label="📊 Team Status", style=discord.ButtonStyle.secondary, row=0)
-    async def btn_team(self, interaction: discord.Interaction, _):
+        self.state.actions[interaction.user.id] = {"type": act_type, "data": data}
+        
+        # Acknowledge the selection silently without forcing a scroll
+        await interaction.response.send_message("✅ Action locked in! Waiting for opponent...", ephemeral=True)
+
+        if len(self.state.actions) == 2:
+            await self.cog.resolve_turn(self.state)
+        else:
+            try:
+                # Update the embed to show 1 trainer is waiting
+                await self.state.main_msg.edit(embed=battle_embed(self.state))
+            except Exception:
+                pass
+
+    # Dropdown callbacks
+    async def _cb_m0(self, interaction): await self._process_action(interaction, 0, "move", interaction.data["values"][0])
+    async def _cb_s0(self, interaction): await self._process_action(interaction, 0, "switch", interaction.data["values"][0])
+    async def _cb_m1(self, interaction): await self._process_action(interaction, 1, "move", interaction.data["values"][0])
+    async def _cb_s1(self, interaction): await self._process_action(interaction, 1, "switch", interaction.data["values"][0])
+
+    async def btn_team(self, interaction: discord.Interaction):
         if interaction.user not in self.state.players:
             return await interaction.response.send_message("You're not in this battle!", ephemeral=True)
         p_idx = 0 if interaction.user.id == self.state.players[0].id else 1
         panel = team_panel(self.state, p_idx)
         await interaction.response.send_message(panel, ephemeral=True)
 
-    @discord.ui.button(label="🏳️ Surrender", style=discord.ButtonStyle.danger, row=0)
-    async def btn_surrender(self, interaction: discord.Interaction, _):
+    async def btn_surrender(self, interaction: discord.Interaction):
         if interaction.user not in self.state.players:
             return await interaction.response.send_message("You're not in this battle!", ephemeral=True)
         self.stop()
@@ -565,82 +657,6 @@ class MainBattleView(discord.ui.View):
 
     async def on_timeout(self):
         self.stop()
-
-
-class ActionSelectView(discord.ui.View):
-    def __init__(self, state: BattleState, cog, p_idx: int):
-        super().__init__(timeout=90)
-        self.state = state
-        self.cog   = cog
-        self.p_idx = p_idx
-
-        # Move dropdown
-        move_opts = []
-        for m in state.pokemon[p_idx]["moves"]:
-            prio    = get_priority(m["name"])
-            acc     = get_accuracy(m["name"])
-            acc_str = f" | Acc: {acc}%" if acc is not None else " | Acc: —"
-            prio_str = f" | Prio +{prio}" if prio > 0 else (f" | Prio {prio}" if prio < 0 else "")
-            pwr     = f"⚡{m['power']}" if m["power"] else "Status"
-            has_flinch  = m["name"].lower().replace(" ","-") in FLINCH_MOVES
-            has_status  = m["name"].lower().replace(" ","-") in STATUS_MOVES
-            tags = ""
-            if has_flinch: tags += " 😵"
-            if has_status: tags += " 🌡"
-            move_opts.append(discord.SelectOption(
-                label=f"{m['display']}{tags}",
-                description=f"{m['type'].title()} • {pwr}{acc_str}{prio_str}",
-                value=f"move_{m['name']}",
-            ))
-
-        sel_move = discord.ui.Select(placeholder="⚔️ Select a Move...", options=move_opts)
-        sel_move.callback = self.on_select
-        self.add_item(sel_move)
-
-        # Switch dropdown — only show Pokémon with HP > 0
-        available = [
-            pk for pk in state.teams[p_idx]
-            if pk["name"] != state.pokemon[p_idx]["name"]
-            and state.team_hp[p_idx][state._team_slot(p_idx, pk["name"]) or 0][0] > 0
-        ]
-        if available:
-            sw_opts = [
-                discord.SelectOption(
-                    label=pk["display"],
-                    description=f"HP: {state.team_hp[p_idx][state._team_slot(p_idx, pk['name']) or 0][0]}/"
-                                f"{state.team_hp[p_idx][state._team_slot(p_idx, pk['name']) or 0][1]}",
-                    value=f"switch_{pk['name']}",
-                )
-                for pk in available
-            ]
-            sel_sw = discord.ui.Select(placeholder="🔄 Switch Pokémon...", options=sw_opts)
-            sel_sw.callback = self.on_select
-            self.add_item(sel_sw)
-
-    async def on_select(self, interaction: discord.Interaction):
-        val = interaction.data["values"][0]
-
-        if val.startswith("move_"):
-            m_name = val[5:]
-            move   = next(m for m in self.state.pokemon[self.p_idx]["moves"] if m["name"] == m_name)
-            self.state.actions[interaction.user.id] = {"type": "move", "data": move}
-        elif val.startswith("switch_"):
-            p_name = val[7:]
-            poke   = next(p for p in self.state.teams[self.p_idx] if p["name"] == p_name)
-            self.state.actions[interaction.user.id] = {"type": "switch", "data": poke}
-
-        await interaction.response.edit_message(
-            content="✅ **Action locked in!** Waiting for opponent...", view=None
-        )
-
-        # Update the main embed to show 1 trainer has acted
-        try:
-            await self.state.main_msg.edit(embed=battle_embed(self.state))
-        except Exception:
-            pass  # partial update ok without image
-
-        if len(self.state.actions) == 2:
-            await self.cog.resolve_turn(self.state)
 
 
 class PokemonPickView(discord.ui.View):
@@ -715,9 +731,6 @@ class ChallengeView(discord.ui.View):
 # ─────────────────────────────────────────────────────────────────
 # COG
 # ─────────────────────────────────────────────────────────────────
-
-
-# ── Helper: send/edit with generated battle image ─────────────────
 
 async def _edit_with_image(msg, embed, view=None, state=None):
     """Edit a message replacing the image with a freshly rendered battle scene."""
@@ -841,7 +854,7 @@ class PokemonBattle(commands.Cog):
         state.log = (
             f"**{challenger.display_name}** sent out **{ch_poke['display']}**!\n"
             f"**{opponent.display_name}** sent out **{op_poke['display']}**!\n\n"
-            f"Both trainers: click **⚔️ Choose Action** to make your move!"
+            f"Both trainers: Select your move directly below!"
         )
         await _edit_with_image(msg, battle_embed(state), MainBattleView(state, self), state)
 
