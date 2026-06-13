@@ -94,11 +94,13 @@ def _clean(name: str) -> str:
 
 
 def back_sprite_url(name: str) -> str:
-    return f"https://play.pokemonshowdown.com/sprites/gen5back/{_clean(name)}.png"
+    # Changed to the comprehensive animated GIF folder (supports up to Gen 9)
+    return f"https://play.pokemonshowdown.com/sprites/ani-back/{_clean(name)}.gif"
 
 
 def front_sprite_url(name: str) -> str:
-    return f"https://play.pokemonshowdown.com/sprites/gen5/{_clean(name)}.png"
+    # Changed to the comprehensive animated GIF folder (supports up to Gen 9)
+    return f"https://play.pokemonshowdown.com/sprites/ani/{_clean(name)}.gif"
 
 
 # ── Sprite loader (async, with fallback) ─────────────────────────
@@ -577,8 +579,7 @@ async def render_battle(
     out = io.BytesIO()
     final.convert("RGB").save(out, format="PNG", optimize=True)
     out.seek(0)
-    return out
-
+    return
 
 # ── Convenience wrapper called from pokemon_battle.py ─────────────
 
@@ -617,9 +618,9 @@ async def make_battle_file(state) -> "discord.File":
     )
     return discord.File(buf, filename="battle.png")
 
-# Add this to the very bottom of cogs/battle_renderer.py
+
+# ── Render Loader Safeguard ──────────────────────────────────────────
 
 async def setup(bot):
     """Placeholder to prevent the automated extension loader from crashing."""
     pass
-    
