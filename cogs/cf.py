@@ -10,28 +10,14 @@ from utils.economy import (
     parse_amount,
     format_cash
 )
-from utils.stats import add_stats, update_biggest_win
-from utils.achievement_checker import check_achievements
 
-
-# ─────────────────────────
-# COIN SPIN FRAMES
-# Simulates a coin tumbling through the air
-# ─────────────────────────
-
-COIN_SPIN = ["🪙", "⬜", "🪙", "⬜", "🪙"]
-
-HEADS_GIF = (
-    "https://cdn.discordapp.com/attachments/"
-    "1356735875517775995/"
-    "1360904053567262883/"
-    "VN20250413_143452.gif"
+from utils.stats import (
+    add_stats,
+    update_biggest_win
 )
-TAILS_GIF = (
-    "https://cdn.discordapp.com/attachments/"
-    "1356735875517775995/"
-    "1360903389403283496/"
-    "VN20250413_142456_2.gif"
+
+from utils.achievement_checker import (
+    check_achievements
 )
 
 
@@ -40,123 +26,105 @@ class Coinflip(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(aliases=["cf"])
-    async def coinflip(self, ctx, choice: str = None, amount: str = None):
 
-        # ─── USAGE CHECK ───
-        if choice is None or amount is None:
-            embed = discord.Embed(
-                title="🪙 COINFLIP",
-                description=(
-                    "**Usage:** `.cf heads amount` or `.cf tails amount`\n\n"
-                    "**Shortcuts:** `.cf h 100k` or `.cf t all`\n\n"
-                    "Win your bet on a correct call. **2x payout.**"
-                ),
-                color=0x5865F2
-            )
-            await ctx.send(embed=embed)
+    @commands.command(
+        aliases=["cf"]
+    )
+    async def coinflip(self, ctx, choice: str, amount: str):
+        choice = choice.lower()
+
+        if choice not in ["heads", "tails", "h", "t"]:
+            await ctx.send("Use: `.cf heads amount`")
             return
 
-        choice = choice.lower()
         if choice == "h":
             choice = "heads"
-        elif choice == "t":
+
+        if choice == "t":
             choice = "tails"
 
-        if choice not in ["heads", "tails"]:
-            await ctx.send(embed=discord.Embed(
-                description="❌ Choose **heads** or **tails**.",
-                color=0xED4245
-            ))
-            return
-
-        cash   = get_cash(ctx.author.id)
+        cash = get_cash(ctx.author.id)
         amount = parse_amount(amount, cash)
 
-        if amount is None:
-            await ctx.send(embed=discord.Embed(description="❌ Invalid amount.", color=0xED4245))
+        if amount is None or amount <= 0:
+            await ctx.send("Invalid amount.")
             return
-        if amount <= 0:
-            await ctx.send(embed=discord.Embed(description="❌ Bet must be above 0.", color=0xED4245))
-            return
+
         if cash < amount:
-            await ctx.send(embed=discord.Embed(description="❌ Not enough cash.", color=0xED4245))
+            await ctx.send("You don't have enough cash.")
             return
 
-        # ─── DETERMINE RESULT BEFORE ANIMATION ───
-        result = random.choice(["heads", "tails"])
-        won    = (choice == result)
+        # Start the suspense animation
+        suspense_msg = await ctx.send("Flipping the coin... 🪙")
 
-        add_stats(ctx.author.id, games_played=1, total_gambled=amount)
-
-        # ─────────────────────────
-        # SPINNING ANIMATION
-        # ─────────────────────────
-
-        embed = discord.Embed(
-            title="🪙 COINFLIP",
-            description=(
-                f"**Your call:** {choice.upper()}\n\n"
-                "🪙  *Flipping...*"
-            ),
-            color=0x5865F2
-        )
-        embed.set_footer(text=f"Bet: {format_cash(amount)}")
-        msg = await ctx.send(embed=embed)
-
-        spin_texts = [
-            "🪙  *It's in the air...*",
-            "⬜  *Spinning...*",
-            "🪙  *Almost...*",
-            "⬜  *Slowing down...*",
-            "🪙  *Landing...*",
+        suspense_texts = [
+            "Flipping. 🪙",
+            "Flipping.. 🪙",
+            "Flipping... 🪙"
         ]
 
-        for text in spin_texts:
-            await asyncio.sleep(0.18)
-            embed.description = f"**Your call:** {choice.upper()}\n\n{text}"
-            try:
-                await msg.edit(embed=embed)
-            except:
-                pass
+        # Loops through the text safely with a 1-second delay per frame
+        for text in suspense_texts:
+            await suspense_msg.edit(content=text)
+            await asyncio.sleep(1.0)
 
-        await asyncio.sleep(0.4)
+        # GIFS
+        heads_gif = (
+            "https://cdn.discordapp.com/attachments/"
+            "1356735875517775995/"
+            "1360904053567262883/"
+            "VN20250413_143452.gif"
+        )
 
-        # ─────────────────────────
+        tails_gif = (
+            "https://cdn.discordapp.com/attachments/"
+            "1356735875517775995/"
+            "1360903389403283496/"
+            "VN20250413_142456_2.gif"
+        )
+
         # RESULT
-        # ─────────────────────────
+        result = random.choice(["heads", "tails"])
 
-        if won:
+        # PROFILE STATS
+        add_stats(
+            ctx.author.id,
+            games_played=1,
+            total_gambled=amount
+        )
+
+        if result == "heads":
+            gif = heads_gif
+        else:
+            gif = tails_gif
+
+        # WIN
+        if choice == result:
             add_cash(ctx.author.id, amount)
             update_biggest_win(ctx.author.id, amount)
+            outcome = f"✅ {ctx.author.mention} won **{format_cash(amount)}**"
+            color = discord.Color.green()
 
-            embed = discord.Embed(
-                title="🪙 COINFLIP — WIN!",
-                description=(
-                    f"**Your call:** {choice.upper()}\n"
-                    f"**Result:** {result.upper()}\n\n"
-                    f"✅ {ctx.author.mention} won **{format_cash(amount)}**"
-                ),
-                color=0x57F287
-            )
+        # LOSE
         else:
             remove_cash(ctx.author.id, amount)
-
-            embed = discord.Embed(
-                title="🪙 COINFLIP — LOSS",
-                description=(
-                    f"**Your call:** {choice.upper()}\n"
-                    f"**Result:** {result.upper()}\n\n"
-                    f"❌ {ctx.author.mention} lost **{format_cash(amount)}**"
-                ),
-                color=0xED4245
-            )
-
-        embed.set_image(url=HEADS_GIF if result == "heads" else TAILS_GIF)
-        embed.set_footer(text=f"Bet: {format_cash(amount)}")
-        await msg.edit(embed=embed)
+            outcome = f"❌ {ctx.author.mention} lost **{format_cash(amount)}**"
+            color = discord.Color.red()
 
         await check_achievements(self.bot, ctx.author)
+
+        embed = discord.Embed(
+            title="🪙 Coin Flip Result",
+            description=(
+                f"🎯 Result: **{result.upper()}**\n\n"
+                f"{outcome}"
+            ),
+            color=color
+        )
+        embed.set_image(url=gif)
+
+        # Show final results
+        await suspense_msg.edit(content=None, embed=embed)
 
 
 async def setup(bot):
