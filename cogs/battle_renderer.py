@@ -573,13 +573,13 @@ async def render_battle(
         width=int((W - margin * 2) * SS), height=int(log_h * SS),
     )
 
-    # ── Downsample for crisp anti-aliasing ─────────────────────
+        # ── Downsample for crisp anti-aliasing ─────────────────────
     final = canvas.resize((W, H), Image.LANCZOS)
 
     out = io.BytesIO()
     final.convert("RGB").save(out, format="PNG", optimize=True)
     out.seek(0)
-    return
+    return out  # Fixed: Added 'out' here!
 
 # ── Convenience wrapper called from pokemon_battle.py ─────────────
 
@@ -623,4 +623,4 @@ async def make_battle_file(state) -> "discord.File":
 
 async def setup(bot):
     """Placeholder to prevent the automated extension loader from crashing."""
-    pass
+    pass  # Fixed: Properly indented!
