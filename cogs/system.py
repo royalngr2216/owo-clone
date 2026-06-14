@@ -92,19 +92,20 @@ HELP_CATEGORIES = {
     ),
 
     "🎲 Casino": (
-        "**.dice up amount**\n"
-        "Win on 8-12.\n\n"
-        "**.dice down amount**\n"
-        "Win on 2-6.\n\n"
-        "**.dice 7 amount**\n"
-        "Exact 7 payout.\n\n"
-        "Get 7x on win.\n\n"
-        "**.cf heads amount**\n"
-        "Coinflip heads.\n\n"
-        "**.cf tails amount**\n"
-        "Coinflip tails.\n\n"
+        "**.cf h/t amount**\n"
+        "Coinflip heads or tails.\n\n"
+        "**.blackjack amount**\n"
+        "Play a blackjack game with hit/stand/double.\n\n"
+        "**.crash amount**\n"
+        "Play a plane crash game, higher risk = higher payout.\n\n"
+        "**.guessnumber amount**\n"
+        "The faster you guess, the better rewards.\n\n"
+        "**.highlow amount**\n"
+        "Bet by guessing higher or lower number next turn.\n\n"
+        "**.lottery amount**\n"
+        "Takes part in the lottery, higher amount = more chances of winning.\n\n"
         "**.slots amount**\n"
-        "Play the slot machine."
+        "Play the slot machine." 
     ),
 
         "🐉 Pokemon": (
