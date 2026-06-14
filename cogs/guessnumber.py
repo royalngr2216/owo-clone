@@ -27,13 +27,13 @@ MAX_NUMBER = 100
 MAX_GUESSES = 7
 
 MULT_BY_GUESSES_USED = {
-    1: 15.0,   # correct on 1st guess
+    1: 16.0,   # correct on 1st guess
     2: 8.0,
     3: 4.0,
-    4: 2.5,
+    4: 2.0,
     5: 1.75,
-    6: 1.3,
-    7: 1.1,
+    6: 1.5,
+    7: 1.25,
 }
 
 # ─────────────────────────
