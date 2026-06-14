@@ -35,7 +35,10 @@ def random_card():
 def card_str(rank, suit):
     return f"`{rank}{suit}`"
 
-MULTIPLIERS = [1.0, 1.25, 1.75, 2.0, 2.25, 2.74, 5.0]
+# REBALANCED ECONOMY:
+# Lowered the early multipliers so safe players don't farm free money.
+# They now have to risk going deeper to get the big payouts.
+MULTIPLIERS = [1.0, 1.10, 1.25, 1.50, 2.0, 2.5, 3.0]
 
 def mult_ladder(current_round):
     """Renders multiplier ladder with current position highlighted."""
@@ -86,12 +89,12 @@ class HigherLower(commands.Cog):
                     f"{mult_ladder(-1)}\n"
                     "━━━━━━━━━━━━━━━━━━━━━\n\n"
                     "💰 **Collect** anytime to take your winnings!\n"
-                    "🤝 Ties are neutral — card redrawn, no loss.\n\n"
+                    "⚠️ **Ties are a LOSS!** If the same card is drawn, you lose.\n\n"
                     "**Usage:** `.highlow <amount>` or `.hl <amount>`"
                 ),
                 color=0x5865F2
             )
-            embed.set_footer(text="Chain 7 correct guesses for 10× payout! 🔥")
+            embed.set_footer(text="Chain 7 correct guesses for 5.0× payout! 🔥")
             await ctx.send(embed=embed)
             return
 
@@ -145,7 +148,6 @@ class HigherLower(commands.Cog):
         card_val = RANK_VALUES[g["current_rank"]]
         card_display = card_str(g["current_rank"], g["current_suit"])
 
-        # Hint: easy to read what's likely
         higher_count = sum(1 for v in RANK_VALUES.values() if v > card_val)
         lower_count = sum(1 for v in RANK_VALUES.values() if v < card_val)
         hint = f"📊 `{higher_count}` cards higher · `{lower_count}` cards lower"
@@ -194,18 +196,7 @@ class HigherLower(commands.Cog):
         new_rank, new_suit = random_card()
         new_val = RANK_VALUES[new_rank]
 
-        if new_val == old_val:
-            # Tie — redraw, neutral
-            g["current_rank"] = new_rank
-            g["current_suit"] = new_suit
-            embed, view = self._build(
-                user_id,
-                status_line=f"🤝 **Tie!** Next card was {card_str(new_rank, new_suit)} (`{new_val}`) — redraw, no change."
-            )
-            embed.color = 0xFEE75C
-            await interaction.response.edit_message(embed=embed, view=view)
-            return
-
+        # TIES ARE NOW A LOSS. The only way this evaluates to True is if it is strictly higher or strictly lower.
         correct = (
             (direction == "higher" and new_val > old_val) or
             (direction == "lower" and new_val < old_val)
@@ -232,14 +223,20 @@ class HigherLower(commands.Cog):
             record_loss(user_id, bet)
             rnd_before = g["round"] - 1
             mult_reached = MULTIPLIERS[rnd_before - 1] if rnd_before > 0 else None
+            
+            # Check if they lost because of a tie, and mock them for it.
+            if new_val == old_val:
+                reason = f"The next card was also {card_str(new_rank, new_suit)} (`{new_val}`)!\n**A tie is a loss!** ❌"
+            else:
+                reason = f"The next card was {card_str(new_rank, new_suit)} (`{new_val}`)\nYou guessed **{direction}** — ❌ Wrong!"
+
             desc = (
-                f"The next card was {card_str(new_rank, new_suit)} (value `{new_val}`)\n"
-                f"You guessed **{direction}** — ❌ Wrong!\n\n"
+                f"{reason}\n\n"
                 f"━━━━━━━━━━━━━━━━━━━━━\n"
                 f"💸 Lost: **{format_cash(bet)}**\n"
             )
             if mult_reached and rnd_before > 0:
-                desc += f"*You made it to round {rnd_before} ({mult_reached}×) — so close!*"
+                desc += f"*You made it to round {rnd_before} ({mult_reached}×) — should have collected!*"
 
             embed = discord.Embed(
                 title="🎴 Higher or Lower — Wrong!",
@@ -355,3 +352,4 @@ class HlView(discord.ui.View):
 
 async def setup(bot):
     await bot.add_cog(HigherLower(bot))
+    
