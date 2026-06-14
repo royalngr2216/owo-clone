@@ -26,14 +26,14 @@ from utils.achievement_checker import check_achievements
 
 def generate_crash_point():
     """
-    Generates a crash point with house edge ~3%.
-    Distribution: mostly 1.0–2.0×, occasionally high.
+    Generates a fair crash point with exactly a 3% house edge.
+    Most games will run, but the house always maintains its profit margin.
     """
-    r = random.random()
-    if r < 0.20:
-        return 1.0
-    crash = 0.97 / (1.0 - random.random())
-    return max(1.0, round(crash, 2))
+    if random.random() < 0.03:
+        return 1.00
+
+    crash = 1.00 / (1.0 - random.random())
+    return max(1.01, round(crash, 2))
 
 
 def get_frames(crash_point):
@@ -114,7 +114,7 @@ class Crash(commands.Cog):
             embed = discord.Embed(
                 title="🚀 Crash",
                 description=(
-                    "Watch the multiplier soar — **cash out** before it crashes!\n\n"
+                    "**cash out** before it crashes! <:bj:1492588515253551144>\n\n"
                     "━━━━━━━━━━━━━━━━━━━━━\n"
                     "💰 **Manual** — press Cash Out whenever you want\n"
                     "🎯 **Auto** — set a target and cash out automatically\n"
@@ -123,11 +123,11 @@ class Crash(commands.Cog):
                     "`.crash <amount>` — manual cashout\n"
                     "`.crash <amount> <target×>` — auto cashout\n\n"
                     "**Example:** `.crash 1000 2.5` → auto cashes at **2.5×**\n\n"
-                    "⚠️ The longer you wait, the higher the risk!"
+                    "<:bj:1492588515253551144> The longer you wait, the higher the risk!"
                 ),
                 color=0x2B2D31
             )
-            embed.set_footer(text="House edge: ~3%")
+            embed.set_footer(text="<:Pray:1509654308705145033>")
             await ctx.send(embed=embed)
             return
 
@@ -390,7 +390,7 @@ def _crash_quip(crash_point):
     elif crash_point < 7.0:
         return "That was actually pretty high!"
     else:
-        return f"It went to {crash_point}×! You should've cashed out! 😤"
+        return f"It went to {crash_point}×! You should've cashed out! <:bj:1492588515253551144>"
 
 
 class CrashView(discord.ui.View):
@@ -424,3 +424,4 @@ class CrashView(discord.ui.View):
 
 async def setup(bot):
     await bot.add_cog(Crash(bot))
+        
