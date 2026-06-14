@@ -1,0 +1,505 @@
+from discord.ext import commands
+import discord
+import random
+import asyncio
+
+from utils.economy import (
+    get_cash,
+    add_cash,
+    remove_cash,
+    parse_amount,
+    format_cash
+)
+from utils.stats import (
+    add_stats,
+    update_biggest_win,
+    record_win,
+    record_loss
+)
+from utils.achievement_checker import check_achievements
+
+
+# ─────────────────────────
+# CARD HELPERS
+# ─────────────────────────
+
+SUITS = ["♠", "♥", "♦", "♣"]
+RANKS = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"]
+
+SUIT_COLORS = {"♥": "❤️", "♦": "🔶", "♠": "🖤", "♣": "🍀"}
+
+def make_deck():
+    return [f"{r}{s}" for s in SUITS for r in RANKS]
+
+def card_value(card):
+    rank = card[:-1]
+    if rank in ["J", "Q", "K"]:
+        return 10
+    if rank == "A":
+        return 11
+    return int(rank)
+
+def hand_total(hand):
+    total = sum(card_value(c) for c in hand)
+    aces = sum(1 for c in hand if c[:-1] == "A")
+    while total > 21 and aces:
+        total -= 10
+        aces -= 1
+    return total
+
+def fmt_hand(hand, hide_second=False):
+    if hide_second and len(hand) >= 2:
+        return f"`{hand[0]}`  `🂠`"
+    return "  ".join(f"`{c}`" for c in hand)
+
+def hand_label(hand, hide_second=False):
+    if hide_second:
+        return f"? (showing {card_value(hand[0])})"
+    t = hand_total(hand)
+    if t > 21:
+        return f"~~{t}~~ 💥 BUST"
+    if t == 21:
+        return "**21** 🌟"
+    return str(t)
+
+def score_bar(total):
+    """Visual score bar for the hand total."""
+    if total > 21:
+        return "🔴🔴🔴🔴🔴 BUST"
+    filled = round((total / 21) * 5)
+    bar = "🟩" * filled + "⬛" * (5 - filled)
+    if total >= 18:
+        bar = "🟨" * filled + "⬛" * (5 - filled)
+    if total == 21:
+        bar = "🏆🏆🏆🏆🏆"
+    return bar
+
+
+# ─────────────────────────
+# ACTIVE GAMES
+# ─────────────────────────
+
+bj_games = {}
+
+
+class Blackjack(commands.Cog):
+
+    def __init__(self, bot):
+        self.bot = bot
+
+    # ─────────────────────────
+    # COMMAND
+    # ─────────────────────────
+
+    @commands.command(aliases=["bj"])
+    async def blackjack(self, ctx, amount: str = None):
+
+        if ctx.author.id in bj_games:
+            await ctx.send(
+                embed=discord.Embed(
+                    title="🃏 Game Already Running",
+                    description="You already have a blackjack game in progress!\nUse the **Hit**, **Stand**, or **Double** buttons to continue.",
+                    color=0xED4245
+                ).set_footer(text="One game at a time!")
+            )
+            return
+
+        if amount is None:
+            embed = discord.Embed(
+                title="🃏 Blackjack",
+                description=(
+                    "Beat the dealer to **21** without going over!\n\n"
+                    "━━━━━━━━━━━━━━━━━━━━━\n"
+                    "**👊 Hit** — Draw another card\n"
+                    "**✋ Stand** — Keep your hand, dealer plays\n"
+                    "**💰 Double** — Double bet, one card only\n"
+                    "━━━━━━━━━━━━━━━━━━━━━\n\n"
+                    "🎯 Dealer hits on **16 or below**, stands on **17+**\n"
+                    "🌟 **Natural Blackjack** (21 in 2 cards) pays **1.5×**!\n\n"
+                    "**Usage:** `.blackjack <amount>` or `.bj <amount>`"
+                ),
+                color=0x2B2D31
+            )
+            embed.set_thumbnail(url="https://cdn.discordapp.com/emojis/1234567890.webp")
+            embed.set_footer(text="Good luck! 🍀")
+            await ctx.send(embed=embed)
+            return
+
+        cash = get_cash(ctx.author.id)
+        bet = parse_amount(amount, cash)
+
+        if bet is None or bet <= 0:
+            await ctx.send(embed=discord.Embed(
+                title="❌ Invalid Amount",
+                description="Please enter a valid bet amount.",
+                color=0xED4245
+            ))
+            return
+        if cash < bet:
+            await ctx.send(embed=discord.Embed(
+                title="❌ Insufficient Funds",
+                description=f"You only have **{format_cash(cash)}**.",
+                color=0xED4245
+            ))
+            return
+
+        remove_cash(ctx.author.id, bet)
+        add_stats(ctx.author.id, games_played=1, total_gambled=bet)
+
+        deck = make_deck()
+        random.shuffle(deck)
+
+        player = [deck.pop(), deck.pop()]
+        dealer = [deck.pop(), deck.pop()]
+
+        bj_games[ctx.author.id] = {
+            "player": player,
+            "dealer": dealer,
+            "deck": deck,
+            "bet": bet,
+            "done": False
+        }
+
+        # Instant natural blackjack check
+        if hand_total(player) == 21:
+            del bj_games[ctx.author.id]
+            if hand_total(dealer) == 21:
+                add_cash(ctx.author.id, bet)
+                embed = discord.Embed(
+                    title="🤝 Push — Both Got Blackjack!",
+                    color=0xFEE75C
+                )
+                embed.add_field(
+                    name="🧑 Your Hand",
+                    value=f"{fmt_hand(player)}\n{score_bar(21)} `21`",
+                    inline=True
+                )
+                embed.add_field(
+                    name="🤖 Dealer Hand",
+                    value=f"{fmt_hand(dealer)}\n{score_bar(21)} `21`",
+                    inline=True
+                )
+                embed.add_field(
+                    name="💫 Result",
+                    value=f"Both drew Blackjack — your **{format_cash(bet)}** is returned.",
+                    inline=False
+                )
+            else:
+                payout = int(bet * 2.5)
+                add_cash(ctx.author.id, payout)
+                update_biggest_win(ctx.author.id, payout - bet)
+                record_win(ctx.author.id, payout - bet)
+                embed = discord.Embed(
+                    title="🌟 BLACKJACK! Natural 21!",
+                    color=0xFFD700
+                )
+                embed.add_field(
+                    name="🧑 Your Hand",
+                    value=f"{fmt_hand(player)}\n{score_bar(21)} `21`",
+                    inline=True
+                )
+                embed.add_field(
+                    name="🤖 Dealer Hand",
+                    value=f"{fmt_hand(dealer)}\n{score_bar(hand_total(dealer))} `{hand_total(dealer)}`",
+                    inline=True
+                )
+                embed.add_field(
+                    name="💰 Winnings",
+                    value=f"**+{format_cash(payout - bet)}** *(1.5× payout)*",
+                    inline=False
+                )
+            embed.set_footer(text=f"Bet: {format_cash(bet)}")
+            await ctx.send(embed=embed)
+            await check_achievements(self.bot, ctx.author)
+            return
+
+        embed, view = self._build_embed_view(ctx.author.id)
+        msg = await ctx.send(embed=embed, view=view)
+        bj_games[ctx.author.id]["msg"] = msg
+
+    # ─────────────────────────
+    # BUILD EMBED + VIEW
+    # ─────────────────────────
+
+    def _build_embed_view(self, user_id):
+        g = bj_games[user_id]
+        player = g["player"]
+        dealer = g["dealer"]
+        bet = g["bet"]
+
+        ptotal = hand_total(player)
+        dealer_show = card_value(dealer[0])
+
+        embed = discord.Embed(
+            title="🃏 Blackjack",
+            color=0x5865F2
+        )
+        embed.add_field(
+            name=f"🧑 Your Hand — `{ptotal}`",
+            value=f"{fmt_hand(player)}\n{score_bar(ptotal)}",
+            inline=True
+        )
+        embed.add_field(
+            name=f"🤖 Dealer — `? (showing {dealer_show})`",
+            value=f"{fmt_hand(dealer, hide_second=True)}\n{'⬛' * 5}",
+            inline=True
+        )
+        embed.add_field(
+            name="💡 Tip",
+            value=(
+                "🔴 Stand on 17+" if ptotal >= 17
+                else "🟡 Consider hitting!" if ptotal <= 11
+                else "🟠 Risky zone — your call!"
+            ),
+            inline=False
+        )
+        embed.set_footer(text=f"Bet: {format_cash(bet)}  •  Hit, Stand, or Double!")
+
+        cash = get_cash(user_id)
+        can_double = cash >= bet
+
+        view = BjView(user_id=user_id, can_double=can_double, cog=self)
+        return embed, view
+
+    # ─────────────────────────
+    # HIT
+    # ─────────────────────────
+
+    async def do_hit(self, interaction, user_id):
+        if interaction.user.id != user_id:
+            await interaction.response.send_message("🚫 This isn't your game!", ephemeral=True)
+            return
+
+        g = bj_games.get(user_id)
+        if not g:
+            await interaction.response.send_message("No active game found.", ephemeral=True)
+            return
+
+        if g.get("done"):
+            await interaction.response.defer()
+            return
+
+        card = g["deck"].pop()
+        g["player"].append(card)
+        ptotal = hand_total(g["player"])
+
+        if ptotal > 21:
+            g["done"] = True
+            await self._end_game(interaction, user_id, "bust")
+        elif ptotal == 21:
+            g["done"] = True
+            await self._end_game(interaction, user_id, "stand")
+        else:
+            embed, view = self._build_embed_view(user_id)
+            await interaction.response.edit_message(embed=embed, view=view)
+
+    # ─────────────────────────
+    # STAND
+    # ─────────────────────────
+
+    async def do_stand(self, interaction, user_id):
+        if interaction.user.id != user_id:
+            await interaction.response.send_message("🚫 This isn't your game!", ephemeral=True)
+            return
+
+        g = bj_games.get(user_id)
+        if not g:
+            await interaction.response.send_message("No active game found.", ephemeral=True)
+            return
+
+        if g.get("done"):
+            await interaction.response.defer()
+            return
+
+        g["done"] = True
+        await self._end_game(interaction, user_id, "stand")
+
+    # ─────────────────────────
+    # DOUBLE
+    # ─────────────────────────
+
+    async def do_double(self, interaction, user_id):
+        if interaction.user.id != user_id:
+            await interaction.response.send_message("🚫 This isn't your game!", ephemeral=True)
+            return
+
+        g = bj_games.get(user_id)
+        if not g:
+            await interaction.response.send_message("No active game found.", ephemeral=True)
+            return
+
+        if g.get("done"):
+            await interaction.response.defer()
+            return
+
+        cash = get_cash(user_id)
+        if cash < g["bet"]:
+            await interaction.response.send_message("❌ Not enough cash to double down!", ephemeral=True)
+            return
+
+        remove_cash(user_id, g["bet"])
+        add_stats(user_id, total_gambled=g["bet"])
+        g["bet"] *= 2
+        g["done"] = True
+
+        card = g["deck"].pop()
+        g["player"].append(card)
+
+        await self._end_game(interaction, user_id, "stand")
+
+    # ─────────────────────────
+    # END GAME
+    # ─────────────────────────
+
+    async def _end_game(self, interaction, user_id, result_type):
+        g = bj_games.pop(user_id, None)
+        if not g:
+            try:
+                await interaction.response.defer()
+            except Exception:
+                pass
+            return
+
+        player = g["player"]
+        dealer = g["dealer"]
+        deck = g["deck"]
+        bet = g["bet"]
+
+        ptotal = hand_total(player)
+
+        # Dealer draws
+        if result_type != "bust":
+            while hand_total(dealer) < 17:
+                dealer.append(deck.pop())
+
+        dtotal = hand_total(dealer)
+
+        # Determine outcome
+        if ptotal > 21:
+            outcome = "bust"
+        elif dtotal > 21:
+            outcome = "win"
+        elif ptotal > dtotal:
+            outcome = "win"
+        elif ptotal == dtotal:
+            outcome = "push"
+        else:
+            outcome = "loss"
+
+        if outcome == "win":
+            payout = bet * 2
+            profit = bet
+            add_cash(user_id, payout)
+            update_biggest_win(user_id, profit)
+            record_win(user_id, profit)
+            color = 0x57F287
+            title = "✅ You Win!"
+            result_line = f"💰 **+{format_cash(profit)}**"
+            banner = "🎉 Nice hand!"
+        elif outcome == "push":
+            add_cash(user_id, bet)
+            color = 0xFEE75C
+            title = "🤝 Push!"
+            result_line = f"↩️ Bet returned: **{format_cash(bet)}**"
+            banner = "Equal hands — nobody wins."
+        else:
+            record_loss(user_id, bet)
+            color = 0xED4245
+            title = "❌ Dealer Wins"
+            result_line = f"💸 **-{format_cash(bet)}**"
+            banner = "Better luck next time!"
+
+        embed = discord.Embed(title=f"🃏 Blackjack — {title}", color=color)
+        embed.description = f"*{banner}*"
+        embed.add_field(
+            name=f"🧑 Your Hand — `{hand_label(player)}`",
+            value=f"{fmt_hand(player)}\n{score_bar(ptotal)}",
+            inline=True
+        )
+        embed.add_field(
+            name=f"🤖 Dealer Hand — `{hand_label(dealer)}`",
+            value=f"{fmt_hand(dealer)}\n{score_bar(dtotal)}",
+            inline=True
+        )
+        embed.add_field(name="━━━━━━━━━━━━━━━━━━━━━", value=result_line, inline=False)
+        embed.set_footer(text=f"Bet: {format_cash(bet)}  •  Play again with .bj <amount>")
+
+        try:
+            await interaction.response.edit_message(embed=embed, view=None)
+        except discord.errors.InteractionResponded:
+            try:
+                await interaction.edit_original_response(embed=embed, view=None)
+            except Exception:
+                pass
+        except Exception:
+            pass
+
+        try:
+            await check_achievements(self.bot, interaction.user)
+        except Exception:
+            pass
+
+
+# ─────────────────────────
+# VIEW (BUTTONS)
+# ─────────────────────────
+
+class BjView(discord.ui.View):
+
+    def __init__(self, user_id, can_double, cog):
+        super().__init__(timeout=60)
+        self.user_id = user_id
+        self.cog = cog
+        self._responding = False
+        if not can_double:
+            for item in self.children:
+                if hasattr(item, "label") and item.label == "Double Down":
+                    item.disabled = True
+
+    async def _safe_respond(self, interaction, coro):
+        """Prevents double-response 'Interaction already acknowledged' errors."""
+        if self._responding:
+            try:
+                await interaction.response.defer()
+            except Exception:
+                pass
+            return
+        self._responding = True
+        try:
+            await coro
+        except Exception:
+            pass
+        finally:
+            self._responding = False
+
+    @discord.ui.button(label="Hit", style=discord.ButtonStyle.green, emoji="👊")
+    async def hit(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.cog.do_hit(interaction, self.user_id)
+
+    @discord.ui.button(label="Stand", style=discord.ButtonStyle.red, emoji="✋")
+    async def stand(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.cog.do_stand(interaction, self.user_id)
+
+    @discord.ui.button(label="Double Down", style=discord.ButtonStyle.blurple, emoji="💰")
+    async def double(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.cog.do_double(interaction, self.user_id)
+
+    async def on_timeout(self):
+        g = bj_games.pop(self.user_id, None)
+        if g:
+            add_cash(self.user_id, g["bet"])
+            try:
+                msg = g.get("msg")
+                if msg:
+                    embed = discord.Embed(
+                        title="🃏 Blackjack — Timed Out",
+                        description=f"⏰ Game timed out. Your bet of **{format_cash(g['bet'])}** has been returned.",
+                        color=0x808080
+                    )
+                    await msg.edit(embed=embed, view=None)
+            except Exception:
+                pass
+
+
+async def setup(bot):
+    await bot.add_cog(Blackjack(bot))
