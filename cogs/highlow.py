@@ -94,7 +94,7 @@ class HigherLower(commands.Cog):
                 ),
                 color=0x5865F2
             )
-            embed.set_footer(text="Chain 7 correct guesses for 5.0× payout! 🔥")
+            embed.set_footer(text="Chain 7 correct guesses for 3.0× payout! 🔥")
             await ctx.send(embed=embed)
             return
 
