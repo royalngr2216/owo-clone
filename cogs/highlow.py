@@ -35,7 +35,7 @@ def random_card():
 def card_str(rank, suit):
     return f"`{rank}{suit}`"
 
-MULTIPLIERS = [1.5, 2.0, 2.75, 3.75, 5.0, 7.0, 10.0]
+MULTIPLIERS = [1.0, 1.25, 1.75, 2.0, 2.25, 2.74, 5.0]
 
 def mult_ladder(current_round):
     """Renders multiplier ladder with current position highlighted."""
