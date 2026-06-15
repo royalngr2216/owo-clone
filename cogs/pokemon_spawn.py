@@ -27,12 +27,101 @@ def sprite_url(name: str) -> str:
 
 
 # ─────────────────────────────────────────────────────────────────────
+# RARITY SYSTEM
+# ─────────────────────────────────────────────────────────────────────
+
+MYTHICAL_IDS: frozenset[int] = frozenset({
+    151, 251, 385, 386, 489, 490, 491, 492, 493, 494,
+    647, 648, 649, 719, 720, 721, 801, 802, 807, 808,
+    809, 893,
+})
+
+LEGENDARY_IDS: frozenset[int] = frozenset({
+    144, 145, 146, 150,
+    243, 244, 245, 249, 250,
+    377, 378, 379, 380, 381, 382, 383, 384,
+    480, 481, 482, 483, 484, 485, 486, 487, 488,
+    638, 639, 640, 641, 642, 643, 644, 645, 646,
+    716, 717, 718,
+    785, 786, 787, 788, 789, 790, 791, 792, 800,
+    888, 889, 890, 891, 892, 894, 895, 896, 897, 898,
+})
+
+ULTRA_BEAST_IDS: frozenset[int] = frozenset({
+    793, 794, 795, 796, 797, 798, 799, 803, 804, 805, 806,
+})
+
+PSEUDO_LEGENDARY_IDS: frozenset[int] = frozenset({
+    149, 248, 373, 376, 445, 635, 706, 784, 887,
+})
+
+
+def get_rarity(pokedex_id: int) -> str:
+    """Return a rarity tier string for the given Pokédex ID."""
+    if pokedex_id in MYTHICAL_IDS:
+        return "mythical"
+    if pokedex_id in LEGENDARY_IDS:
+        return "legendary"
+    if pokedex_id in ULTRA_BEAST_IDS:
+        return "ultra_beast"
+    if pokedex_id in PSEUDO_LEGENDARY_IDS:
+        return "pseudo"
+    return "common"
+
+
+# Ordering for sort-by-rarity (lower = rarer)
+RARITY_ORDER: dict[str, int] = {
+    "mythical":    0,
+    "legendary":   1,
+    "ultra_beast": 2,
+    "pseudo":      3,
+    "common":      4,
+}
+
+# Accent bar color per rarity (RGB)
+RARITY_COLORS: dict[str, tuple] = {
+    "mythical":    (255, 215,   0),   # gold
+    "legendary":   (163,  73, 232),   # purple
+    "ultra_beast": ( 32, 210, 210),   # teal / cyan
+    "pseudo":      (232, 100,  32),   # warm orange
+    "common":      ( 88, 101, 242),   # Discord blurple
+}
+
+# Short display labels used in the embed footer legend
+RARITY_LABELS: dict[str, str] = {
+    "mythical":    "✨ Mythical",
+    "legendary":   "👑 Legendary",
+    "ultra_beast": "🔮 Ultra Beast",
+    "pseudo":      "🔥 Pseudo",
+    "common":      "Common",
+}
+
+# Embed highlight colors for catch/spawn messages
+RARITY_EMBED_COLORS: dict[str, int] = {
+    "mythical":    0xFFD700,
+    "legendary":   0xA349E8,
+    "ultra_beast": 0x20D2D2,
+    "pseudo":      0xE86420,
+    "common":      0x57F287,
+}
+
+# Extra text injected into the spawn embed for rare encounters
+RARITY_SPAWN_EXTRA: dict[str, str] = {
+    "mythical":    "\n\n✨ **A MYTHICAL Pokémon has appeared — incredibly rare!** ✨",
+    "legendary":   "\n\n👑 **A LEGENDARY Pokémon has appeared!** 👑",
+    "ultra_beast": "\n\n🔮 **An ULTRA BEAST has appeared!** 🔮",
+    "pseudo":      "\n\n🔥 **A powerful Pseudo-Legendary has appeared!** 🔥",
+    "common":      "",
+}
+
+
+# ─────────────────────────────────────────────────────────────────────
 # DEX IMAGE CONSTANTS
 # ─────────────────────────────────────────────────────────────────────
 
 COLS      = 3        # cards per row
 CELL_W    = 112      # card width  (px)
-CELL_H    = 150      # card height (px)
+CELL_H    = 162      # card height (px) — extra room for rarity label
 PAD       = 14       # outer padding
 GAP       = 10       # gap between cards
 SPRITE_SZ = 84       # sprite bounding box
@@ -41,7 +130,6 @@ SPRITE_SZ = 84       # sprite bounding box
 BG_COLOR   = (32,  34,  37)
 CARD_COLOR = (47,  49,  54)
 SHADOW_CLR = (22,  23,  25)
-ACCENT_CLR = (88, 101, 242)   # blurple
 WHITE      = (255, 255, 255)
 SUBTEXT    = (148, 155, 164)
 
@@ -98,7 +186,8 @@ async def _fetch_sprite(session, name):
 
 async def build_dex_image(rows: list) -> io.BytesIO:
     """
-    Render a sprite-grid dex card for up to 9 Pokemon.
+    Render a sprite-grid dex card for up to 9 Pokémon.
+    Accent bar color and rarity label are drawn per rarity tier.
     Returns a BytesIO PNG ready to attach to a Discord message.
     """
     n      = len(rows)
@@ -111,9 +200,10 @@ async def build_dex_image(rows: list) -> io.BytesIO:
     img  = Image.new("RGBA", (iw, ih), BG_COLOR)
     draw = ImageDraw.Draw(img)
 
-    font_name = _load_font(12, bold=True)
-    font_id   = _load_font(11)
-    font_unk  = _load_font(30, bold=True)
+    font_name   = _load_font(12, bold=True)
+    font_id     = _load_font(11)
+    font_unk    = _load_font(30, bold=True)
+    font_rarity = _load_font(9)
 
     # Download all sprites concurrently
     async with aiohttp.ClientSession() as sess:
@@ -127,6 +217,9 @@ async def build_dex_image(rows: list) -> io.BytesIO:
         x   = PAD + col * (CELL_W + GAP)
         y   = PAD + ri  * (CELL_H + GAP)
 
+        rarity     = get_rarity(row["pokedex_id"])
+        accent_clr = RARITY_COLORS[rarity]
+
         # Drop shadow
         draw.rounded_rectangle(
             [x + 3, y + 3, x + CELL_W + 3, y + CELL_H + 3],
@@ -137,10 +230,10 @@ async def build_dex_image(rows: list) -> io.BytesIO:
             [x, y, x + CELL_W, y + CELL_H],
             radius=12, fill=CARD_COLOR,
         )
-        # Blurple accent bar at top of card
+        # Rarity-colored accent bar
         draw.rounded_rectangle(
             [x + 8, y + 5, x + CELL_W - 8, y + 9],
-            radius=4, fill=ACCENT_CLR,
+            radius=4, fill=accent_clr,
         )
 
         # Sprite
@@ -159,15 +252,24 @@ async def build_dex_image(rows: list) -> io.BytesIO:
                 "?", font_unk, SUBTEXT,
             )
 
-        # Name + Dex number
-        ty    = sprite_top + SPRITE_SZ + 7
-        cx    = x + CELL_W // 2
+        # Name + Dex number + rarity label
+        ty = sprite_top + SPRITE_SZ + 7
+        cx = x + CELL_W // 2
+
         label = row["display"]
         if len(label) > 13:
             label = label[:12] + "\u2026"
 
-        _draw_centered(draw, cx, ty,      label,                      font_name, WHITE)
-        _draw_centered(draw, cx, ty + 17, f"#{row['pokedex_id']:03}", font_id,   SUBTEXT)
+        _draw_centered(draw, cx, ty,      label,                       font_name,   WHITE)
+        _draw_centered(draw, cx, ty + 17, f"#{row['pokedex_id']:03}",  font_id,     SUBTEXT)
+
+        # Rarity label — drawn in accent color for non-common Pokémon
+        if rarity != "common":
+            _draw_centered(
+                draw, cx, ty + 31,
+                RARITY_LABELS[rarity],
+                font_rarity, accent_clr,
+            )
 
     buf = io.BytesIO()
     img.save(buf, "PNG")
@@ -176,64 +278,172 @@ async def build_dex_image(rows: list) -> io.BytesIO:
 
 
 # ─────────────────────────────────────────────────────────────────────
-# PAGINATED DEX VIEW  (modern Discord Buttons)
+# SORT HELPERS
 # ─────────────────────────────────────────────────────────────────────
+
+def sort_rows(rows: list, mode: str) -> list:
+    """Return a new sorted list of Pokémon rows for the given sort mode."""
+    if mode == "dex":
+        return sorted(rows, key=lambda r: r["pokedex_id"])
+    if mode == "rarity":
+        return sorted(
+            rows,
+            key=lambda r: (RARITY_ORDER[get_rarity(r["pokedex_id"])], r["pokedex_id"]),
+        )
+    # "date" — keep existing order (already sorted by caught_at desc from DB)
+    return list(rows)
+
+
+# ─────────────────────────────────────────────────────────────────────
+# PAGINATED DEX VIEW
+# ─────────────────────────────────────────────────────────────────────
+
+_SORT_DEFS = [
+    ("date",   "📅 Date"),
+    ("dex",    "🔢 Dex #"),
+    ("rarity", "⭐ Rarity"),
+]
+
+_SORT_DISPLAY = {k: v for k, v in _SORT_DEFS}
+
 
 class DexView(discord.ui.View):
 
     def __init__(self, rows: list, target: discord.Member):
         super().__init__(timeout=120)
-        self.rows   = rows
-        self.target = target
-        self.pages  = [rows[i : i + 9] for i in range(0, len(rows), 9)]
-        self.page   = 0
-        self.msg    = None
-        self._sync_buttons()
+        self._all_rows = rows        # original order (by date, from DB)
+        self.target    = target
+        self.sort_mode = "date"
+        self.page      = 0
+        self.msg       = None
+        self._apply_sort()
+        self._rebuild_buttons()
 
-    def _sync_buttons(self):
-        self.btn_prev.disabled = self.page == 0
-        self.btn_next.disabled = self.page >= len(self.pages) - 1
-        self.btn_page.label    = f"{self.page + 1} / {len(self.pages)}"
+    # ── internal helpers ─────────────────────────────────────────────
+
+    def _apply_sort(self):
+        self.rows  = sort_rows(self._all_rows, self.sort_mode)
+        self.pages = [self.rows[i : i + 9] for i in range(0, len(self.rows), 9)]
+        self.page  = min(self.page, max(0, len(self.pages) - 1))
+
+    def _rebuild_buttons(self):
+        """Recreate all buttons, reflecting current page and sort state."""
+        self.clear_items()
+
+        # ── Row 0: navigation ────────────────────────────────────────
+        prev = discord.ui.Button(
+            emoji="⬅️",
+            style=discord.ButtonStyle.secondary,
+            row=0,
+            disabled=(self.page == 0),
+        )
+        prev.callback = self._cb_prev
+        self.add_item(prev)
+
+        counter = discord.ui.Button(
+            label=f"{self.page + 1} / {len(self.pages)}",
+            style=discord.ButtonStyle.primary,
+            row=0,
+            disabled=True,
+        )
+        counter.callback = self._cb_noop
+        self.add_item(counter)
+
+        nxt = discord.ui.Button(
+            emoji="➡️",
+            style=discord.ButtonStyle.secondary,
+            row=0,
+            disabled=(self.page >= len(self.pages) - 1),
+        )
+        nxt.callback = self._cb_next
+        self.add_item(nxt)
+
+        # ── Row 1: sort buttons ──────────────────────────────────────
+        for mode, label in _SORT_DEFS:
+            btn = discord.ui.Button(
+                label=label,
+                style=(
+                    discord.ButtonStyle.success       # highlighted when active
+                    if mode == self.sort_mode
+                    else discord.ButtonStyle.secondary
+                ),
+                row=1,
+            )
+            btn.callback = self._make_sort_cb(mode)
+            self.add_item(btn)
+
+    # ── callbacks ────────────────────────────────────────────────────
+
+    async def _cb_noop(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+
+    async def _cb_prev(self, interaction: discord.Interaction):
+        self.page = max(0, self.page - 1)
+        await self._refresh(interaction)
+
+    async def _cb_next(self, interaction: discord.Interaction):
+        self.page = min(len(self.pages) - 1, self.page + 1)
+        await self._refresh(interaction)
+
+    def _make_sort_cb(self, mode: str):
+        async def _cb(interaction: discord.Interaction):
+            if self.sort_mode == mode:
+                await interaction.response.defer()
+                return
+            self.sort_mode = mode
+            self.page      = 0
+            self._apply_sort()
+            await self._refresh(interaction)
+        return _cb
+
+    async def _refresh(self, interaction: discord.Interaction):
+        self._rebuild_buttons()
+        embed, file = await self.build()
+        await interaction.response.edit_message(embed=embed, attachments=[file], view=self)
+
+    # ── embed / image builder ────────────────────────────────────────
 
     async def build(self):
         """Return (embed, file) for the current page."""
         buf  = await build_dex_image(self.pages[self.page])
         file = discord.File(buf, filename="dex.png")
 
+        # Tally rare catches for the embed field
+        rarity_counts: dict[str, int] = {}
+        for r in self._all_rows:
+            tier = get_rarity(r["pokedex_id"])
+            rarity_counts[tier] = rarity_counts.get(tier, 0) + 1
+
+        legend_parts = []
+        for tier in ("mythical", "legendary", "ultra_beast", "pseudo"):
+            count = rarity_counts.get(tier, 0)
+            if count:
+                legend_parts.append(f"{RARITY_LABELS[tier]} ×{count}")
+
         embed = discord.Embed(
-            title=f"\U0001f4d6  {self.target.display_name}'s Pokedex",
+            title=f"📖  {self.target.display_name}'s Pokédex",
             color=0x5865F2,
         )
         embed.set_author(
-            name     = f"{len(self.rows)} Pokemon in collection",
+            name     = f"{len(self._all_rows)} Pokémon in collection",
             icon_url = self.target.display_avatar.url,
         )
+        if legend_parts:
+            embed.add_field(
+                name   = "✨ Rare catches",
+                value  = "  ·  ".join(legend_parts),
+                inline = False,
+            )
+
         embed.set_image(url="attachment://dex.png")
         embed.set_footer(
             text=(
                 f"Page {self.page + 1} of {len(self.pages)}  |  "
+                f"Sorted by {_SORT_DISPLAY[self.sort_mode]}  |  "
                 ".pokemon sell <name> <price> to trade"
             )
         )
         return embed, file
-
-    @discord.ui.button(emoji="\u2b05\ufe0f", style=discord.ButtonStyle.secondary)
-    async def btn_prev(self, interaction: discord.Interaction, button: discord.ui.Button):
-        self.page = max(0, self.page - 1)
-        self._sync_buttons()
-        embed, file = await self.build()
-        await interaction.response.edit_message(embed=embed, attachments=[file], view=self)
-
-    @discord.ui.button(label="1 / 1", style=discord.ButtonStyle.primary, disabled=True)
-    async def btn_page(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer()
-
-    @discord.ui.button(emoji="\u27a1\ufe0f", style=discord.ButtonStyle.secondary)
-    async def btn_next(self, interaction: discord.Interaction, button: discord.ui.Button):
-        self.page = min(len(self.pages) - 1, self.page + 1)
-        self._sync_buttons()
-        embed, file = await self.build()
-        await interaction.response.edit_message(embed=embed, attachments=[file], view=self)
 
     async def on_timeout(self):
         for child in self.children:
@@ -293,16 +503,20 @@ class PokemonSpawn(commands.Cog):
         poke = await fetch_random_pokemon()
         if not poke:
             return
+
+        rarity = get_rarity(poke["id"])
         active_spawns[str(channel.id)] = {**poke, "caught": False}
+
         embed = discord.Embed(
-            title="A wild Pokemon appeared! \U0001f33f",
+            title="A wild Pokémon appeared! 🌿",
             description=(
-                "**Who's that Pokemon?** \U0001f914\n\n"
+                "**Who's that Pokémon?** 🤔\n\n"
                 "Type `.catch <pokemon name>` to catch it!\n"
                 "First trainer to guess correctly wins!\n\n"
-                "\u26a0\ufe0f You can only catch each species **once**!"
+                "⚠️ You can only catch each species **once**!"
+                + RARITY_SPAWN_EXTRA[rarity]
             ),
-            color=0xF1C40F,
+            color=RARITY_EMBED_COLORS[rarity],
         )
         embed.set_image(url=gif_url(poke["name"]))
         embed.set_footer(text="Be fast! Only one trainer can catch it.")
@@ -315,21 +529,21 @@ class PokemonSpawn(commands.Cog):
 
         if spawn is None or spawn["caught"]:
             await ctx.send(embed=discord.Embed(
-                description="There's no wild Pokemon here right now!",
+                description="There's no wild Pokémon here right now!",
                 color=0xED4245,
             ))
             return
 
         if guess is None:
             await ctx.send(embed=discord.Embed(
-                description="Type the Pokemon's name!\nExample: `.catch Charizard`",
+                description="Type the Pokémon's name!\nExample: `.catch Charizard`",
                 color=0xED4245,
             ))
             return
 
         if guess.strip().lower() != spawn["name"].lower():
             await ctx.send(embed=discord.Embed(
-                description=f"\u274c That's not right, **{ctx.author.display_name}**! Keep trying!",
+                description=f"❌ That's not right, **{ctx.author.display_name}**! Keep trying!",
                 color=0xED4245,
             ), delete_after=4)
             return
@@ -338,11 +552,11 @@ class PokemonSpawn(commands.Cog):
         already = db.pokemon_collection.find_one({"user_id": uid, "name": spawn["name"]})
         if already:
             await ctx.send(embed=discord.Embed(
-                title="Already caught! \U0001f6ab",
+                title="Already caught! 🚫",
                 description=(
                     f"**{ctx.author.display_name}**, you already own a **{spawn['display']}**!\n"
                     "Each trainer can only catch one of each species.\n\n"
-                    "Let someone else catch it! \U0001f3af"
+                    "Let someone else catch it! 🎯"
                 ),
                 color=0xFFA500,
             ), delete_after=8)
@@ -358,17 +572,19 @@ class PokemonSpawn(commands.Cog):
             "caught_at":  datetime.datetime.utcnow(),
         })
 
-        embed = discord.Embed(
-            title=f"Gotcha! {spawn['display']} was caught! \U0001f389",
-            description=(
-                f"**{ctx.author.display_name}** caught **{spawn['display']}**!\n\n"
+        rarity = get_rarity(spawn["id"])
+        embed  = discord.Embed(
+            title       = f"Gotcha! {spawn['display']} was caught! 🎉",
+            description = (
+                f"**{ctx.author.display_name}** caught **{spawn['display']}**!\n"
+                f"*{RARITY_LABELS[rarity]}*\n\n"
                 f"Use `.team` to add it, `.moves` to teach it moves!\n"
                 f"Want to sell? Use `.pokemon sell {spawn['display']} <price>`"
             ),
-            color=0x57F287,
+            color       = RARITY_EMBED_COLORS[rarity],
         )
         embed.set_image(url=gif_url(spawn["name"]))
-        embed.set_footer(text=f"Pokedex #{spawn['id']}")
+        embed.set_footer(text=f"Pokédex #{spawn['id']}  ·  {RARITY_LABELS[rarity]}")
         await ctx.send(embed=embed)
 
     @commands.command(name="pokemons", aliases=["pc", "collection"])
@@ -382,19 +598,19 @@ class PokemonSpawn(commands.Cog):
 
         if not rows:
             await ctx.send(embed=discord.Embed(
-                title="\U0001f4d6  Empty Pokedex",
+                title="📖  Empty Pokédex",
                 description=(
-                    f"**{target.display_name}** hasn't caught any Pokemon yet!\n\n"
-                    "Pokemon spawn every 10 minutes — type `.catch <name>` when one appears!"
+                    f"**{target.display_name}** hasn't caught any Pokémon yet!\n\n"
+                    "Pokémon spawn every 10 minutes — type `.catch <name>` when one appears!"
                 ),
                 color=0xED4245,
             ))
             return
 
-        view         = DexView(rows, target)
-        embed, file  = await view.build()
-        msg          = await ctx.send(embed=embed, file=file, view=view)
-        view.msg     = msg
+        view        = DexView(rows, target)
+        embed, file = await view.build()
+        msg         = await ctx.send(embed=embed, file=file, view=view)
+        view.msg    = msg
 
     @commands.command(name="setspawnchannel")
     @commands.has_permissions(manage_guild=True)
@@ -405,7 +621,7 @@ class PokemonSpawn(commands.Cog):
             upsert=True,
         )
         await ctx.send(embed=discord.Embed(
-            description=f"\u2705 Pokemon will now spawn in {ctx.channel.mention} every 10 minutes!",
+            description=f"✅ Pokémon will now spawn in {ctx.channel.mention} every 10 minutes!",
             color=0x57F287,
         ))
 
