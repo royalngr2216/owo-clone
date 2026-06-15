@@ -59,7 +59,7 @@ def guess_bar(guesses_left, max_guesses=MAX_GUESSES):
 def mult_display():
     lines = []
     labels = ["1st", "2nd", "3rd", "4th", "5th", "6th"]
-    mults = [10.0, 5.0, 2.5, 2.0, 1.5, 1.25]
+    mults = [10.0, 5.0, 2.5, 1.5, 1.25, 1.15]
     icons = ["🏆", "🥇", "🥈", "🥉", "⭐", "⭐"]
     for label, mult, icon in zip(labels, mults, icons):
         lines.append(f"{icon} `{label} guess` → **{mult}×**")
