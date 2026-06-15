@@ -283,15 +283,13 @@ async def build_dex_image(rows: list) -> io.BytesIO:
 
 def sort_rows(rows: list, mode: str) -> list:
     """Return a new sorted list of Pokémon rows for the given sort mode."""
-    if mode == "dex":
-        return sorted(rows, key=lambda r: r["pokedex_id"])
     if mode == "rarity":
         return sorted(
             rows,
             key=lambda r: (RARITY_ORDER[get_rarity(r["pokedex_id"])], r["pokedex_id"]),
         )
-    # "date" — keep existing order (already sorted by caught_at desc from DB)
-    return list(rows)
+    # "dex" (default)
+    return sorted(rows, key=lambda r: r["pokedex_id"])
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -299,7 +297,6 @@ def sort_rows(rows: list, mode: str) -> list:
 # ─────────────────────────────────────────────────────────────────────
 
 _SORT_DEFS = [
-    ("date",   "📅 Date"),
     ("dex",    "🔢 Dex #"),
     ("rarity", "⭐ Rarity"),
 ]
@@ -313,7 +310,7 @@ class DexView(discord.ui.View):
         super().__init__(timeout=120)
         self._all_rows = rows        # original order (by date, from DB)
         self.target    = target
-        self.sort_mode = "date"
+        self.sort_mode = "dex"
         self.page      = 0
         self.msg       = None
         self._apply_sort()
