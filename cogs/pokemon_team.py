@@ -4,6 +4,8 @@ import aiohttp
 import asyncio
 import re
 import datetime
+import io
+from PIL import Image, ImageDraw, ImageFont
 
 # ─────────────────────────────────────────────────────────────────
 # IMPORTS — uses the same MongoDB economy as the rest of the bot
@@ -14,6 +16,192 @@ from utils.pokemon_db import db
 def gif_url(name: str) -> str:
     clean = name.lower().replace(" ", "").replace(".", "").replace("'", "")
     return f"https://play.pokemonshowdown.com/sprites/xyani/{clean}.gif"
+
+# ─────────────────────────────────────────────────────────────────
+# PILLOW / IMAGE HELPERS
+# ─────────────────────────────────────────────────────────────────
+
+async def fetch_image(session: aiohttp.ClientSession, url: str) -> Image.Image | None:
+    """Fetches an image from a URL and returns a PIL Image."""
+    try:
+        async with session.get(url) as resp:
+            if resp.status == 200:
+                data = await resp.read()
+                return Image.open(io.BytesIO(data)).convert("RGBA")
+    except Exception:
+        pass
+    return None
+
+def get_font(size: int):
+    """Attempts to load a clean TTF font, falls back to default if unavailable."""
+    for font_name in ["arial.ttf", "Ubuntu-R.ttf", "seguiemj.ttf", "tahoma.ttf", "DejaVuSans.ttf"]:
+        try:
+            return ImageFont.truetype(font_name, size)
+        except IOError:
+            continue
+    return ImageFont.load_default()
+
+async def generate_market_page(listings: list, page_num: int, total_pages: int) -> io.BytesIO:
+    """Generates a Pillow image grid for the Pokemart listings."""
+    # Discord dark theme colors
+    bg_color = (43, 45, 49, 255)       
+    card_color = (30, 31, 34, 255)      
+    text_color = (255, 255, 255, 255)
+    sub_text_color = (181, 186, 193, 255)
+    accent_color = (88, 101, 242, 255)  # Discord Blurple for top card borders
+    price_color = (241, 196, 15, 255)   # Gold/Yellow for price
+    
+    # Fonts
+    font_large = get_font(22)
+    font_med = get_font(18)
+    font_small = get_font(14)
+    font_xs = get_font(12)
+
+    # Grid config
+    cols, rows = 3, 3
+    card_w, card_h = 200, 260
+    pad_x, pad_y = 20, 20
+    
+    # Canvas setup
+    width = (card_w * cols) + (pad_x * (cols + 1))
+    height = (card_h * rows) + (pad_y * (rows + 1)) + 40 # Extra 40px for bottom pagination text
+    
+    img = Image.new("RGBA", (width, height), bg_color)
+    draw = ImageDraw.Draw(img)
+    
+    # Async fetch all sprites concurrently
+    async with aiohttp.ClientSession() as session:
+        tasks = []
+        for item in listings:
+            dex_id = item.get("pokedex_id", 0)
+            url = f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{dex_id}.png"
+            tasks.append(fetch_image(session, url))
+        sprites = await asyncio.gather(*tasks)
+
+    # Draw each card
+    for i, listing in enumerate(listings):
+        col = i % cols
+        row = i // cols
+        
+        x = pad_x + col * (card_w + pad_x)
+        y = pad_y + row * (card_h + pad_y)
+        
+        # 1. Base Rounded Card
+        draw.rounded_rectangle([x, y, x + card_w, y + card_h], radius=15, fill=card_color)
+        
+        # 2. Top Accent Line
+        draw.rounded_rectangle([x, y, x + card_w, y + 6], radius=15, fill=accent_color)
+        draw.rectangle([x, y + 3, x + card_w, y + 6], fill=accent_color) # Flatten bottom
+        
+        # 3. Sprite Paste
+        sprite_img = sprites[i]
+        if sprite_img:
+            # Resize nicely
+            sprite_img = sprite_img.resize((120, 120), Image.Resampling.LANCZOS)
+            # Center sprite horizontally
+            img.paste(sprite_img, (x + (card_w - 120)//2, y + 20), sprite_img)
+        
+        # 4. Text: Display Name
+        display_name = listing.get("display", "Unknown")
+        name_bbox = draw.textbbox((0, 0), display_name, font=font_large)
+        name_w = name_bbox[2] - name_bbox[0]
+        draw.text((x + (card_w - name_w)//2, y + 145), display_name, fill=text_color, font=font_large)
+        
+        # 5. Text: Dex ID
+        dex_text = f"#{listing.get('pokedex_id', 0):03}"
+        dex_bbox = draw.textbbox((0, 0), dex_text, font=font_small)
+        dex_w = dex_bbox[2] - dex_bbox[0]
+        draw.text((x + (card_w - dex_w)//2, y + 175), dex_text, fill=sub_text_color, font=font_small)
+        
+        # 6. Text: Price
+        price_text = format_cash(listing.get("price", 0))
+        price_bbox = draw.textbbox((0, 0), price_text, font=font_med)
+        price_w = price_bbox[2] - price_bbox[0]
+        draw.text((x + (card_w - price_w)//2, y + 200), price_text, fill=price_color, font=font_med)
+        
+        # 7. Text: Seller Name
+        seller_name = listing.get("seller_name", "Unknown")
+        seller_text = f"Seller: {seller_name}"
+        seller_bbox = draw.textbbox((0, 0), seller_text, font=font_xs)
+        seller_w = seller_bbox[2] - seller_bbox[0]
+        draw.text((x + (card_w - seller_w)//2, y + 230), seller_text, fill=sub_text_color, font=font_xs)
+
+    # Draw Bottom Footer Text
+    footer_text = f"Page {page_num} of {total_pages} | Sorted by Listed Date | .pokemon buy @seller <name> to trade"
+    draw.text((pad_x, height - 30), footer_text, fill=sub_text_color, font=font_small)
+    
+    # Save to IO buffer
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    buf.seek(0)
+    return buf
+
+# ─────────────────────────────────────────────────────────────────
+# DISCORD UI VIEW FOR PAGINATION
+# ─────────────────────────────────────────────────────────────────
+
+class MarketPaginationView(discord.ui.View):
+    def __init__(self, listings: list, guild: discord.Guild):
+        super().__init__(timeout=180) # 3 minute timeout
+        self.listings = listings
+        self.guild = guild
+        self.per_page = 9 # 3x3 grid
+        self.pages = [listings[i:i + self.per_page] for i in range(0, len(listings), self.per_page)]
+        self.current_page = 0
+        self.update_buttons()
+
+    def update_buttons(self):
+        # Disable/enable previous button
+        self.prev_button.disabled = (self.current_page == 0)
+        # Disable/enable next button
+        self.next_button.disabled = (self.current_page == len(self.pages) - 1)
+        # Update center indicator label
+        self.page_indicator.label = f"{self.current_page + 1} / {len(self.pages)}"
+
+    async def get_current_ui(self) -> tuple[discord.Embed, discord.File]:
+        page_items = self.pages[self.current_page]
+        
+        # Resolve seller names dynamically to avoid storing them in DB
+        for item in page_items:
+            if "seller_name" not in item:
+                seller_id = int(item["seller_id"])
+                seller = self.guild.get_member(seller_id)
+                item["seller_name"] = seller.display_name if seller else f"User {str(seller_id)[-4:]}"
+                
+        # Generate Pillow Image
+        image_buf = await generate_market_page(page_items, self.current_page + 1, len(self.pages))
+        file = discord.File(image_buf, filename="pokemart.png")
+        
+        # Build Embed container
+        embed = discord.Embed(
+            title="🏪 Global Pokémon Market",
+            description=f"There are **{len(self.listings)}** Pokémon currently listed for sale.",
+            color=0x2B2D31
+        )
+        embed.set_image(url="attachment://pokemart.png")
+        
+        return embed, file
+
+    @discord.ui.button(emoji="⬅️", style=discord.ButtonStyle.primary, custom_id="prev")
+    async def prev_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.current_page -= 1
+        self.update_buttons()
+        await interaction.response.defer()
+        embed, file = await self.get_current_ui()
+        await interaction.message.edit(embed=embed, attachments=[file], view=self)
+
+    @discord.ui.button(style=discord.ButtonStyle.secondary, disabled=True, custom_id="indicator")
+    async def page_indicator(self, interaction: discord.Interaction, button: discord.ui.Button):
+        pass # Purely visual indicator
+
+    @discord.ui.button(emoji="➡️", style=discord.ButtonStyle.primary, custom_id="next")
+    async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.current_page += 1
+        self.update_buttons()
+        await interaction.response.defer()
+        embed, file = await self.get_current_ui()
+        await interaction.message.edit(embed=embed, attachments=[file], view=self)
+
 
 # ─────────────────────────────────────────────────────────────────
 # SHARED HELPERS  (imported by pokemon_battle.py)
@@ -432,13 +620,12 @@ class PokemonTeam(commands.Cog):
             ))
 
     # ─────────────────────────────────────────────────────────────
-    # .pokemart — browse all Pokémon listed for sale
+    # .pokemart — browse all Pokémon listed for sale (REWRITTEN UI)
     # ─────────────────────────────────────────────────────────────
 
     @commands.command(name="pokemart")
     async def pokemart(self, ctx):
-        """Browse all Pokémon currently listed for sale."""
-        # Using MongoDB sort method to replace SQL ORDER BY
+        """Browse all Pokémon currently listed for sale in a visual grid."""
         listings = list(db.pokemon_market.find().sort("listed_at", -1))
 
         if not listings:
@@ -453,63 +640,20 @@ class PokemonTeam(commands.Cog):
             ))
             return
 
-        per_page = 4
-        pages = [listings[i:i+per_page] for i in range(0, len(listings), per_page)]
-        page = 0
+        # Send a temporary loading message since image generation + fetching can take a moment
+        loading_msg = await ctx.send(embed=discord.Embed(
+            description="⏳ **Loading the PokéMart... Fetching sprites!**",
+            color=0x5865F2
+        ))
 
-        def make_embed(p: int) -> discord.Embed:
-            embed = discord.Embed(
-                title="🏪 Pokémon Market",
-                description=f"**{len(listings)}** Pokémon available for sale!\nBuy with: `.pokemon buy @seller <name>`",
-                color=0xF1C40F,
-            )
-            for listing in pages[p]:
-                seller_id = listing["seller_id"]
-                seller = ctx.guild.get_member(int(seller_id))
-                seller_name = seller.display_name if seller else f"<@{seller_id}>"
+        # Instantiate View and get first page UI
+        view = MarketPaginationView(listings, ctx.guild)
+        embed, file = await view.get_current_ui()
 
-                embed.add_field(
-                    name=f"🎴 {listing['display']} — {format_cash(listing['price'])}",
-                    value=(
-                        f"[🎞 View GIF]({gif_url(listing['name'])})\n"
-                        f"📦 Seller: **{seller_name}**\n"
-                        f"🏷️ Buy: `.pokemon buy @{seller_name} {listing['display']}`\n"
-                        f"📖 Pokédex #{listing['pokedex_id']:03}"
-                    ),
-                    inline=False,
-                )
-            embed.set_footer(text=f"Page {p+1}/{len(pages)}  •  Use reactions to browse")
-            return embed
+        # Delete loading message and send final beautiful interactive UI
+        await loading_msg.delete()
+        await ctx.send(embed=embed, file=file, view=view)
 
-        msg = await ctx.send(embed=make_embed(0))
-
-        if len(pages) == 1:
-            return
-
-        await msg.add_reaction("⬅️")
-        await msg.add_reaction("➡️")
-
-        def check(reaction, user):
-            return (
-                user == ctx.author
-                and str(reaction.emoji) in ("⬅️", "➡️")
-                and reaction.message.id == msg.id
-            )
-
-        while True:
-            try:
-                reaction, user = await self.bot.wait_for("reaction_add", timeout=60, check=check)
-                if str(reaction.emoji) == "➡️" and page < len(pages) - 1:
-                    page += 1
-                elif str(reaction.emoji) == "⬅️" and page > 0:
-                    page -= 1
-                await msg.edit(embed=make_embed(page))
-                try:
-                    await msg.remove_reaction(reaction, user)
-                except Exception:
-                    pass
-            except asyncio.TimeoutError:
-                break
 
     # ─────────────────────────────────────────────────────────────
     # .pokecheck @user — view someone's listed Pokémon in market
