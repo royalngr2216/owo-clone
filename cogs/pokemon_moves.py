@@ -13,11 +13,10 @@ All bugs fixed:
   ✅  Return / Frustration — shown as Physical 102BP (not status)
   ✅  Learnset covers ALL gens (Gen 1–9) so no move is unfairly rejected
 
-New in v2:
-  ✨  .moves <Pokémon>  (no moves) → interactive dropdown UI (4 Select menus)
-  ✨  Moves sorted alphabetically in all dropdowns
-  ✨  Premium embed design throughout
-  ✅  Original text command (.moves <Pokémon> move1, move2...) still works
+Usage:
+  .moves <Pokémon>   → opens 4-slot interactive dropdown UI
+  .moveset / .ms     → view current moveset
+  .learncheck / .lc  → check if a Pokémon can learn a move
 """
 
 from __future__ import annotations
@@ -38,14 +37,10 @@ from utils.pokemon_db import db
 # ─────────────────────────────────────────────────────────────────
 
 def to_id(text: str) -> str:
-    """Showdown ID: lowercase, alphanumeric only.
-    'Fake Out' → 'fakeout',  'Flash Cannon' → 'flashcannon'"""
     return re.sub(r"[^a-z0-9]", "", text.lower().strip())
 
 
 def to_slug(text: str) -> str:
-    """PokéAPI slug: lowercase, hyphenated.
-    'Fake Out' → 'fake-out',  'Flash Cannon' → 'flash-cannon'"""
     text = text.strip().lower()
     text = re.sub(r"[''`]", "", text)
     return re.sub(r"[\s_]+", "-", text)
@@ -76,57 +71,38 @@ TYPE_EMOJI = {
     "steel":  "🔩", "fairy": "✨",
 }
 
-CAT_EMOJI = {"physical": "💥", "special": "✨", "status": "🔄"}
-
-# Slot indicators for the embed
-SLOT_LABELS = ["① Move 1", "② Move 2", "③ Move 3", "④ Move 4"]
+CAT_EMOJI   = {"physical": "💥", "special": "✨", "status": "🔄"}
 SLOT_EMOJI  = ["1️⃣", "2️⃣", "3️⃣", "4️⃣"]
 
 
 # ─────────────────────────────────────────────────────────────────
 # MOVE OVERRIDES
-# PokéAPI returns null power for variable-power moves; fix them here
 # ─────────────────────────────────────────────────────────────────
 
 MOVE_OVERRIDES: dict[str, dict] = {
-    # Friendship-based (max friendship = 102)
-    "return":        {"display": "Return",        "power": 102, "type": "normal",   "category": "physical"},
-    "frustration":   {"display": "Frustration",   "power": 102, "type": "normal",   "category": "physical"},
-    # Weight-based
-    "gyro-ball":     {"display": "Gyro Ball",     "power": 150, "type": "steel",    "category": "physical"},
-    "heat-crash":    {"display": "Heat Crash",    "power": 120, "type": "fire",     "category": "physical"},
-    "heavy-slam":    {"display": "Heavy Slam",    "power": 120, "type": "steel",    "category": "physical"},
-    # Speed-based
-    "electro-ball":  {"display": "Electro Ball",  "power": 150, "type": "electric", "category": "special"},
-    # Weight-based specials
-    "grass-knot":    {"display": "Grass Knot",    "power": 120, "type": "grass",    "category": "special"},
-    "low-kick":      {"display": "Low Kick",      "power": 120, "type": "fighting", "category": "physical"},
-    # PP-based
-    "trump-card":    {"display": "Trump Card",    "power": 200, "type": "normal",   "category": "special"},
-    # Magnitude (average)
-    "magnitude":     {"display": "Magnitude",     "power": 70,  "type": "ground",   "category": "physical"},
-    # Stored Power / Power Trip (base)
-    "stored-power":  {"display": "Stored Power",  "power": 20,  "type": "psychic",  "category": "special"},
-    "power-trip":    {"display": "Power Trip",    "power": 20,  "type": "dark",     "category": "physical"},
-    # Spit Up (max)
-    "spit-up":       {"display": "Spit Up",       "power": 300, "type": "normal",   "category": "special"},
-    # Acrobatics (no item)
-    "acrobatics":    {"display": "Acrobatics",    "power": 110, "type": "flying",   "category": "physical"},
-    # Natural Gift (average berry)
-    "natural-gift":  {"display": "Natural Gift",  "power": 80,  "type": "normal",   "category": "physical"},
-    # Terrain Pulse (base)
-    "terrain-pulse": {"display": "Terrain Pulse", "power": 50,  "type": "normal",   "category": "special"},
-    # Echoed Voice (base)
-    "echoed-voice":  {"display": "Echoed Voice",  "power": 40,  "type": "normal",   "category": "special"},
-    # Rollout / Ice Ball (base)
-    "rollout":       {"display": "Rollout",       "power": 30,  "type": "rock",     "category": "physical"},
-    "ice-ball":      {"display": "Ice Ball",      "power": 30,  "type": "ice",      "category": "physical"},
-    # Smelling Salts / Wake-Up Slap (doubled)
-    "smelling-salts":{"display": "Smelling Salts","power": 70,  "type": "normal",   "category": "physical"},
-    "wake-up-slap":  {"display": "Wake-Up Slap",  "power": 70,  "type": "fighting", "category": "physical"},
-    # Wring Out
-    "wring-out":     {"display": "Wring Out",     "power": 120, "type": "normal",   "category": "special"},
-    "crush-grip":    {"display": "Crush Grip",    "power": 120, "type": "normal",   "category": "physical"},
+    "return":         {"display": "Return",         "power": 102, "type": "normal",   "category": "physical"},
+    "frustration":    {"display": "Frustration",    "power": 102, "type": "normal",   "category": "physical"},
+    "gyro-ball":      {"display": "Gyro Ball",      "power": 150, "type": "steel",    "category": "physical"},
+    "heat-crash":     {"display": "Heat Crash",     "power": 120, "type": "fire",     "category": "physical"},
+    "heavy-slam":     {"display": "Heavy Slam",     "power": 120, "type": "steel",    "category": "physical"},
+    "electro-ball":   {"display": "Electro Ball",   "power": 150, "type": "electric", "category": "special"},
+    "grass-knot":     {"display": "Grass Knot",     "power": 120, "type": "grass",    "category": "special"},
+    "low-kick":       {"display": "Low Kick",       "power": 120, "type": "fighting", "category": "physical"},
+    "trump-card":     {"display": "Trump Card",     "power": 200, "type": "normal",   "category": "special"},
+    "magnitude":      {"display": "Magnitude",      "power": 70,  "type": "ground",   "category": "physical"},
+    "stored-power":   {"display": "Stored Power",   "power": 20,  "type": "psychic",  "category": "special"},
+    "power-trip":     {"display": "Power Trip",     "power": 20,  "type": "dark",     "category": "physical"},
+    "spit-up":        {"display": "Spit Up",        "power": 300, "type": "normal",   "category": "special"},
+    "acrobatics":     {"display": "Acrobatics",     "power": 110, "type": "flying",   "category": "physical"},
+    "natural-gift":   {"display": "Natural Gift",   "power": 80,  "type": "normal",   "category": "physical"},
+    "terrain-pulse":  {"display": "Terrain Pulse",  "power": 50,  "type": "normal",   "category": "special"},
+    "echoed-voice":   {"display": "Echoed Voice",   "power": 40,  "type": "normal",   "category": "special"},
+    "rollout":        {"display": "Rollout",        "power": 30,  "type": "rock",     "category": "physical"},
+    "ice-ball":       {"display": "Ice Ball",       "power": 30,  "type": "ice",      "category": "physical"},
+    "smelling-salts": {"display": "Smelling Salts", "power": 70,  "type": "normal",   "category": "physical"},
+    "wake-up-slap":   {"display": "Wake-Up Slap",   "power": 70,  "type": "fighting", "category": "physical"},
+    "wring-out":      {"display": "Wring Out",      "power": 120, "type": "normal",   "category": "special"},
+    "crush-grip":     {"display": "Crush Grip",     "power": 120, "type": "normal",   "category": "physical"},
 }
 
 
@@ -144,10 +120,6 @@ _HP_RE = re.compile(r"^hidden[\s\-_]?power[\s\-_]?([a-z]+)?$", re.I)
 
 
 def parse_hidden_power(name: str) -> dict | None:
-    """
-    'Hidden Power Ice' → move dict with type=ice, power=60, category=special
-    Returns None if the input is not a Hidden Power variant.
-    """
     m = _HP_RE.match(name.strip())
     if not m:
         return None
@@ -155,18 +127,17 @@ def parse_hidden_power(name: str) -> dict | None:
     if hp_type not in _HP_TYPES and hp_type != "normal":
         return None
     return {
-        "name":     f"hidden-power-{hp_type}",   # stored with type suffix
-        "display":  f"Hidden Power {hp_type.title()}",
-        "power":    60,
-        "type":     hp_type,
-        "category": "special",
-        "_learnset_id": "hidden-power",           # slug used for learnset check
+        "name":         f"hidden-power-{hp_type}",
+        "display":      f"Hidden Power {hp_type.title()}",
+        "power":        60,
+        "type":         hp_type,
+        "category":     "special",
+        "_learnset_id": "hidden-power",
     }
 
 
 # ─────────────────────────────────────────────────────────────────
 # SHOWDOWN LEARNSET CACHE
-# Loaded once; covers every move a Pokémon can learn in any gen
 # ─────────────────────────────────────────────────────────────────
 
 _learnsets:    dict[str, set[str]] = {}
@@ -182,11 +153,6 @@ def _lock() -> asyncio.Lock:
 
 
 async def _fetch_showdown_learnsets(session: aiohttp.ClientSession) -> bool:
-    """
-    Fetches learnsets.js from Pokémon Showdown and parses it into
-    _learnsets: {showdown_poke_id → set of showdown_move_ids}.
-    Resolves prevo inheritance so Kingdra gets Seadra's TMs, etc.
-    """
     url = "https://play.pokemonshowdown.com/data/learnsets.js"
     try:
         async with session.get(url, timeout=aiohttp.ClientTimeout(total=45)) as r:
@@ -196,7 +162,6 @@ async def _fetch_showdown_learnsets(session: aiohttp.ClientSession) -> bool:
     except Exception:
         return False
 
-    # The file is JS: exports.BattleLearnsets = { ... };
     match = re.search(r"(?:exports\.\w+\s*=\s*)(\{[\s\S]+\})\s*;", text)
     if not match:
         return False
@@ -215,11 +180,10 @@ async def _fetch_showdown_learnsets(session: aiohttp.ClientSession) -> bool:
         if prevo:
             prevo_map[poke_id] = to_id(str(prevo))
 
-    # Resolve prevo chain (up to 5 levels deep — e.g. Tyranitar: Larvitar→Pupitar→Tyranitar)
     for _ in range(5):
         changed = False
         for poke_id, prevo_id in prevo_map.items():
-            add = tmp.get(prevo_id, set())
+            add    = tmp.get(prevo_id, set())
             before = len(tmp.get(poke_id, set()))
             tmp[poke_id] = tmp.get(poke_id, set()) | add
             if len(tmp[poke_id]) != before:
@@ -242,26 +206,18 @@ async def ensure_learnsets(session: aiohttp.ClientSession) -> bool:
 
 
 def showdown_can_learn(pokemon_name: str, move_slug: str) -> bool | None:
-    """
-    Returns True / False / None(=data not loaded yet).
-    pokemon_name: human-readable ('Lopunny', 'lopunny')
-    move_slug:    PokéAPI slug  ('fake-out', 'hidden-power', 'flash-cannon')
-    """
     if not _learnsets_ok:
         return None
 
     poke_id = to_id(pokemon_name)
     move_id = to_id(move_slug)
 
-    # Hidden Power: any variant → "hiddenpower"
     if move_id.startswith("hiddenpower"):
         move_id = "hiddenpower"
 
-    # Exact lookup
     if poke_id in _learnsets:
         return move_id in _learnsets[poke_id]
 
-    # Strip form suffixes and retry
     for suffix in ("mega", "alola", "galar", "hisui", "paldea",
                    "origin", "black", "white", "therian",
                    "primal", "ultra", "sky"):
@@ -278,23 +234,16 @@ def showdown_can_learn(pokemon_name: str, move_slug: str) -> bool | None:
 # ─────────────────────────────────────────────────────────────────
 
 async def fetch_move_data(session: aiohttp.ClientSession, name: str) -> dict | None:
-    """
-    Fetch stats for one move. Checks HP pattern and overrides first.
-    Returns {name, display, power, type, category} or None.
-    """
-    # Hidden Power variant?
     hp = parse_hidden_power(name)
     if hp:
         return hp
 
     slug = to_slug(name)
 
-    # Known override (Return, Frustration, etc.)?
     if slug in MOVE_OVERRIDES:
         ov = MOVE_OVERRIDES[slug]
         return {"name": slug, **ov}
 
-    # PokéAPI
     try:
         async with session.get(
             f"https://pokeapi.co/api/v2/move/{slug}",
@@ -315,10 +264,6 @@ async def fetch_move_data(session: aiohttp.ClientSession, name: str) -> dict | N
     }
 
 
-# ─────────────────────────────────────────────────────────────────
-# FALLBACK LEARNSET — PokéAPI (used if Showdown is unreachable)
-# ─────────────────────────────────────────────────────────────────
-
 async def pokeapi_can_learn(session: aiohttp.ClientSession,
                              pokemon: str, move_slug: str) -> bool:
     try:
@@ -333,19 +278,17 @@ async def pokeapi_can_learn(session: aiohttp.ClientSession,
         return False
 
     learnable = {m["move"]["name"] for m in data["moves"]}
-    # Normalise HP variants for the fallback too
     check = "hidden-power" if move_slug.startswith("hidden-power") else move_slug
     return check in learnable
 
 
 # ─────────────────────────────────────────────────────────────────
-# MOVE DROPDOWN UI
+# MOVE LIST  (alphabetical, max 24 per page — Discord hard limit is 25)
+# The last option on each page is always "▶ Next page" so we stay ≤25
 # ─────────────────────────────────────────────────────────────────
 
-# Curated alphabetical move list for the dropdowns.
-# Add more moves here as your game grows — they'll appear automatically.
-DROPDOWN_MOVES: list[str] = sorted([
-    # ── Physical ──────────────────────────────────────────────────
+_ALL_MOVES: list[str] = sorted([
+    # Physical
     "Acrobatics", "Aqua Jet", "Aqua Tail", "Body Slam", "Bounce",
     "Brave Bird", "Brick Break", "Bug Bite", "Bulldoze", "Close Combat",
     "Crunch", "Dragon Claw", "Dragon Rush", "Drain Punch", "Earthquake",
@@ -358,7 +301,7 @@ DROPDOWN_MOVES: list[str] = sorted([
     "Sucker Punch", "Super Fang", "Superpower", "Throat Chop",
     "Thunder Punch", "U-turn", "Wild Charge", "Wing Attack",
     "Wood Hammer", "X-Scissor", "Zen Headbutt",
-    # ── Special ───────────────────────────────────────────────────
+    # Special
     "Aura Sphere", "Blizzard", "Boomburst", "Bug Buzz",
     "Charge Beam", "Dark Pulse", "Dazzling Gleam",
     "Dragon Pulse", "Draco Meteor", "Earth Power", "Energy Ball",
@@ -370,7 +313,7 @@ DROPDOWN_MOVES: list[str] = sorted([
     "Scald", "Shadow Ball", "Signal Beam", "Sludge Bomb", "Sludge Wave",
     "Stored Power", "Surf", "Thunderbolt", "Thunder", "Tri Attack",
     "Vacuum Wave", "Volt Switch", "Water Pulse",
-    # ── Status ────────────────────────────────────────────────────
+    # Status
     "Agility", "Amnesia", "Aromatherapy", "Baton Pass",
     "Bulk Up", "Calm Mind", "Cotton Guard", "Curse", "Defog",
     "Dragon Dance", "Encore", "Endure", "Glare", "Gravity",
@@ -384,7 +327,7 @@ DROPDOWN_MOVES: list[str] = sorted([
     "Substitute", "Sunny Day", "Swords Dance", "Synthesis", "Taunt",
     "Thunder Wave", "Toxic", "Toxic Spikes", "Trick",
     "Trick Room", "Will-O-Wisp", "Wish", "Yawn",
-    # ── Hidden Power ──────────────────────────────────────────────
+    # Hidden Power
     "Hidden Power Bug", "Hidden Power Dark", "Hidden Power Dragon",
     "Hidden Power Electric", "Hidden Power Fighting", "Hidden Power Fire",
     "Hidden Power Flying", "Hidden Power Ghost", "Hidden Power Grass",
@@ -393,97 +336,102 @@ DROPDOWN_MOVES: list[str] = sorted([
     "Hidden Power Water",
 ], key=str.lower)
 
+# Split into pages of 24 (25th slot reserved for "Next page" nav)
+_PAGE_SIZE = 24
+_MOVE_PAGES: list[list[str]] = [
+    _ALL_MOVES[i: i + _PAGE_SIZE]
+    for i in range(0, len(_ALL_MOVES), _PAGE_SIZE)
+]
+_TOTAL_PAGES = len(_MOVE_PAGES)
 
-def _build_select_options(slot_index: int, current: str | None) -> list[discord.SelectOption]:
-    """Build sorted SelectOption list for one move slot."""
-    options = [
-        discord.SelectOption(
+
+def _make_select_options(
+    slot: int,
+    page: int,
+    current_move: str | None,
+) -> list[discord.SelectOption]:
+    """
+    Build ≤25 SelectOptions for one slot on the given page.
+    Always ends with a 'Next page →' option unless it's the last page.
+    """
+    options: list[discord.SelectOption] = []
+
+    # Page 0 gets the "skip" option at the top
+    if page == 0:
+        options.append(discord.SelectOption(
             label="— Skip this slot —",
             value="__none__",
             description="Leave this move slot empty",
             emoji="➖",
-            default=(current is None),
-        )
-    ]
-    for move in DROPDOWN_MOVES:
-        options.append(
-            discord.SelectOption(
-                label=move,
-                value=move,
-                default=(move == current),
-            )
-        )
+            default=(current_move is None),
+        ))
+
+    for move in _MOVE_PAGES[page]:
+        options.append(discord.SelectOption(
+            label=move,
+            value=move,
+            default=(move == current_move),
+        ))
+
+    # Navigation — wrap around to page 0 after the last page
+    next_page = (page + 1) % _TOTAL_PAGES
+    label = "▶  Next page →" if page < _TOTAL_PAGES - 1 else "◀  Back to start ↩"
+    options.append(discord.SelectOption(
+        label=label,
+        value=f"__page_{next_page}__",
+        description=f"Page {page + 1} of {_TOTAL_PAGES}  •  showing moves {page * _PAGE_SIZE + 1}–{min((page + 1) * _PAGE_SIZE, len(_ALL_MOVES))}",
+        emoji="📄",
+    ))
+
     return options
 
 
-def _build_preview_embed(
+# ─────────────────────────────────────────────────────────────────
+# EMBED BUILDERS
+# ─────────────────────────────────────────────────────────────────
+
+def _preview_embed(
     poke_display: str,
     poke_name: str,
     selections: list[str | None],
-    pending: bool = True,
 ) -> discord.Embed:
-    """
-    Build the live-preview embed shown while the user selects moves.
-    selections: list of 4 items, each a move name string or None.
-    """
-    filled = [s for s in selections if s]
-    color  = 0x5865F2  # Discord blurple — neutral until confirmed
+    filled = sum(1 for s in selections if s)
+    bar    = "▓" * filled + "░" * (4 - filled)
 
-    if pending:
-        title = f"🎮  Teaching moves to **{poke_display}**"
-        desc  = (
-            "Use the dropdowns below to pick up to **4 moves**.\n"
-            "Moves are sorted **alphabetically**. "
-            "Skip any slot you don't need.\n"
-            "Press **✅ Confirm** when you're done."
-        )
-    else:
-        title = f"✅  Moves taught to **{poke_display}**!"
-        desc  = ""
-        color = 0x57F287  # green
-
-    embed = discord.Embed(title=title, description=desc, color=color)
+    embed = discord.Embed(
+        title=f"🎮  Teaching moves to {poke_display}",
+        description=(
+            "Pick up to **4 moves** using the dropdowns below.\n"
+            "Each dropdown has multiple pages — use **▶ Next page** to browse.\n"
+            "Hit **✅ Confirm** when you're ready."
+        ),
+        color=0x5865F2,
+    )
     embed.set_thumbnail(url=gif_url(poke_name))
 
     slot_lines = []
     for i, sel in enumerate(selections):
-        slot_num = SLOT_EMOJI[i]
         if sel:
-            slot_lines.append(f"{slot_num}  **{sel}**")
+            slot_lines.append(f"{SLOT_EMOJI[i]}  **{sel}**")
         else:
-            slot_lines.append(f"{slot_num}  *— empty —*")
+            slot_lines.append(f"{SLOT_EMOJI[i]}  *— empty —*")
 
-    embed.add_field(
-        name="📋  Current Selection",
-        value="\n".join(slot_lines),
-        inline=False,
-    )
-
-    if pending:
-        embed.set_footer(
-            text=f"{'▓' * len(filled)}{'░' * (4 - len(filled))}  {len(filled)}/4 slots filled"
-                 "  •  National Dex · All generations"
-        )
-    else:
-        embed.set_footer(text="National Dex • All generations • Use .team to build your roster")
-
+    embed.add_field(name="📋  Current Selection", value="\n".join(slot_lines), inline=False)
+    embed.set_footer(text=f"{bar}  {filled}/4 slots filled  •  National Dex · All generations")
     return embed
 
 
-def _build_result_embed(
+def _result_embed(
     poke_display: str,
     poke_name: str,
     taught: list[dict],
     not_found: list[str],
     cant_learn: list[str],
 ) -> discord.Embed:
-    """Premium result embed after validation completes."""
     primary_type = taught[0]["type"] if taught else "normal"
-    color = TYPE_COLORS.get(primary_type, 0x5865F2)
-
     embed = discord.Embed(
         title=f"✅  Moves taught to {poke_display}!",
-        color=color,
+        color=TYPE_COLORS.get(primary_type, 0x5865F2),
     )
     embed.set_thumbnail(url=gif_url(poke_name))
 
@@ -499,42 +447,43 @@ def _build_result_embed(
             f"• ⚡ {power}"
         )
 
-    embed.add_field(
-        name="📋  Moveset",
-        value="\n".join(move_lines),
-        inline=False,
-    )
+    embed.add_field(name="📋  Moveset", value="\n".join(move_lines), inline=False)
 
     if not_found or cant_learn:
-        warn_parts = []
+        warn = []
         if not_found:
-            warn_parts.append(f"❌ Not found: {', '.join(not_found)}")
+            warn.append(f"❌ Not found: {', '.join(not_found)}")
         if cant_learn:
-            warn_parts.append(f"🚫 Can't learn: {', '.join(cant_learn)}")
-        embed.add_field(name="⚠️  Skipped", value="\n".join(warn_parts), inline=False)
+            warn.append(f"🚫 Can't learn: {', '.join(cant_learn)}")
+        embed.add_field(name="⚠️  Skipped", value="\n".join(warn), inline=False)
 
     embed.set_footer(text="National Dex • All generations • Use .team to build your roster")
     return embed
 
 
-class MoveSelect(discord.ui.Select):
-    """A single move-slot dropdown."""
+# ─────────────────────────────────────────────────────────────────
+# MOVE DROPDOWN UI — one Select per slot, paged navigation
+# ─────────────────────────────────────────────────────────────────
 
-    def __init__(self, slot_index: int, current: str | None):
-        self.slot_index = slot_index
-        slot_label = ["Move 1", "Move 2", "Move 3", "Move 4"][slot_index]
+class MoveSelect(discord.ui.Select):
+    """One move-slot dropdown with paged navigation."""
+
+    def __init__(self, slot: int, page: int, current: str | None):
+        self.slot    = slot
+        self.page    = page
+        self.current = current
+        slot_names   = ["Move 1", "Move 2", "Move 3", "Move 4"]
         super().__init__(
-            placeholder=f"🎯  {slot_label} — pick a move…",
+            placeholder=f"🎯  {slot_names[slot]} — pick a move…",
             min_values=1,
             max_values=1,
-            options=_build_select_options(slot_index, current),
-            row=slot_index,  # rows 0–3
-            custom_id=f"move_slot_{slot_index}",
+            options=_make_select_options(slot, page, current),
+            row=slot,
+            custom_id=f"move_slot_{slot}",
         )
 
     async def callback(self, interaction: discord.Interaction):
-        # Let the parent View handle state
-        await self.view.on_slot_change(interaction, self.slot_index, self.values[0])
+        await self.view.handle_select(interaction, self.slot, self.values[0])
 
 
 class ConfirmButton(discord.ui.Button):
@@ -548,7 +497,7 @@ class ConfirmButton(discord.ui.Button):
         )
 
     async def callback(self, interaction: discord.Interaction):
-        await self.view.on_confirm(interaction)
+        await self.view.handle_confirm(interaction)
 
 
 class CancelButton(discord.ui.Button):
@@ -562,14 +511,11 @@ class CancelButton(discord.ui.Button):
         )
 
     async def callback(self, interaction: discord.Interaction):
-        await self.view.on_cancel(interaction)
+        await self.view.handle_cancel(interaction)
 
 
 class MoveSelectView(discord.ui.View):
-    """
-    Interactive 4-dropdown move selector.
-    Only the original command invoker can interact.
-    """
+    """4-slot paged move selector. Only the invoker can interact."""
 
     def __init__(
         self,
@@ -577,27 +523,38 @@ class MoveSelectView(discord.ui.View):
         poke_name: str,
         poke_display: str,
         uid: str,
-        timeout: float = 120.0,
+        timeout: float = 180.0,
     ):
         super().__init__(timeout=timeout)
         self.ctx          = ctx
         self.poke_name    = poke_name
         self.poke_display = poke_display
         self.uid          = uid
-        self.selections: list[str | None] = [None, None, None, None]
-        self.message: discord.Message | None = None
+        self.message:     discord.Message | None = None
 
-        # Add 4 selects + 2 buttons
+        # Per-slot state
+        self.selections: list[str | None] = [None, None, None, None]
+        self.pages:      list[int]        = [0, 0, 0, 0]
+
+        self._rebuild_components()
+
+    # ── helpers ───────────────────────────────────────────────────
+
+    def _rebuild_components(self):
+        """Clear and re-add all 4 selects + 2 buttons."""
+        self.clear_items()
         for i in range(4):
-            self.add_item(MoveSelect(i, None))
+            self.add_item(MoveSelect(i, self.pages[i], self.selections[i]))
         self.add_item(ConfirmButton())
         self.add_item(CancelButton())
+
+    # ── guard ─────────────────────────────────────────────────────
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if str(interaction.user.id) != self.uid:
             await interaction.response.send_message(
                 embed=discord.Embed(
-                    description="⛔  Only the person who ran `.moves` can use these dropdowns.",
+                    description="⛔  Only the person who ran `.moves` can use these menus.",
                     color=0xED4245,
                 ),
                 ephemeral=True,
@@ -605,42 +562,40 @@ class MoveSelectView(discord.ui.View):
             return False
         return True
 
-    async def on_slot_change(
+    # ── select callback ───────────────────────────────────────────
+
+    async def handle_select(
         self, interaction: discord.Interaction, slot: int, value: str
     ):
-        self.selections[slot] = None if value == "__none__" else value
+        if value.startswith("__page_"):
+            # Navigate to a different page for this slot
+            self.pages[slot] = int(value.split("__page_")[1].rstrip("__"))
+        elif value == "__none__":
+            self.selections[slot] = None
+        else:
+            self.selections[slot] = value
 
-        # Rebuild the select so the chosen option shows as default
-        # Remove old select for this slot and re-add updated one
-        to_remove = None
-        for child in self.children:
-            if isinstance(child, MoveSelect) and child.slot_index == slot:
-                to_remove = child
-                break
-        if to_remove:
-            self.remove_item(to_remove)
-        self.add_item(MoveSelect(slot, self.selections[slot]))
-
+        self._rebuild_components()
         await interaction.response.edit_message(
-            embed=_build_preview_embed(
-                self.poke_display, self.poke_name, self.selections
-            ),
+            embed=_preview_embed(self.poke_display, self.poke_name, self.selections),
             view=self,
         )
 
-    async def on_confirm(self, interaction: discord.Interaction):
+    # ── confirm ───────────────────────────────────────────────────
+
+    async def handle_confirm(self, interaction: discord.Interaction):
         chosen = [s for s in self.selections if s]
         if not chosen:
             await interaction.response.send_message(
                 embed=discord.Embed(
-                    description="❌  Please select at least **1 move** before confirming.",
+                    description="❌  Select at least **1 move** before confirming.",
                     color=0xED4245,
                 ),
                 ephemeral=True,
             )
             return
 
-        # Disable all components while validating
+        # Disable everything while validating
         for child in self.children:
             child.disabled = True
         await interaction.response.edit_message(
@@ -660,22 +615,18 @@ class MoveSelectView(discord.ui.View):
 
         async with aiohttp.ClientSession() as session:
             await ensure_learnsets(session)
-
             for raw in chosen:
                 move_data = await fetch_move_data(session, raw)
                 if move_data is None:
                     not_found.append(raw.title())
                     continue
-
                 learnset_slug = move_data.get("_learnset_id", move_data["name"])
                 result = showdown_can_learn(self.poke_name, learnset_slug)
                 if result is None:
                     result = await pokeapi_can_learn(session, self.poke_name, learnset_slug)
-
                 if not result:
                     cant_learn.append(move_data["display"])
                     continue
-
                 taught.append(move_data)
 
         self.stop()
@@ -699,36 +650,41 @@ class MoveSelectView(discord.ui.View):
             )
             return
 
-        # Save to MongoDB
         db.pokemon_collection.update_one(
             {"user_id": self.uid, "name": self.poke_name},
             {"$set": {"moves": [m["name"] for m in taught]}},
         )
 
         await interaction.edit_original_response(
-            embed=_build_result_embed(
+            embed=_result_embed(
                 self.poke_display, self.poke_name, taught, not_found, cant_learn
             ),
             view=None,
         )
 
-    async def on_cancel(self, interaction: discord.Interaction):
+    # ── cancel ────────────────────────────────────────────────────
+
+    async def handle_cancel(self, interaction: discord.Interaction):
         self.stop()
         await interaction.response.edit_message(
             embed=discord.Embed(
-                description=f"✖️  Move selection for **{self.poke_display}** cancelled.",
+                title="✖️  Move selection cancelled",
+                description=f"You stopped learning moves for **{self.poke_display}**.",
                 color=0x95A5A6,
             ),
             view=None,
         )
+
+    # ── timeout ───────────────────────────────────────────────────
 
     async def on_timeout(self):
         if self.message:
             try:
                 await self.message.edit(
                     embed=discord.Embed(
+                        title="⏰  Move selection timed out",
                         description=(
-                            f"⏰  Move selection for **{self.poke_display}** timed out.\n"
+                            f"The move selector for **{self.poke_display}** expired.\n"
                             "Run `.moves` again to retry."
                         ),
                         color=0x95A5A6,
@@ -748,7 +704,6 @@ class PokemonMoves(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    # Pre-load learnsets on bot ready
     @commands.Cog.listener()
     async def on_ready(self):
         async with aiohttp.ClientSession() as s:
@@ -761,43 +716,28 @@ class PokemonMoves(commands.Cog):
     # ── .moves ───────────────────────────────────────────────────
 
     @commands.command(name="moves")
-    async def moves(self, ctx, pokemon_name: str = None, *, move_args: str = None):
+    async def moves(self, ctx, pokemon_name: str = None):
         """
-        Teach 1–4 moves to a Pokémon you own.
+        Open the interactive move-selection UI for a Pokémon you own.
 
-        With no moves specified → opens an interactive dropdown UI.
-        With moves typed       → validates & teaches immediately (original behaviour).
-
-        Examples:
-          .moves Lopunny                              ← dropdown UI
-          .moves Lopunny Fake Out, High Jump Kick, Return, U-Turn
-          .moves Kingdra Flash Cannon, Dragon Dance, Surf, Ice Beam
-          .moves Jolteon Hidden Power Ice, Thunderbolt, Shadow Ball, Volt Switch
+        Usage:   .moves <Pokémon>
+        Example: .moves Pikachu
         """
         uid = str(ctx.author.id)
 
-        # ── Usage ─────────────────────────────────────────────
         if not pokemon_name:
             await ctx.send(embed=discord.Embed(
                 title="📖  How to teach moves",
                 description=(
-                    "**Dropdown UI (recommended):**\n"
-                    "`.moves <Pokémon>` — opens 4 interactive menus\n\n"
-                    "**Quick text input:**\n"
-                    "`.moves <Pokémon> move1, move2, move3, move4`\n\n"
-                    "**Examples:**\n"
-                    "`.moves Lopunny` *(dropdown UI)*\n"
-                    "`.moves Lopunny Fake Out, High Jump Kick, Return, U-Turn`\n"
-                    "`.moves Kingdra Flash Cannon, Dragon Dance, Surf, Ice Beam`\n"
-                    "`.moves Jolteon Hidden Power Ice, Thunderbolt, Shadow Ball, Volt Switch`\n\n"
-                    "📌 Validated against the **National Dex** learnset (all generations).\n"
-                    "📌 Teach **1–4 moves** separated by commas."
+                    "**Usage:** `.moves <Pokémon>`\n\n"
+                    "**Example:** `.moves Pikachu`\n\n"
+                    "This opens an interactive menu where you can pick up to **4 moves** "
+                    "using dropdowns. Moves are sorted alphabetically and split across pages."
                 ),
                 color=0x5865F2,
             ))
             return
 
-        # ── Ownership ─────────────────────────────────────────
         pname    = pokemon_name.strip().lower()
         poke_doc = db.pokemon_collection.find_one({"user_id": uid, "name": pname})
 
@@ -810,98 +750,12 @@ class PokemonMoves(commands.Cog):
 
         poke_display = poke_doc.get("display", pname.title())
 
-        # ══════════════════════════════════════════════════════
-        #  NO MOVES → open dropdown UI
-        # ══════════════════════════════════════════════════════
-        if not move_args:
-            view = MoveSelectView(ctx, pname, poke_display, uid)
-            msg  = await ctx.send(
-                embed=_build_preview_embed(poke_display, pname, view.selections),
-                view=view,
-            )
-            view.message = msg
-            return
-
-        # ══════════════════════════════════════════════════════
-        #  MOVES TYPED → original text-command path (unchanged)
-        # ══════════════════════════════════════════════════════
-
-        # ── Parse move list ────────────────────────────────────
-        raw_moves = [m.strip() for m in move_args.split(",") if m.strip()]
-        if not 1 <= len(raw_moves) <= 4:
-            await ctx.send(embed=discord.Embed(
-                description="❌  Teach between **1 and 4** moves, separated by commas.",
-                color=0xED4245,
-            ))
-            return
-
-        loading = await ctx.send(embed=discord.Embed(
-            description=(
-                f"⏳  Validating moves for **{poke_display}** "
-                f"against National Dex learnset…"
-            ),
-            color=0x5865F2,
-        ))
-
-        taught:     list[dict] = []
-        not_found:  list[str]  = []   # move name didn't exist
-        cant_learn: list[str]  = []   # move exists but not learnable
-
-        async with aiohttp.ClientSession() as session:
-
-            await ensure_learnsets(session)
-
-            for raw in raw_moves:
-
-                # Fetch move stats (with HP / override handling)
-                move_data = await fetch_move_data(session, raw)
-                if move_data is None:
-                    not_found.append(raw.title())
-                    continue
-
-                # The slug to check against learnset
-                learnset_slug = move_data.get("_learnset_id", move_data["name"])
-
-                # Validate
-                result = showdown_can_learn(pname, learnset_slug)
-                if result is None:
-                    # Showdown unavailable — PokéAPI fallback
-                    result = await pokeapi_can_learn(session, pname, learnset_slug)
-
-                if not result:
-                    cant_learn.append(move_data["display"])
-                    continue
-
-                taught.append(move_data)
-
-        # ── Nothing valid ──────────────────────────────────────
-        if not taught:
-            lines = []
-            if not_found:
-                lines.append(f"❌  Move(s) not found: **{', '.join(not_found)}**")
-            if cant_learn:
-                lines.append(
-                    f"🚫  **{poke_display}** can't learn in National Dex: "
-                    f"**{', '.join(cant_learn)}**"
-                )
-            lines.append("\n*Check spelling. If you believe this is wrong, "
-                         "use `.learncheck <Pokémon> <move>` to investigate.*")
-            await loading.edit(embed=discord.Embed(
-                description="\n".join(lines), color=0xED4245,
-            ))
-            return
-
-        # ── Save to MongoDB ────────────────────────────────────
-        # Store the full slug (includes type for HP: "hidden-power-ice")
-        db.pokemon_collection.update_one(
-            {"user_id": uid, "name": pname},
-            {"$set": {"moves": [m["name"] for m in taught]}},
+        view = MoveSelectView(ctx, pname, poke_display, uid)
+        msg  = await ctx.send(
+            embed=_preview_embed(poke_display, pname, view.selections),
+            view=view,
         )
-
-        # ── Success embed ──────────────────────────────────────
-        await loading.edit(embed=_build_result_embed(
-            poke_display, pname, taught, not_found, cant_learn
-        ))
+        view.message = msg
 
     # ── .moveset ──────────────────────────────────────────────────
 
@@ -939,13 +793,10 @@ class PokemonMoves(commands.Cog):
         embed.set_thumbnail(url=gif_url(pname))
 
         if not saved_moves:
-            embed.description = (
-                "No moves taught yet!\nUse `.moves` to assign up to 4 moves."
-            )
+            embed.description = "No moves taught yet!\nUse `.moves <Pokémon>` to assign up to 4 moves."
         else:
             lines = []
             for i, slug in enumerate(saved_moves, 1):
-                # Pretty-print slugs: "hidden-power-ice" → "Hidden Power Ice"
                 pretty = slug.replace("-", " ").title()
                 lines.append(f"`{i}.` **{pretty}**")
             embed.description = "\n".join(lines)
@@ -1016,10 +867,7 @@ class PokemonMoves(commands.Cog):
             )
         else:
             embed = discord.Embed(
-                description=(
-                    "⚠️  Learnset data not yet loaded. "
-                    "Try again in a moment."
-                ),
+                description="⚠️  Learnset data not yet loaded. Try again in a moment.",
                 color=0xFEE75C,
             )
 
