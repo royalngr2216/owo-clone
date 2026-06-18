@@ -336,13 +336,26 @@ _ALL_MOVES: list[str] = sorted([
     "Hidden Power Water",
 ], key=str.lower)
 
-# Split into pages of 24 (25th slot reserved for "Next page" nav)
-_PAGE_SIZE = 24
-_MOVE_PAGES: list[list[str]] = [
-    _ALL_MOVES[i: i + _PAGE_SIZE]
-    for i in range(0, len(_ALL_MOVES), _PAGE_SIZE)
+# ── Pagination ────────────────────────────────────────────────────
+# Discord hard limit: 25 options per Select.
+# Page 0 reserves 1 slot for "Skip" + 1 slot for "Next page" nav  → 23 moves max
+# Every other page reserves 1 slot for nav only                   → 24 moves max
+
+_PAGE0_SIZE  = 23   # skip(1) + moves(23) + nav(1) = 25
+_PAGEn_SIZE  = 24   # moves(24) + nav(1) = 25
+
+# Build pages: page 0 holds first 23 moves, then 24 each after that
+_p0          = _ALL_MOVES[:_PAGE0_SIZE]
+_rest        = _ALL_MOVES[_PAGE0_SIZE:]
+_MOVE_PAGES: list[list[str]] = [_p0] + [
+    _rest[i: i + _PAGEn_SIZE]
+    for i in range(0, len(_rest), _PAGEn_SIZE)
 ]
 _TOTAL_PAGES = len(_MOVE_PAGES)
+
+
+def _page_move_count(page: int) -> int:
+    return len(_MOVE_PAGES[page])
 
 
 def _make_select_options(
@@ -351,12 +364,13 @@ def _make_select_options(
     current_move: str | None,
 ) -> list[discord.SelectOption]:
     """
-    Build ≤25 SelectOptions for one slot on the given page.
-    Always ends with a 'Next page →' option unless it's the last page.
+    Build exactly ≤25 SelectOptions for one slot on the given page.
+    Page 0: skip(1) + moves(23) + nav(1) = 25
+    Page N: moves(24) + nav(1) = 25
     """
     options: list[discord.SelectOption] = []
 
-    # Page 0 gets the "skip" option at the top
+    # "Skip" only appears on page 0
     if page == 0:
         options.append(discord.SelectOption(
             label="— Skip this slot —",
@@ -373,15 +387,23 @@ def _make_select_options(
             default=(move == current_move),
         ))
 
-    # Navigation — wrap around to page 0 after the last page
+    # Navigation arrow — always present, wraps back to page 0 on last page
     next_page = (page + 1) % _TOTAL_PAGES
-    label = "▶  Next page →" if page < _TOTAL_PAGES - 1 else "◀  Back to start ↩"
+    nav_label = "▶  Next page →" if page < _TOTAL_PAGES - 1 else "◀  Back to start ↩"
+    # Count where we are in the full move list for the description
+    start_idx = (_PAGE0_SIZE if page > 0 else 0) + (page - 1) * _PAGEn_SIZE if page > 0 else 0
+    end_idx   = start_idx + len(_MOVE_PAGES[page])
     options.append(discord.SelectOption(
-        label=label,
+        label=nav_label,
         value=f"__page_{next_page}__",
-        description=f"Page {page + 1} of {_TOTAL_PAGES}  •  showing moves {page * _PAGE_SIZE + 1}–{min((page + 1) * _PAGE_SIZE, len(_ALL_MOVES))}",
+        description=f"Page {page + 1} of {_TOTAL_PAGES}",
         emoji="📄",
     ))
+
+    # Safety assertion — will raise loudly in dev if we ever break the limit
+    assert len(options) <= 25, (
+        f"_make_select_options built {len(options)} options on page {page} — Discord limit is 25!"
+    )
 
     return options
 
