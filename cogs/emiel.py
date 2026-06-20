@@ -26,11 +26,11 @@ SELL_PRICE_RANGES = {
 }
 
 SELL_FLAVOR_TEXT = [
-    "This one's in great condition.",
-    "I've seen better.",
-    "Collectors will fight over this one.",
-    "Rare find. Very rare.",
-    "Not bad. Not bad at all.",
+    "This one's has great potential.",
+    "I've seen its insides.",
+    "Collectors will 🍇 over this one.",
+    "Rare find. Very Very rare.",
+    "Not bad. This one is my type.",
 ]
 
 EMIEL_COLOR = 0x2B2D31
