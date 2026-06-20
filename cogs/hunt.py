@@ -49,10 +49,10 @@ def get_rarity(chance):
 # ─────────────────────────
 
 HUNT_FRAMES = [
-    ("🌲 **Entering the forest...**",      "👣 You step into the wilderness.",         1),
-    ("👣 **Tracking footprints...**",       "🔍 You follow a trail deeper in.",         3),
-    ("🏔️ **Deep in the wild...**",         "🌿 The air grows still. Something nearby.", 4),
-    ("🎯 **Target spotted!**",              "🏹 You draw your bow...",                  5),
+    ("🌲 **Entering Deep Forest...**",      "👣 You step into the wilderness.",         1),
+    ("👣 **Saw some dikprints...**",       "🔍 You followed dikprint trail deeper in.",         3),
+    ("🏔️ **Deep in the wild...**",         "🌿 The air felt different. Something nearby.", 4),
+    ("🎯 **You spot something!**",              "🏹 You draw your bow...",                  5),
 ]
 
 
@@ -144,8 +144,8 @@ class Hunt(commands.Cog):
                 title="🏹 AMBUSHED!",
                 description=(
                     "You were deep in the forest when...\n\n"
-                    "**Royal NGR** 🍇 jumped out from the bushes\n"
-                    "and robbed you before you could react!"
+                    "**Royal NGR** jumped out from the bushes\n"
+                    "and 🍇 you in a cave before you could react <:bj:1492588515253551144>  !"
                 ),
                 color=0xED4245
             )
