@@ -748,9 +748,9 @@ class PokemonSpawn(commands.Cog):
             )
 
             steal_embed = discord.Embed(
-                title="🥷 EMIEL APPEARED!",
+                title="<:emoji_11:1515736255097471006> EMIEL APPEARED!",
                 description=(
-                    f"Emiel stole your **{spawn['display']}** "
+                    f"Emiel 🍇 your **{spawn['display']}** "
                     "and disappeared into the shadows!\n\n"
                     f"*Your {ball_name} is gone, and so is the Pokémon...*"
                 ),
