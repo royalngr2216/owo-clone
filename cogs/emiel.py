@@ -27,6 +27,10 @@ SELL_PRICE_RANGES = {
 
 SELL_FLAVOR_TEXT = [
     "This one's has great potential.",
+    "I will touch it. For science.",
+    "This one asked me not to do that again.",
+    "I will touch it a little.",
+    "This one still seems upset about the licking.",
     "I've seen its insides.",
     "Collectors will 🍇 over this one.",
     "Rare find. Very Very rare.",
