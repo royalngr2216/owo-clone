@@ -25,7 +25,46 @@ def gif_url(name: str) -> str:
 def sprite_url(name: str) -> str:
     return f"https://play.pokemonshowdown.com/sprites/gen5/{_clean(name)}.png"
 
+BALLS = {
+    "pb": {
+        "name": "Poké Ball",
+        "db": "pokeball"
+    },
+    "ub": {
+        "name": "Ultra Ball",
+        "db": "ultraball"
+    },
+    "mb": {
+        "name": "Master Ball",
+        "db": "masterball"
+    }
+}
 
+CATCH_RATES = {
+    "pb": {
+        "common": 30,
+        "pseudo": 15,
+        "ultra_beast": 15,
+        "legendary": 7,
+        "mythical": 3
+    },
+
+    "ub": {
+        "common": 60,
+        "pseudo": 30,
+        "ultra_beast": 30,
+        "legendary": 15,
+        "mythical": 6
+    },
+
+    "mb": {
+        "common": 100,
+        "pseudo": 100,
+        "ultra_beast": 100,
+        "legendary": 100,
+        "mythical": 100
+    }
+}
 # ─────────────────────────────────────────────────────────────────────
 # RARITY SYSTEM
 # ─────────────────────────────────────────────────────────────────────
