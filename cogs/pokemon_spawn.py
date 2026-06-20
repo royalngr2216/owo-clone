@@ -53,7 +53,7 @@ BALL_EMOJI = {
 
 CATCH_RATES = {
     "pb": {
-        "common": 30,
+        "common": 35,
         "pseudo": 15,
         "ultra_beast": 15,
         "legendary": 7,
