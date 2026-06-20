@@ -9,7 +9,11 @@ import math
 
 from PIL import Image, ImageDraw, ImageFont
 
-from utils.pokemon_db import db
+from utils.pokemon_db import (
+    db,
+    get_balls,
+    remove_ball
+)
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -559,16 +563,45 @@ class PokemonSpawn(commands.Cog):
         await channel.send(embed=embed)
 
     @commands.command(name="catch")
-    async def catch(self, ctx, *, guess: str = None):
-        cid   = str(ctx.channel.id)
-        spawn = active_spawns.get(cid)
+async def catch(self, ctx, ball_type=None, *, guess=None):
 
-        if spawn is None or spawn["caught"]:
-            await ctx.send(embed=discord.Embed(
-                description="There's no wild Pokémon here right now!",
-                color=0xED4245,
-            ))
-            return
+    cid = str(ctx.channel.id)
+    spawn = active_spawns.get(cid)
+
+    if ball_type is None or guess is None:
+        embed = discord.Embed(
+            title="Invalid Catch Format",
+            description=(
+                "To catch Pokémon, you must use a ball.\n\n"
+                "Examples:\n"
+                "`.catch pb pikachu`\n"
+                "`.catch ub rayquaza`\n"
+                "`.catch mb mew`\n\n"
+                "⚪ pb = Poké Ball\n"
+                "🟡 ub = Ultra Ball\n"
+                "🟣 mb = Master Ball\n\n"
+                "Buy balls from the shop first!"
+            ),
+            color=0xED4245
+        )
+
+        await ctx.send(embed=embed)
+        return
+
+    ball_type = ball_type.lower()
+
+    if ball_type not in BALLS:
+        await ctx.send(
+            "❌ Valid balls are: `pb`, `ub`, `mb`"
+        )
+        return
+
+    if spawn is None or spawn["caught"]:
+        await ctx.send(embed=discord.Embed(
+            description="There's no wild Pokémon here right now!",
+            color=0xED4245,
+        ))
+        return
 
         if guess is None:
             await ctx.send(embed=discord.Embed(
