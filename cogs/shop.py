@@ -597,7 +597,7 @@ class ShopView(discord.ui.View):
 
     @discord.ui.select(
 
-        placeholder="🎾 Poké Mart — Buy Poké Balls",
+        placeholder="<a:mb:1517997721288704111> Poké Mart — Buy Poké Balls",
 
         options=[
 
@@ -795,7 +795,7 @@ class BallQuantityView(discord.ui.View):
 
         embed = discord.Embed(
 
-            title="🎾 PURCHASE COMPLETE",
+            title="<a:mb:1517997721288704111> PURCHASE COMPLETE",
 
             description=(
 
@@ -933,7 +933,7 @@ class Shop(commands.Cog):
 
         embed.add_field(
 
-            name="🛡 Padlock",
+            name="🛡️ Padlock",
 
             value=(
 
@@ -953,7 +953,7 @@ class Shop(commands.Cog):
 
         embed.add_field(
 
-            name="⚒ Workers",
+            name="🧌 Workers",
 
             value=(
 
@@ -997,7 +997,7 @@ class Shop(commands.Cog):
 
         embed.add_field(
 
-            name="⛏ Shovel",
+            name="🪏 Shovel",
 
             value=(
 
@@ -1019,7 +1019,7 @@ class Shop(commands.Cog):
 
         embed.add_field(
 
-            name="🎾 Poké Mart",
+            name="<a:mb:1517997721288704111> Pokemart",
 
             value=(
 
