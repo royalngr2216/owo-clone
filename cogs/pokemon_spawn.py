@@ -12,7 +12,8 @@ from PIL import Image, ImageDraw, ImageFont
 from utils.pokemon_db import (
     db,
     get_balls,
-    remove_ball
+    remove_ball,
+    log_emiel_event,
 )
 
 
@@ -44,6 +45,12 @@ BALLS = {
     }
 }
 
+BALL_EMOJI = {
+    "pb": "⚪",
+    "ub": "🟡",
+    "mb": "🟣",
+}
+
 CATCH_RATES = {
     "pb": {
         "common": 30,
@@ -69,6 +76,20 @@ CATCH_RATES = {
         "mythical": 100
     }
 }
+
+# ─────────────────────────────────────────────────────────────────────
+# CATCH SUSPENSE / EMIEL CONSTANTS
+# ─────────────────────────────────────────────────────────────────────
+
+EMIEL_STEAL_CHANCE = 0.10  # 10% chance Emiel steals a successful catch
+
+FAILURE_FLAVOR_TEXT = [
+    "The Pokémon escaped!",
+    "It broke free at the last second!",
+    "That was close!",
+    "The ball shattered open!",
+    "So close!",
+]
 # ─────────────────────────────────────────────────────────────────────
 # RARITY SYSTEM
 # ─────────────────────────────────────────────────────────────────────
@@ -599,12 +620,14 @@ class PokemonSpawn(commands.Cog):
         balls = get_balls(ctx.author.id)
 
         ball_db_name = BALLS[ball_type]["db"]
+        ball_name = BALLS[ball_type]["name"]
+        ball_emoji = BALL_EMOJI[ball_type]
 
         if balls.get(ball_db_name, 0) <= 0:
             await ctx.send(embed=discord.Embed(
                 title="No Balls Available!",
                 description=(
-                    f"You don't have any **{BALLS[ball_type]['name']}s**.\n\n"
+                    f"You don't have any **{ball_name}s**.\n\n"
                     "Buy some from the shop first.\n\n"
                     "⚪ Poké Ball - 10,000\n"
                     "🟡 Ultra Ball - 75,000\n"
@@ -645,8 +668,104 @@ class PokemonSpawn(commands.Cog):
                 color=0xFFA500,
             ), delete_after=8)
             return
-        remove_ball(ctx.author.id, ball_db_name, 1)
+
+        # Lock the spawn immediately so nobody else can race this attempt.
         spawn["caught"] = True
+
+        rarity = get_rarity(spawn["id"])
+        catch_rate = CATCH_RATES[ball_type][rarity]
+
+        # ─────────────────────────────────────────────
+        # SUSPENSE ANIMATION
+        # ─────────────────────────────────────────────
+
+        suspense_embed = discord.Embed(
+            description=f"{ball_emoji} **{ctx.author.display_name}** threw a **{ball_name}**!",
+            color=0x5865F2,
+        )
+        msg = await ctx.send(embed=suspense_embed)
+
+        shake_line = ""
+        for _ in range(3):
+            await asyncio.sleep(1)
+            shake_line += "✨ Shake...\n"
+            shake_embed = discord.Embed(
+                description=(
+                    f"{ball_emoji} **{ctx.author.display_name}** threw a **{ball_name}**!\n\n"
+                    f"{shake_line}"
+                ),
+                color=0x5865F2,
+            )
+            try:
+                await msg.edit(embed=shake_embed)
+            except discord.HTTPException:
+                pass
+
+        await asyncio.sleep(1)
+
+        # ─────────────────────────────────────────────
+        # CATCH ROLL — balls are ALWAYS consumed
+        # ─────────────────────────────────────────────
+
+        remove_ball(ctx.author.id, ball_db_name, 1)
+
+        success = (ball_type == "mb") or (random.uniform(0, 100) < catch_rate)
+
+        if not success:
+            fail_text = random.choice(FAILURE_FLAVOR_TEXT)
+
+            fail_embed = discord.Embed(
+                title="💨 Oh no!",
+                description=(
+                    f"**{spawn['display']}** broke free!\n"
+                    f"*{fail_text}*\n\n"
+                    f"Your **{ball_name}** was lost."
+                ),
+                color=0xED4245,
+            )
+            fail_embed.set_footer(
+                text=f"Catch chance was {catch_rate}% with {ball_name}"
+            )
+
+            try:
+                await msg.edit(embed=fail_embed)
+            except discord.HTTPException:
+                await ctx.send(embed=fail_embed)
+            return
+
+        # ─────────────────────────────────────────────
+        # SUCCESS — roll for Emiel theft
+        # ─────────────────────────────────────────────
+
+        stolen = random.random() < EMIEL_STEAL_CHANCE
+
+        if stolen:
+            log_emiel_event(
+                "steal",
+                user_id=uid,
+                pokemon_display=spawn["display"],
+                rarity=rarity,
+            )
+
+            steal_embed = discord.Embed(
+                title="🥷 EMIEL APPEARED!",
+                description=(
+                    f"Emiel stole your **{spawn['display']}** "
+                    "and disappeared into the shadows!\n\n"
+                    f"*Your {ball_name} is gone, and so is the Pokémon...*"
+                ),
+                color=0x2B2D31,
+            )
+            steal_embed.set_thumbnail(url=gif_url(spawn["name"]))
+            steal_embed.set_footer(
+                text="Better luck next time — check .emiel for the global feed"
+            )
+
+            try:
+                await msg.edit(embed=steal_embed)
+            except discord.HTTPException:
+                await ctx.send(embed=steal_embed)
+            return
 
         db.pokemon_collection.insert_one({
             "user_id": uid,
@@ -657,25 +776,26 @@ class PokemonSpawn(commands.Cog):
             "caught_at": datetime.datetime.utcnow(),
         })
 
-        rarity = get_rarity(spawn["id"])
-
-        embed = discord.Embed(
-            title=f"Gotcha! {spawn['display']} was caught! 🎉",
+        catch_embed = discord.Embed(
+            title=f"🎉 GOTCHA!",
             description=(
-                f"**{ctx.author.display_name}** caught **{spawn['display']}**!\n"
+                f"**{spawn['display']}** was caught!\n"
                 f"*{RARITY_LABELS[rarity]}*\n\n"
                 f"Use `.team` to add it, `.moves` to teach it moves!\n"
-                f"Want to sell? Use `.pokemon sell {spawn['display']} <price>`"
+                f"Want to sell? Use `.emiel sell {spawn['display']}`"
             ),
             color=RARITY_EMBED_COLORS[rarity],
         )
 
-        embed.set_image(url=gif_url(spawn["name"]))
-        embed.set_footer(
+        catch_embed.set_image(url=gif_url(spawn["name"]))
+        catch_embed.set_footer(
             text=f"Pokédex #{spawn['id']} · {RARITY_LABELS[rarity]}"
         )
 
-        await ctx.send(embed=embed)
+        try:
+            await msg.edit(embed=catch_embed)
+        except discord.HTTPException:
+            await ctx.send(embed=catch_embed)
 
     @commands.command(name="pokemons", aliases=["pc", "collection"])
     async def pokemon_collection(self, ctx, member: discord.Member = None):
