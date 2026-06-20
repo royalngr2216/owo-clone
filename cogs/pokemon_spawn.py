@@ -596,6 +596,24 @@ if ball_type not in BALLS:
     )
     return
 
+balls = get_balls(ctx.author.id)
+
+ball_db_name = BALLS[ball_type]["db"]
+
+if balls.get(ball_db_name, 0) <= 0:
+    await ctx.send(embed=discord.Embed(
+        title="No Balls Available!",
+        description=(
+            f"You don't have any **{BALLS[ball_type]['name']}s**.\n\n"
+            "Buy some from the shop first.\n\n"
+            "⚪ Poké Ball - 10,000\n"
+            "🟡 Ultra Ball - 75,000\n"
+            "🟣 Master Ball - 750,000"
+        ),
+        color=0xED4245
+    ))
+    return
+
 if spawn is None or spawn["caught"]:
     await ctx.send(embed=discord.Embed(
         description="There's no wild Pokémon here right now!",
