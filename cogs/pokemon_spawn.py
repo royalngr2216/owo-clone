@@ -645,7 +645,7 @@ class PokemonSpawn(commands.Cog):
                 color=0xFFA500,
             ), delete_after=8)
             return
-
+        remove_ball(ctx.author.id, ball_db_name, 1)
         spawn["caught"] = True
 
         db.pokemon_collection.insert_one({
