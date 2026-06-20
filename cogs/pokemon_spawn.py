@@ -562,8 +562,8 @@ class PokemonSpawn(commands.Cog):
         embed.set_footer(text="Be fast! Only one trainer can catch it.")
         await channel.send(embed=embed)
 
-    @commands.command(name="catch")
-async def catch(self, ctx, ball_type=None, *, guess=None):
+@commands.command(name="catch")
+    async def catch(self, ctx, ball_type=None, *, guess=None):
 
 cid = str(ctx.channel.id)
 spawn = active_spawns.get(cid)
