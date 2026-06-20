@@ -1,7 +1,7 @@
 from discord.ext import commands
 import discord
 from datetime import datetime
-from utils.pokemon_db import add_ball
+from utils.pokemon_db import add_ball, get_balls
 
 from utils.economy import (
     economy_collection,
@@ -16,9 +16,38 @@ PADLOCK_PRICE = 250000
 WORKER_PRICE = 5000000
 LOCK_AND_KEY_PRICE = 2500000
 SHOVEL_PRICE = 3000000
-POKEBALL_PRICE = 10000
-ULTRABALL_PRICE = 75000
-MASTERBALL_PRICE = 750000
+
+
+# ─────────────────────────
+# POKÉ MART CONFIG
+# ─────────────────────────
+# Single source of truth for ball metadata. Mirrors the BALLS dict in
+# cogs/pokemon_spawn.py (key -> db field name) so catch rates / future
+# features (Emiel theft, sell command, etc.) can key off the same "pb"/
+# "ub"/"mb" codes without duplicating logic.
+
+POKE_MART_ITEMS = {
+    "pb": {
+        "name": "Poké Ball",
+        "emoji": "⚪",
+        "db": "pokeball",
+        "price": 10_000,
+    },
+    "ub": {
+        "name": "Ultra Ball",
+        "emoji": "🟡",
+        "db": "ultraball",
+        "price": 75_000,
+    },
+    "mb": {
+        "name": "Master Ball",
+        "emoji": "🟣",
+        "db": "masterball",
+        "price": 750_000,
+    },
+}
+
+BALL_QUANTITIES = [1, 5, 10, 25, 50]
 
 
 # ─────────────────────────
@@ -562,6 +591,263 @@ class ShopView(discord.ui.View):
             return
 
 
+    # ─────────────────────────
+    # POKÉ MART DROPDOWN
+    # ─────────────────────────
+
+    @discord.ui.select(
+
+        placeholder="🎾 Poké Mart — Buy Poké Balls",
+
+        options=[
+
+            discord.SelectOption(
+
+                label="Poké Ball",
+
+                description="10K NGR each",
+
+                emoji="⚪",
+
+                value="pb"
+            ),
+
+            discord.SelectOption(
+
+                label="Ultra Ball",
+
+                description="75K NGR each",
+
+                emoji="🟡",
+
+                value="ub"
+            ),
+
+            discord.SelectOption(
+
+                label="Master Ball",
+
+                description="750K NGR each",
+
+                emoji="🟣",
+
+                value="mb"
+            )
+        ]
+    )
+
+    async def pokemart_callback(
+
+        self,
+        interaction: discord.Interaction,
+        select: discord.ui.Select
+
+    ):
+
+        if interaction.user != self.ctx.author:
+
+            await interaction.response.send_message(
+
+                "❌ This menu is not for you.",
+
+                ephemeral=True
+            )
+
+            return
+
+
+        ball_key = select.values[0]
+        item = POKE_MART_ITEMS[ball_key]
+
+
+        embed = discord.Embed(
+
+            title=f"{item['emoji']} {item['name']}",
+
+            description=(
+
+                f"Select a quantity to purchase.\n\n"
+
+                f"💵 Price per ball:\n"
+                f"**{format_cash(item['price'])}**"
+
+            ),
+
+            color=0x5865F2
+        )
+
+        embed.set_footer(
+
+            text="Prices scale automatically with quantity"
+        )
+
+        await interaction.response.send_message(
+
+            embed=embed,
+
+            view=BallQuantityView(self.ctx, ball_key),
+
+            ephemeral=True
+        )
+
+        return
+
+
+# ─────────────────────────
+# POKÉ MART — QUANTITY VIEW
+# ─────────────────────────
+
+class BallQuantityView(discord.ui.View):
+
+    def __init__(self, ctx, ball_key):
+
+        super().__init__(timeout=60)
+
+        self.ctx = ctx
+        self.ball_key = ball_key
+
+        item = POKE_MART_ITEMS[ball_key]
+
+        for qty in BALL_QUANTITIES:
+
+            total_price = item["price"] * qty
+
+            button = discord.ui.Button(
+
+                label=f"×{qty} — {format_cash(total_price)}",
+
+                style=discord.ButtonStyle.secondary,
+
+                custom_id=str(qty)
+            )
+
+            button.callback = self._make_callback(qty)
+
+            self.add_item(button)
+
+
+    def _make_callback(self, qty):
+
+        async def callback(interaction: discord.Interaction):
+
+            await self._purchase(interaction, qty)
+
+        return callback
+
+
+    async def _purchase(self, interaction: discord.Interaction, qty: int):
+
+        if interaction.user != self.ctx.author:
+
+            await interaction.response.send_message(
+
+                "❌ This menu is not for you.",
+
+                ephemeral=True
+            )
+
+            return
+
+
+        item = POKE_MART_ITEMS[self.ball_key]
+
+        total_price = item["price"] * qty
+
+
+        create_account(interaction.user.id)
+
+        cash = get_cash(interaction.user.id)
+
+
+        if cash < total_price:
+
+            embed = discord.Embed(
+
+                description=(
+
+                    "❌ You don't have enough cash.\n\n"
+
+                    f"Required: **{format_cash(total_price)}**\n"
+                    f"You have: **{format_cash(cash)}**"
+
+                ),
+
+                color=0xED4245
+            )
+
+            await interaction.response.send_message(
+
+                embed=embed,
+                ephemeral=True
+            )
+
+            return
+
+
+        remove_cash(interaction.user.id, total_price)
+
+        add_ball(interaction.user.id, item["db"], qty)
+
+
+        remaining_balance = get_cash(interaction.user.id)
+        balls = get_balls(interaction.user.id)
+
+
+        embed = discord.Embed(
+
+            title="🎾 PURCHASE COMPLETE",
+
+            description=(
+
+                f"{item['emoji']} **{item['name']} ×{qty}**\n\n"
+
+                f"💵 Cost:\n"
+                f"**{format_cash(total_price)}**\n\n"
+
+                f"💰 Remaining Balance:\n"
+                f"**{format_cash(remaining_balance)}**"
+
+            ),
+
+            color=0x57F287
+        )
+
+        embed.add_field(
+
+            name="📦 Updated Inventory",
+
+            value=(
+
+                f"⚪ Poké Ball: **{balls.get('pokeball', 0)}**\n"
+                f"🟡 Ultra Ball: **{balls.get('ultraball', 0)}**\n"
+                f"🟣 Master Ball: **{balls.get('masterball', 0)}**"
+
+            ),
+
+            inline=False
+        )
+
+        embed.set_footer(
+
+            text="Use .catch pb/ub/mb <pokemon> to start catching"
+        )
+
+
+        for child in self.children:
+            child.disabled = True
+
+        self.stop()
+
+
+        await interaction.response.edit_message(
+
+            embed=embed,
+            view=self
+        )
+
+        return
+
+
 # ─────────────────────────
 # SHOP COMMAND
 # ─────────────────────────
@@ -720,6 +1006,32 @@ class Shop(commands.Cog):
                 "• Price: **3M NGR**\n"
                 "• Unlocks: **.mine**\n"
                 f"• Owned: **{'Yes' if shovel_owned else 'No'}**"
+
+            ),
+
+            inline=False
+        )
+
+
+        # POKÉ MART
+
+        balls = get_balls(ctx.author.id)
+
+        embed.add_field(
+
+            name="🎾 Poké Mart",
+
+            value=(
+
+                "Buy Poké Balls to catch wild Pokémon.\n\n"
+
+                "• ⚪ Poké Ball: **10K NGR**\n"
+                "• 🟡 Ultra Ball: **75K NGR**\n"
+                "• 🟣 Master Ball: **750K NGR**\n\n"
+
+                f"📦 Owned: **{balls.get('pokeball', 0)}** / "
+                f"**{balls.get('ultraball', 0)}** / "
+                f"**{balls.get('masterball', 0)}**"
 
             ),
 
