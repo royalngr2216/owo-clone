@@ -27,6 +27,7 @@ else:
 pokemon_collection = db["pokemon"] if db is not None else None
 pokemon_market = db["pokemon_market"] if db is not None else None
 pokemon_spawn_channels = db["pokemon_spawn_channels"] if db is not None else None
+emiel_log = db["emiel_log"] if db is not None else None
 
 # -----------------------------------
 # DATABASE UTILITY FUNCTIONS
@@ -124,6 +125,32 @@ def remove_ball(user_id, ball_type, amount=1):
     pokemon_collection.update_one(
         {"_id": user_id},
         {"$inc": {f"balls.{ball_type}": -amount}}
+    )
+
+
+def log_emiel_event(event_type: str, **fields):
+    """Append an entry to the global Emiel activity log.
+
+    event_type: "steal" or "sale"
+
+    For "steal", pass: user_id, pokemon_display, rarity
+    For "sale",  pass: seller_id, pokemon_display, rarity, price
+    """
+    import datetime as _dt
+
+    entry = {
+        "type": event_type,
+        "timestamp": _dt.datetime.utcnow(),
+        **fields,
+    }
+
+    emiel_log.insert_one(entry)
+
+
+def get_emiel_log(limit: int = 10) -> list:
+    """Fetch the most recent Emiel events, newest first."""
+    return list(
+        emiel_log.find().sort("timestamp", -1).limit(limit)
     )
 
 def transfer_pokemon(seller_id: int, buyer_id: int, pokemon_name: str, price: int) -> tuple:
