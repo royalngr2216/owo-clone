@@ -29,19 +29,19 @@ SHOVEL_PRICE = 3000000
 POKE_MART_ITEMS = {
     "pb": {
         "name": "Poké Ball",
-        "emoji": "⚪",
+        "emoji": "<:pb:1517998351227031632>",
         "db": "pokeball",
         "price": 5_000,
     },
     "ub": {
         "name": "Ultra Ball",
-        "emoji": "🟡",
+        "emoji": "<:ub:1517997681564324114>",
         "db": "ultraball",
         "price": 75_000,
     },
     "mb": {
         "name": "Master Ball",
-        "emoji": "🟣",
+        "emoji": "<a:mb:1517997721288704111>",
         "db": "masterball",
         "price": 750_000,
     },
@@ -607,7 +607,7 @@ class ShopView(discord.ui.View):
 
                 description="5K NGR each",
 
-                emoji="⚪",
+                emoji="<:pb:1517998351227031632>",
 
                 value="pb"
             ),
@@ -618,7 +618,7 @@ class ShopView(discord.ui.View):
 
                 description="75K NGR each",
 
-                emoji="🟡",
+                emoji="<:ub:1517997681564324114>",
 
                 value="ub"
             ),
@@ -629,7 +629,7 @@ class ShopView(discord.ui.View):
 
                 description="750K NGR each",
 
-                emoji="🟣",
+                emoji="<a:mb:1517997721288704111>",
 
                 value="mb"
             )
@@ -818,9 +818,9 @@ class BallQuantityView(discord.ui.View):
 
             value=(
 
-                f"⚪ Poké Ball: **{balls.get('pokeball', 0)}**\n"
-                f"🟡 Ultra Ball: **{balls.get('ultraball', 0)}**\n"
-                f"🟣 Master Ball: **{balls.get('masterball', 0)}**"
+                f"<:pb:1517998351227031632> Poké Ball: **{balls.get('pokeball', 0)}**\n"
+                f"<:ub:1517997681564324114> Ultra Ball: **{balls.get('ultraball', 0)}**\n"
+                f"<a:mb:1517997721288704111> Master Ball: **{balls.get('masterball', 0)}**"
 
             ),
 
@@ -1025,9 +1025,9 @@ class Shop(commands.Cog):
 
                 "Buy Poké Balls to catch wild Pokémon.\n\n"
 
-                "• ⚪ Poké Ball: **5K NGR**\n"
-                "• 🟡 Ultra Ball: **75K NGR**\n"
-                "• 🟣 Master Ball: **750K NGR**\n\n"
+                "• <:pb:1517998351227031632> Poké Ball: **5K NGR**\n"
+                "• <:ub:1517997681564324114> Ultra Ball: **75K NGR**\n"
+                "• <a:mb:1517997721288704111> Master Ball: **750K NGR**\n\n"
 
                 f"📦 Owned: **{balls.get('pokeball', 0)}** / "
                 f"**{balls.get('ultraball', 0)}** / "
