@@ -8,19 +8,19 @@ from utils.pokemon_db import get_balls
 BALL_DISPLAY = {
     "pokeball": {
         "name": "Poké Ball",
-        "emoji": "⚪",
+        "emoji": "<:pb:1517998351227031632>",
         "code": "pb",
         "price": 10_000,
     },
     "ultraball": {
         "name": "Ultra Ball",
-        "emoji": "🟡",
+        "emoji": "<:ub:1517997681564324114>",
         "code": "ub",
         "price": 75_000,
     },
     "masterball": {
         "name": "Master Ball",
-        "emoji": "🟣",
+        "emoji": "<a:mb:1517997721288704111>",
         "code": "mb",
         "price": 750_000,
     },
