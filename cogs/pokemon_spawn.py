@@ -81,7 +81,7 @@ CATCH_RATES = {
 # CATCH SUSPENSE / EMIEL CONSTANTS
 # ─────────────────────────────────────────────────────────────────────
 
-EMIEL_STEAL_CHANCE = 0.10  # 10% chance Emiel steals a successful catch
+EMIEL_STEAL_CHANCE = 0.20  # 10% chance Emiel steals a successful catch
 
 FAILURE_FLAVOR_TEXT = [
     "The Pokémon escaped!",
@@ -547,7 +547,7 @@ class PokemonSpawn(commands.Cog):
     def cog_unload(self):
         self.spawn_loop.cancel()
 
-    @tasks.loop(minutes=10)
+    @tasks.loop(minutes=5)
     async def spawn_loop(self):
         if db is None:
             return
@@ -572,7 +572,7 @@ class PokemonSpawn(commands.Cog):
             title="A wild Pokémon appeared! 🌿",
             description=(
                 "**Who's that Pokémon?** 🤔\n\n"
-                "Type `.catch <pokemon name>` to catch it!\n"
+                "Type `.catch pb/ub/mb <pokemon name>` to catch it!\n"
                 "First trainer to guess correctly wins!\n\n"
                 "⚠️ You can only catch each species **once**!"
                 + RARITY_SPAWN_EXTRA[rarity]
