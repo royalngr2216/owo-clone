@@ -46,9 +46,9 @@ BALLS = {
 }
 
 BALL_EMOJI = {
-    "pb": "⚪",
-    "ub": "🟡",
-    "mb": "🟣",
+    "pb": "<:pb:1517998351227031632>",
+    "ub": "<:ub:1517997681564324114>",
+    "mb": "<a:mb:1517997721288704111>",
 }
 
 CATCH_RATES = {
@@ -598,9 +598,9 @@ class PokemonSpawn(commands.Cog):
                     "`.catch pb pikachu`\n"
                     "`.catch ub rayquaza`\n"
                     "`.catch mb mew`\n\n"
-                    "⚪ pb = Poké Ball\n"
-                    "🟡 ub = Ultra Ball\n"
-                    "🟣 mb = Master Ball\n\n"
+                    "<:pb:1517998351227031632> pb = Poké Ball\n"
+                    "<:ub:1517997681564324114> ub = Ultra Ball\n"
+                    "<a:mb:1517997721288704111> mb = Master Ball\n\n"
                     "Buy balls from the shop first!"
                 ),
                 color=0xED4245
@@ -629,9 +629,9 @@ class PokemonSpawn(commands.Cog):
                 description=(
                     f"You don't have any **{ball_name}s**.\n\n"
                     "Buy some from the shop first.\n\n"
-                    "⚪ Poké Ball - 10,000\n"
-                    "🟡 Ultra Ball - 75,000\n"
-                    "🟣 Master Ball - 750,000"
+                    "<:pb:1517998351227031632> Poké Ball - 10,000\n"
+                    "<:ub:1517997681564324114> Ultra Ball - 75,000\n"
+                    "<a:mb:1517997721288704111> Master Ball - 750,000"
                 ),
                 color=0xED4245
             ))
