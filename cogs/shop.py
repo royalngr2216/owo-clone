@@ -31,7 +31,7 @@ POKE_MART_ITEMS = {
         "name": "Poké Ball",
         "emoji": "⚪",
         "db": "pokeball",
-        "price": 10_000,
+        "price": 5_000,
     },
     "ub": {
         "name": "Ultra Ball",
@@ -605,7 +605,7 @@ class ShopView(discord.ui.View):
 
                 label="Poké Ball",
 
-                description="10K NGR each",
+                description="5K NGR each",
 
                 emoji="⚪",
 
@@ -1025,7 +1025,7 @@ class Shop(commands.Cog):
 
                 "Buy Poké Balls to catch wild Pokémon.\n\n"
 
-                "• ⚪ Poké Ball: **10K NGR**\n"
+                "• ⚪ Poké Ball: **5K NGR**\n"
                 "• 🟡 Ultra Ball: **75K NGR**\n"
                 "• 🟣 Master Ball: **750K NGR**\n\n"
 
