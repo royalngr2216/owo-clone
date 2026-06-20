@@ -565,96 +565,99 @@ class PokemonSpawn(commands.Cog):
     @commands.command(name="catch")
 async def catch(self, ctx, ball_type=None, *, guess=None):
 
-    cid = str(ctx.channel.id)
-    spawn = active_spawns.get(cid)
+cid = str(ctx.channel.id)
+spawn = active_spawns.get(cid)
 
-    if ball_type is None or guess is None:
-        embed = discord.Embed(
-            title="Invalid Catch Format",
-            description=(
-                "To catch Pokémon, you must use a ball.\n\n"
-                "Examples:\n"
-                "`.catch pb pikachu`\n"
-                "`.catch ub rayquaza`\n"
-                "`.catch mb mew`\n\n"
-                "⚪ pb = Poké Ball\n"
-                "🟡 ub = Ultra Ball\n"
-                "🟣 mb = Master Ball\n\n"
-                "Buy balls from the shop first!"
-            ),
-            color=0xED4245
-        )
+if ball_type is None or guess is None:
+    embed = discord.Embed(
+        title="Invalid Catch Format",
+        description=(
+            "To catch Pokémon, you must use a ball.\n\n"
+            "Examples:\n"
+            "`.catch pb pikachu`\n"
+            "`.catch ub rayquaza`\n"
+            "`.catch mb mew`\n\n"
+            "⚪ pb = Poké Ball\n"
+            "🟡 ub = Ultra Ball\n"
+            "🟣 mb = Master Ball\n\n"
+            "Buy balls from the shop first!"
+        ),
+        color=0xED4245
+    )
 
-        await ctx.send(embed=embed)
-        return
+    await ctx.send(embed=embed)
+    return
 
-    ball_type = ball_type.lower()
+ball_type = ball_type.lower()
 
-    if ball_type not in BALLS:
-        await ctx.send(
-            "❌ Valid balls are: `pb`, `ub`, `mb`"
-        )
-        return
+if ball_type not in BALLS:
+    await ctx.send(
+        "❌ Valid balls are: `pb`, `ub`, `mb`"
+    )
+    return
 
-    if spawn is None or spawn["caught"]:
-        await ctx.send(embed=discord.Embed(
-            description="There's no wild Pokémon here right now!",
-            color=0xED4245,
-        ))
-        return
+if spawn is None or spawn["caught"]:
+    await ctx.send(embed=discord.Embed(
+        description="There's no wild Pokémon here right now!",
+        color=0xED4245,
+    ))
+    return
 
-        if guess is None:
-            await ctx.send(embed=discord.Embed(
-                description="Type the Pokémon's name!\nExample: `.catch Charizard`",
-                color=0xED4245,
-            ))
-            return
+if guess.strip().lower() != spawn["name"].lower():
+    await ctx.send(embed=discord.Embed(
+        description=f"❌ That's not right, **{ctx.author.display_name}**! Keep trying!",
+        color=0xED4245,
+    ), delete_after=4)
+    return
 
-        if guess.strip().lower() != spawn["name"].lower():
-            await ctx.send(embed=discord.Embed(
-                description=f"❌ That's not right, **{ctx.author.display_name}**! Keep trying!",
-                color=0xED4245,
-            ), delete_after=4)
-            return
+uid = str(ctx.author.id)
 
-        uid     = str(ctx.author.id)
-        already = db.pokemon_collection.find_one({"user_id": uid, "name": spawn["name"]})
-        if already:
-            await ctx.send(embed=discord.Embed(
-                title="Already caught! 🚫",
-                description=(
-                    f"**{ctx.author.display_name}**, you already own a **{spawn['display']}**!\n"
-                    "Each trainer can only catch one of each species.\n\n"
-                    "Let someone else catch it! 🎯"
-                ),
-                color=0xFFA500,
-            ), delete_after=8)
-            return
+already = db.pokemon_collection.find_one(
+    {"user_id": uid, "name": spawn["name"]}
+)
 
-        spawn["caught"] = True
-        db.pokemon_collection.insert_one({
-            "user_id":    uid,
-            "name":       spawn["name"],
-            "display":    spawn["display"],
-            "pokedex_id": spawn["id"],
-            "moves":      [],
-            "caught_at":  datetime.datetime.utcnow(),
-        })
+if already:
+    await ctx.send(embed=discord.Embed(
+        title="Already caught! 🚫",
+        description=(
+            f"**{ctx.author.display_name}**, you already own a **{spawn['display']}**!\n"
+            "Each trainer can only catch one of each species.\n\n"
+            "Let someone else catch it! 🎯"
+        ),
+        color=0xFFA500,
+    ), delete_after=8)
+    return
 
-        rarity = get_rarity(spawn["id"])
-        embed  = discord.Embed(
-            title       = f"Gotcha! {spawn['display']} was caught! 🎉",
-            description = (
-                f"**{ctx.author.display_name}** caught **{spawn['display']}**!\n"
-                f"*{RARITY_LABELS[rarity]}*\n\n"
-                f"Use `.team` to add it, `.moves` to teach it moves!\n"
-                f"Want to sell? Use `.pokemon sell {spawn['display']} <price>`"
-            ),
-            color       = RARITY_EMBED_COLORS[rarity],
-        )
-        embed.set_image(url=gif_url(spawn["name"]))
-        embed.set_footer(text=f"Pokédex #{spawn['id']}  ·  {RARITY_LABELS[rarity]}")
-        await ctx.send(embed=embed)
+spawn["caught"] = True
+
+db.pokemon_collection.insert_one({
+    "user_id": uid,
+    "name": spawn["name"],
+    "display": spawn["display"],
+    "pokedex_id": spawn["id"],
+    "moves": [],
+    "caught_at": datetime.datetime.utcnow(),
+})
+
+rarity = get_rarity(spawn["id"])
+
+embed = discord.Embed(
+    title=f"Gotcha! {spawn['display']} was caught! 🎉",
+    description=(
+        f"**{ctx.author.display_name}** caught **{spawn['display']}**!\n"
+        f"*{RARITY_LABELS[rarity]}*\n\n"
+        f"Use `.team` to add it, `.moves` to teach it moves!\n"
+        f"Want to sell? Use `.pokemon sell {spawn['display']} <price>`"
+    ),
+    color=RARITY_EMBED_COLORS[rarity],
+)
+
+embed.set_image(url=gif_url(spawn["name"]))
+embed.set_footer(
+    text=f"Pokédex #{spawn['id']} · {RARITY_LABELS[rarity]}"
+)
+
+await ctx.send(embed=embed)
 
     @commands.command(name="pokemons", aliases=["pc", "collection"])
     async def pokemon_collection(self, ctx, member: discord.Member = None):
