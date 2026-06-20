@@ -597,7 +597,7 @@ class ShopView(discord.ui.View):
 
     @discord.ui.select(
 
-        placeholder="<a:mb:1517997721288704111> Poké Mart — Buy Poké Balls",
+        placeholder="Pokemart — Buy Pokeballs",
 
         options=[
 
