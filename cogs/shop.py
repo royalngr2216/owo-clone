@@ -1,6 +1,7 @@
 from discord.ext import commands
 import discord
 from datetime import datetime
+from utils.pokemon_db import add_ball
 
 from utils.economy import (
     economy_collection,
@@ -15,6 +16,9 @@ PADLOCK_PRICE = 250000
 WORKER_PRICE = 5000000
 LOCK_AND_KEY_PRICE = 2500000
 SHOVEL_PRICE = 3000000
+POKEBALL_PRICE = 10000
+ULTRABALL_PRICE = 75000
+MASTERBALL_PRICE = 750000
 
 
 # ─────────────────────────
