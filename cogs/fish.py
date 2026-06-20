@@ -53,10 +53,10 @@ BOBBER_FRAMES = [
 ]
 
 FISH_FRAMES = [
-    ("🎣 **Casting the line...**",         "🌊 Your lure hits the water.",              1),
-    ("〰️ **Waiting patiently...**",         BOBBER_FRAMES[0],                           3),
-    ("〰️ **Still waiting...**",             BOBBER_FRAMES[2],                           4),
-    ("⚡ **Something's on the hook!**",     "🎣 You yank the rod — REEL IT IN!",        5),
+    ("🎣 **You trying to Fish...**",         "🌊 Your Rod hitting the water.",              1),
+    ("〰️ **Saw Azure Squirting...**",         BOBBER_FRAMES[0],                           3),
+    ("〰️ **Still Squrting ...**",             BOBBER_FRAMES[2],                           4),
+    ("⚡ **Something's on your hook!**",     "🎣 You shook your hook — SAW SOMETHING!",        5),
 ]
 
 
