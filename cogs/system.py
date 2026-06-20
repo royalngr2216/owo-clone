@@ -52,7 +52,7 @@ HELP_CATEGORIES = {
 
     "🎒 Items": (
         "**.shop**\n"
-        "Open the item shop.\n\n"
+        "Open the item shop, including the 🎾 Poké Mart for buying balls.\n\n"
         "**.inventory**\n"
         "View collected items.\n\n"
         "**.sell item amount**\n"
@@ -109,8 +109,10 @@ HELP_CATEGORIES = {
     ),
 
         "🐉 Pokemon": (
-        "**.catch <name>**\n"
-        "Catch the wild Pokemon currently in the channel.\n\n"
+        "**.catch <pb/ub/mb> <name>**\n"
+        "Catch the wild Pokémon currently in the channel using a Poké/Ultra/Master Ball.\n\n"
+        "**.balls [user]**\n"
+        "View your (or another trainer's) Poké Ball inventory.\n\n"
         "**.pokemons [user]**\n"
         "View your (or another trainer's) Pokémon collection.\n\n"
         "**.team [p1, p2, ...]**\n"
@@ -129,8 +131,12 @@ HELP_CATEGORIES = {
         "List one of your Pokémon for sale in the market.\n\n"
         "**.pokemon buy @user <pokemon>**\n"
         "Buy a listed Pokémon from another trainer.\n\n"
+        "**.emiel**\n"
+        "View Emiel's global activity feed (recent steals and sales).\n\n"
+        "**.emiel sell <pokemon>**\n"
+        "Instantly sell a Pokémon to Emiel for a rarity-based payout.\n\n"
         "**.setspawnchannel**\n"
-        "Admin: Set the current channel for automatic 20-minute Pokémon spawns.\n\n"
+        "Admin: Set the current channel for automatic 10-minute Pokémon spawns.\n\n"
         "**.spawntest**\n"
         "Admin: Force a wild Pokémon to spawn immediately."
         ),
