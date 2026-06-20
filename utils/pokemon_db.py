@@ -38,10 +38,16 @@ def get_pokemon_data(user_id: int) -> dict:
     
     if not user_data:
         user_data = {
-            "_id": user_id,
-            "team": [],
-            "inventory": [],
-            "caught_count": 0
+    "_id": user_id,
+    "team": [],
+    "inventory": [],
+    "caught_count": 0,
+
+    "balls": {
+        "pokeball": 0,
+        "ultraball": 0,
+        "masterball": 0
+    }
         }
         # Insert the default schema into MongoDB
         pokemon_collection.insert_one(user_data)
@@ -79,6 +85,45 @@ def remove_from_team(user_id: int, pokemon_name: str):
     pokemon_collection.update_one(
         {"_id": user_id},
         {"$pull": {"team": pokemon_name}} # $pull removes items from arrays in MongoDB
+    )
+def get_balls(user_id):
+    data = get_pokemon_data(user_id)
+
+    if "balls" not in data:
+        pokemon_collection.update_one(
+            {"_id": user_id},
+            {
+                "$set": {
+                    "balls": {
+                        "pokeball": 0,
+                        "ultraball": 0,
+                        "masterball": 0
+                    }
+                }
+            }
+        )
+
+        return {
+            "pokeball": 0,
+            "ultraball": 0,
+            "masterball": 0
+        }
+
+    return data["balls"]
+
+
+def add_ball(user_id, ball_type, amount=1):
+    pokemon_collection.update_one(
+        {"_id": user_id},
+        {"$inc": {f"balls.{ball_type}": amount}},
+        upsert=True
+    )
+
+
+def remove_ball(user_id, ball_type, amount=1):
+    pokemon_collection.update_one(
+        {"_id": user_id},
+        {"$inc": {f"balls.{ball_type}": -amount}}
     )
 
 def transfer_pokemon(seller_id: int, buyer_id: int, pokemon_name: str, price: int) -> tuple:
