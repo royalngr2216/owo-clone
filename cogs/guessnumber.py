@@ -44,8 +44,8 @@ def proximity_hint(guess, secret):
     gap = abs(guess - secret)
     direction = "📈 **Higher**" if guess < secret else "📉 **Lower**"
 
-    if gap <= 25:
-        warmth = "🔥 **Very close, The number is 25 less or more!**"
+    if gap <= 30:
+        warmth = "🔥 **Very close, The number is 30 less or more!**"
     else:
         warmth = "🧊 **Getting warmer...**"
 
