@@ -20,6 +20,13 @@ from utils.achievement_checker import check_achievements
 
 
 # ─────────────────────────
+# CUSTOM EMOJIS & CONFIG
+# ─────────────────────────
+SHUFFLE_EMOJI = "<a:14722:1519037409579499581>"
+DEALER_THINKING = "<:dealer:1519037377769640140>"
+
+
+# ─────────────────────────
 # CARD HELPERS
 # ─────────────────────────
 
@@ -120,7 +127,7 @@ class Blackjack(commands.Cog):
                 ),
                 color=0x2B2D31
             )
-            embed.set_thumbnail(url="https://cdn.discordapp.com/emojis/1234567890.webp")
+            embed.set_thumbnail(url="https://cdn.discordapp.com/emojis/1234567890.webp") # Keep your original thumbnail if desired
             embed.set_footer(text="Good luck! 🍀")
             await ctx.send(embed=embed)
             return
@@ -159,6 +166,17 @@ class Blackjack(commands.Cog):
             "bet": bet,
             "done": False
         }
+
+        # --- ANIMATION: SHUFFLING ---
+        shuffle_embed = discord.Embed(
+            title="🃏 Blackjack",
+            description=f"{SHUFFLE_EMOJI} **Shuffling the deck and dealing cards...**",
+            color=0x2B2D31
+        )
+        msg = await ctx.send(embed=shuffle_embed)
+        bj_games[ctx.author.id]["msg"] = msg
+        
+        await asyncio.sleep(1.2) # Smooth delay for the shuffle animation
 
         # Instant natural blackjack check
         if hand_total(player) == 21:
@@ -209,13 +227,13 @@ class Blackjack(commands.Cog):
                     inline=False
                 )
             embed.set_footer(text=f"Bet: {format_cash(bet)}")
-            await ctx.send(embed=embed)
+            await msg.edit(embed=embed)
             await check_achievements(self.bot, ctx.author)
             return
 
+        # Start standard game
         embed, view = self._build_embed_view(ctx.author.id)
-        msg = await ctx.send(embed=embed, view=view)
-        bj_games[ctx.author.id]["msg"] = msg
+        await msg.edit(embed=embed, view=view)
 
     # ─────────────────────────
     # BUILD EMBED + VIEW
@@ -232,7 +250,7 @@ class Blackjack(commands.Cog):
 
         embed = discord.Embed(
             title="🃏 Blackjack",
-            color=0x5865F2
+            color=0x2B2D31
         )
         embed.add_field(
             name=f"🧑 Your Hand — `{ptotal}`",
@@ -244,22 +262,47 @@ class Blackjack(commands.Cog):
             value=f"{fmt_hand(dealer, hide_second=True)}\n{'⬛' * 5}",
             inline=True
         )
+        
+        tip = (
+            "🔴 Stand on 17+" if ptotal >= 17
+            else "🟡 Consider hitting!" if ptotal <= 11
+            else "🟠 Risky zone — your call!"
+        )
         embed.add_field(
-            name="💡 Tip",
-            value=(
-                "🔴 Stand on 17+" if ptotal >= 17
-                else "🟡 Consider hitting!" if ptotal <= 11
-                else "🟠 Risky zone — your call!"
-            ),
+            name="💡 Status",
+            value=f"> {tip}",
             inline=False
         )
-        embed.set_footer(text=f"Bet: {format_cash(bet)}  •  Hit, Stand, or Double!")
+        
+        embed.set_footer(text=f"Current Bet: {format_cash(bet)}  •  Hit, Stand, or Double")
 
         cash = get_cash(user_id)
         can_double = cash >= bet
 
         view = BjView(user_id=user_id, can_double=can_double, cog=self)
         return embed, view
+
+    def _build_reveal_embed(self, player, dealer, bet, status_text):
+        """Builds a temporary embed for smooth dealer animations."""
+        ptotal = hand_total(player)
+        dtotal = hand_total(dealer)
+
+        embed = discord.Embed(
+            title=f"{DEALER_THINKING} {status_text}",
+            color=0xFEE75C
+        )
+        embed.add_field(
+            name=f"🧑 Your Hand — `{hand_label(player)}`",
+            value=f"{fmt_hand(player)}\n{score_bar(ptotal)}",
+            inline=True
+        )
+        embed.add_field(
+            name=f"🤖 Dealer Hand — `{hand_label(dealer)}`",
+            value=f"{fmt_hand(dealer)}\n{score_bar(dtotal)}",
+            inline=True
+        )
+        embed.set_footer(text=f"Bet: {format_cash(bet)}")
+        return embed
 
     # ─────────────────────────
     # HIT
@@ -276,7 +319,10 @@ class Blackjack(commands.Cog):
             return
 
         if g.get("done"):
-            await interaction.response.defer()
+            try:
+                await interaction.response.defer()
+            except:
+                pass
             return
 
         card = g["deck"].pop()
@@ -308,7 +354,10 @@ class Blackjack(commands.Cog):
             return
 
         if g.get("done"):
-            await interaction.response.defer()
+            try:
+                await interaction.response.defer()
+            except:
+                pass
             return
 
         g["done"] = True
@@ -329,7 +378,10 @@ class Blackjack(commands.Cog):
             return
 
         if g.get("done"):
-            await interaction.response.defer()
+            try:
+                await interaction.response.defer()
+            except:
+                pass
             return
 
         cash = get_cash(user_id)
@@ -345,10 +397,10 @@ class Blackjack(commands.Cog):
         card = g["deck"].pop()
         g["player"].append(card)
 
-        await self._end_game(interaction, user_id, "stand")
+        await self._end_game(interaction, user_id, "double")
 
     # ─────────────────────────
-    # END GAME
+    # END GAME WITH ANIMATIONS
     # ─────────────────────────
 
     async def _end_game(self, interaction, user_id, result_type):
@@ -364,17 +416,52 @@ class Blackjack(commands.Cog):
         dealer = g["dealer"]
         deck = g["deck"]
         bet = g["bet"]
+        msg = g.get("msg")
 
         ptotal = hand_total(player)
+        
+        # If player doubled and busted on the 1 extra card, override to bust so dealer doesn't draw
+        if result_type == "double" and ptotal > 21:
+            result_type = "bust"
 
-        # Dealer draws
+        # --- ANIMATION: DEALER REVEAL AND DRAW ---
         if result_type != "bust":
-            while hand_total(dealer) < 17:
-                dealer.append(deck.pop())
+            # Initial Reveal
+            reveal_embed = self._build_reveal_embed(player, dealer, bet, "Dealer is revealing cards...")
+            try:
+                if interaction:
+                    await interaction.response.edit_message(embed=reveal_embed, view=None)
+                elif msg:
+                    await msg.edit(embed=reveal_embed, view=None)
+            except Exception:
+                pass
 
+            # Drawing Loop
+            while hand_total(dealer) < 17:
+                await asyncio.sleep(1.2) # Smooth delay to prevent API rate limits
+                dealer.append(deck.pop())
+                draw_embed = self._build_reveal_embed(player, dealer, bet, "Dealer draws a card...")
+                try:
+                    if interaction:
+                        await interaction.edit_original_response(embed=draw_embed)
+                    elif msg:
+                        await msg.edit(embed=draw_embed)
+                except Exception:
+                    pass
+            
+            # Brief pause before final outcome
+            await asyncio.sleep(0.8)
+        else:
+            # If player busted, we skip dealer drawing but still acknowledge the interaction
+            try:
+                if interaction:
+                    await interaction.response.defer()
+            except Exception:
+                pass
+
+        # --- FINAL CALCULATION ---
         dtotal = hand_total(dealer)
 
-        # Determine outcome
         if ptotal > 21:
             outcome = "bust"
         elif dtotal > 21:
@@ -409,33 +496,37 @@ class Blackjack(commands.Cog):
             result_line = f"💸 **-{format_cash(bet)}**"
             banner = "Better luck next time!"
 
-        embed = discord.Embed(title=f"🃏 Blackjack — {title}", color=color)
-        embed.description = f"*{banner}*"
-        embed.add_field(
+        final_embed = discord.Embed(title=f"🃏 Blackjack — {title}", color=color)
+        final_embed.description = f"*{banner}*"
+        final_embed.add_field(
             name=f"🧑 Your Hand — `{hand_label(player)}`",
             value=f"{fmt_hand(player)}\n{score_bar(ptotal)}",
             inline=True
         )
-        embed.add_field(
+        final_embed.add_field(
             name=f"🤖 Dealer Hand — `{hand_label(dealer)}`",
             value=f"{fmt_hand(dealer)}\n{score_bar(dtotal)}",
             inline=True
         )
-        embed.add_field(name="━━━━━━━━━━━━━━━━━━━━━", value=result_line, inline=False)
-        embed.set_footer(text=f"Bet: {format_cash(bet)}  •  Play again with .bj <amount>")
+        final_embed.add_field(name="━━━━━━━━━━━━━━━━━━━━━", value=result_line, inline=False)
+        final_embed.set_footer(text=f"Total Bet: {format_cash(bet)}  •  Play again with .bj <amount>")
 
         try:
-            await interaction.response.edit_message(embed=embed, view=None)
+            if interaction:
+                # If we deferred previously instead of editing (e.g., on bust), we must use edit_original_response
+                await interaction.edit_original_response(embed=final_embed, view=None)
+            elif msg:
+                await msg.edit(embed=final_embed, view=None)
         except discord.errors.InteractionResponded:
             try:
-                await interaction.edit_original_response(embed=embed, view=None)
+                await interaction.edit_original_response(embed=final_embed, view=None)
             except Exception:
                 pass
         except Exception:
             pass
 
         try:
-            await check_achievements(self.bot, interaction.user)
+            await check_achievements(self.bot, ctx_user=interaction.user if interaction else None)
         except Exception:
             pass
 
@@ -474,15 +565,15 @@ class BjView(discord.ui.View):
 
     @discord.ui.button(label="Hit", style=discord.ButtonStyle.green, emoji="👊")
     async def hit(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await self.cog.do_hit(interaction, self.user_id)
+        await self._safe_respond(interaction, self.cog.do_hit(interaction, self.user_id))
 
     @discord.ui.button(label="Stand", style=discord.ButtonStyle.red, emoji="✋")
     async def stand(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await self.cog.do_stand(interaction, self.user_id)
+        await self._safe_respond(interaction, self.cog.do_stand(interaction, self.user_id))
 
     @discord.ui.button(label="Double Down", style=discord.ButtonStyle.blurple, emoji="💰")
     async def double(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await self.cog.do_double(interaction, self.user_id)
+        await self._safe_respond(interaction, self.cog.do_double(interaction, self.user_id))
 
     async def on_timeout(self):
         g = bj_games.pop(self.user_id, None)
