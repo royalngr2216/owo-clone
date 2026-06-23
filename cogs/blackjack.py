@@ -287,7 +287,7 @@ class Blackjack(commands.Cog):
             inline=True
         )
         embed.add_field(
-            name=f"{DEALER_EMOJI} Emiel Thief Hand: {hand_label(dealer)}",
+            name=f"{DEALER_EMOJI} Thief Emiel Hand: {hand_label(dealer)}",
             value=f"{fmt_hand(dealer)}\n{score_bar(dtotal)}",
             inline=True
         )
@@ -395,7 +395,7 @@ class Blackjack(commands.Cog):
         # --- PHASE 2: DEALER TURN ANIMATIONS ---
         if result_type != "bust":
             # 1. Flip the hidden card
-            log_text = f"{DEALER_EMOJI} *Emiel Thief flips their hidden card... It's a {fmt_card(dealer[1])}.*"
+            log_text = f"{DEALER_EMOJI} *Thief Emiel flips their hidden card... It's a {fmt_card(dealer[1])}.*"
             reveal_embed = self._build_animation_embed(user, player, dealer, bet, log_text)
             
             try:
@@ -409,7 +409,7 @@ class Blackjack(commands.Cog):
                 drawn_card = deck.pop()
                 dealer.append(drawn_card)
                 
-                log_text = f"{DEALER_EMOJI} *Emiel Thief draws {fmt_card(drawn_card)}...*"
+                log_text = f"{DEALER_EMOJI} *Thief Emieldraws {fmt_card(drawn_card)}...*"
                 draw_embed = self._build_animation_embed(user, player, dealer, bet, log_text)
                 
                 try:
