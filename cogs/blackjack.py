@@ -217,7 +217,7 @@ class Blackjack(commands.Cog):
         ptotal = hand_total(player)
         
         embed = discord.Embed(color=COLOR_PLAYING)
-        embed.set_author(name=f"{user.display_name}'s Blackjack Gam3", icon_url=user.display_avatar.url)
+        embed.set_author(name=f"{user.display_name}'s Blackjack Game", icon_url=user.display_avatar.url)
         embed.description = f"### Action Log\n> 👤 *It's your turn. What will you do?*"
 
         embed.add_field(
@@ -433,16 +433,16 @@ class Blackjack(commands.Cog):
             final_log = f"You got raped! Lost {format_cash(bet)}."
         elif dtotal > 21:
             outcome = "win"
-            final_log = f"Emiel Thief busted! You won {format_cash(bet)}."
+            final_log = f"Thief Emiel Lost! You won {format_cash(bet)}."
         elif ptotal > dtotal:
             outcome = "win"
-            final_log = f"You raped Emief Thief! Won {format_cash(bet)}."
+            final_log = f"You raped Thief Emiel! Won {format_cash(bet)}."
         elif ptotal == dtotal:
             outcome = "push"
             final_log = f"It's a tie! Bet of {format_cash(bet)} returned."
         else:
             outcome = "loss"
-            final_log = f"Emiel Thief wins. Lost {format_cash(bet)}."
+            final_log = f"Thief Emiel wins. Lost {format_cash(bet)}."
 
         # Handle economy
         if outcome == "win":
