@@ -395,7 +395,7 @@ class Blackjack(commands.Cog):
         # --- PHASE 2: DEALER TURN ANIMATIONS ---
         if result_type != "bust":
             # 1. Flip the hidden card
-            log_text = f"{DEALER_EMOJI} *Dealer flips their hidden card... It's a {fmt_card(dealer[1])}.*"
+            log_text = f"{DEALER_EMOJI} *Emiel Thief flips their hidden card... It's a {fmt_card(dealer[1])}.*"
             reveal_embed = self._build_animation_embed(user, player, dealer, bet, log_text)
             
             try:
@@ -409,7 +409,7 @@ class Blackjack(commands.Cog):
                 drawn_card = deck.pop()
                 dealer.append(drawn_card)
                 
-                log_text = f"{DEALER_EMOJI} *Dealer draws {fmt_card(drawn_card)}...*"
+                log_text = f"{DEALER_EMOJI} *Emiel Thief draws {fmt_card(drawn_card)}...*"
                 draw_embed = self._build_animation_embed(user, player, dealer, bet, log_text)
                 
                 try:
@@ -430,19 +430,19 @@ class Blackjack(commands.Cog):
 
         if ptotal > 21:
             outcome = "loss"
-            final_log = f"You busted! Lost {format_cash(bet)}."
+            final_log = f"You got raped! Lost {format_cash(bet)}."
         elif dtotal > 21:
             outcome = "win"
-            final_log = f"Dealer busted! You won {format_cash(bet)}."
+            final_log = f"Emiel Thief busted! You won {format_cash(bet)}."
         elif ptotal > dtotal:
             outcome = "win"
-            final_log = f"You beat the dealer! Won {format_cash(bet)}."
+            final_log = f"You raped Emief Thief! Won {format_cash(bet)}."
         elif ptotal == dtotal:
             outcome = "push"
             final_log = f"It's a tie! Bet of {format_cash(bet)} returned."
         else:
             outcome = "loss"
-            final_log = f"Dealer wins. Lost {format_cash(bet)}."
+            final_log = f"Emiel Thief wins. Lost {format_cash(bet)}."
 
         # Handle economy
         if outcome == "win":
