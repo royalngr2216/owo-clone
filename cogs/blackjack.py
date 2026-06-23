@@ -217,16 +217,16 @@ class Blackjack(commands.Cog):
         ptotal = hand_total(player)
         
         embed = discord.Embed(color=COLOR_PLAYING)
-        embed.set_author(name=f"{user.display_name}'s Blackjack Table", icon_url=user.display_avatar.url)
+        embed.set_author(name=f"{user.display_name}'s Blackjack Gam3", icon_url=user.display_avatar.url)
         embed.description = f"### Action Log\n> 👤 *It's your turn. What will you do?*"
 
         embed.add_field(
-            name=f"🧑 Your Hand: {hand_label(player)}",
+            name=f"<:oh_no:1483163517556101243> Your Hand: {hand_label(player)}",
             value=f"{fmt_hand(player)}\n{score_bar(ptotal)}",
             inline=True
         )
         embed.add_field(
-            name=f"{DEALER_EMOJI} Dealer Hand: {hand_label(dealer, hide_second=True)}",
+            name=f"{DEALER_EMOJI} Thief Emiel Hand: {hand_label(dealer, hide_second=True)}",
             value=f"{fmt_hand(dealer, hide_second=True)}\n{score_bar(0, hidden=True)}",
             inline=True
         )
@@ -245,16 +245,16 @@ class Blackjack(commands.Cog):
         dtotal = hand_total(dealer)
 
         embed = discord.Embed(color=COLOR_DEALER)
-        embed.set_author(name=f"{user.display_name}'s Blackjack Table", icon_url=user.display_avatar.url)
+        embed.set_author(name=f"{user.display_name}'s Blackjack Game", icon_url=user.display_avatar.url)
         embed.description = f"### Action Log\n> {log_text}"
 
         embed.add_field(
-            name=f"🧑 Your Hand: {hand_label(player)}",
+            name=f"<:oh_no:1483163517556101243> Your Hand: {hand_label(player)}",
             value=f"{fmt_hand(player)}\n{score_bar(ptotal)}",
             inline=True
         )
         embed.add_field(
-            name=f"{DEALER_EMOJI} Dealer Hand: {hand_label(dealer)}",
+            name=f"{DEALER_EMOJI} Thief Emiel Hand: {hand_label(dealer)}",
             value=f"{fmt_hand(dealer)}\n{score_bar(dtotal)}",
             inline=True
         )
@@ -277,17 +277,17 @@ class Blackjack(commands.Cog):
             icon = "🤝"
 
         embed = discord.Embed(color=color)
-        embed.set_author(name=f"{user.display_name}'s Blackjack Table", icon_url=user.display_avatar.url)
+        embed.set_author(name=f"{user.display_name}'s Blackjack Game", icon_url=user.display_avatar.url)
         
         embed.description = f"### Action Log\n> {icon} **{log_text}**"
 
         embed.add_field(
-            name=f"🧑 Your Hand: {hand_label(player)}",
+            name=f"<:oh_no:1483163517556101243> Your Hand: {hand_label(player)}",
             value=f"{fmt_hand(player)}\n{score_bar(ptotal)}",
             inline=True
         )
         embed.add_field(
-            name=f"{DEALER_EMOJI} Dealer Hand: {hand_label(dealer)}",
+            name=f"{DEALER_EMOJI} Emiel Thief Hand: {hand_label(dealer)}",
             value=f"{fmt_hand(dealer)}\n{score_bar(dtotal)}",
             inline=True
         )
