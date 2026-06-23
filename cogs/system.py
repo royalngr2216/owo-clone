@@ -100,6 +100,8 @@ HELP_CATEGORIES = {
         "Play a plane crash game, higher risk = higher payout.\n\n"
         "**.guessnumber amount**\n"
         "The faster you guess, the better rewards.\n\n"
+        "**.mines amount**\n"
+        "Play Original Mines Game, has better rewards.\n\n"
         "**.highlow amount**\n"
         "Bet by guessing higher or lower number next turn.\n\n"
         "**.lottery amount**\n"
