@@ -78,13 +78,13 @@ def hand_label(hand, hide_second=False):
         return f"? (showing {card_value(hand[0])})"
     t = hand_total(hand)
     if t > 21:
-        return f"💥 {t} (Bust)"
+        return f"💥 {t} (🍇)"
     if t == 21:
         return "🌟 21 (Max)"
     return str(t)
 
 def score_bar(total, hidden=False):
-    """Visual modern progress bar for the hand total."""
+    """Progress bar for the hand total."""
     if hidden:
         return "⬛⬛⬛⬛⬛"
     if total > 21:
