@@ -78,24 +78,27 @@ def hand_label(hand, hide_second=False):
         return f"? (showing {card_value(hand[0])})"
     t = hand_total(hand)
     if t > 21:
-        return f"💥 {t} (🍇)"
+        return f"💥 {t} (Bust)"
     if t == 21:
         return "🌟 21 (Max)"
     return str(t)
 
 def score_bar(total, hidden=False):
-    """Progress bar for the hand total."""
+    """Sleek minimalist geometric progress bar for the hand total."""
+    total_blocks = 7  # 7 blocks perfectly maps to 21 (3 points per block)
     if hidden:
-        return "⬛⬛⬛⬛⬛"
+        return f"` {'▱' * total_blocks} `"
     if total > 21:
-        return "🔴🔴🔴🔴🔴"
-    filled = round((total / 21) * 5)
-    bar = "🟩" * filled + "⬛" * (5 - filled)
-    if total >= 18:
-        bar = "🟨" * filled + "⬛" * (5 - filled)
+        return f"` {'▰' * total_blocks} ` *Bust*"
+    
+    filled = min(total_blocks, round((total / 21) * total_blocks))
+    empty = total_blocks - filled
+    
+    bar = ("▰" * filled) + ("▱" * empty)
+    
     if total == 21:
-        bar = "🏆🏆🏆🏆🏆"
-    return bar
+        return f"` {bar} ` ✨"
+    return f"` {bar} `"
 
 
 # ─────────────────────────
@@ -521,4 +524,4 @@ class BjView(discord.ui.View):
 
 async def setup(bot):
     await bot.add_cog(Blackjack(bot))
-        
+            
