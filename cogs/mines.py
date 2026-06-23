@@ -274,7 +274,7 @@ class MinesView(discord.ui.View):
             await interaction.message.edit(embed=final_embed, view=self)
 
 
-class MinesCog(commands.Cog):
+class MinesGameCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
@@ -321,5 +321,5 @@ class MinesCog(commands.Cog):
 
 
 async def setup(bot):
-    await bot.add_cog(MinesCog(bot))
+    await bot.add_cog(MinesGameCog(bot))
       
