@@ -275,7 +275,7 @@ class MinesCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(aliases=['mines'])
+    @commands.command()
     async def mines(self, ctx, amount: str):
         """
         Start a game of Mines.
