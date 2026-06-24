@@ -43,14 +43,11 @@ MULTIPLIERS = {
 }
 
 EMIEL_MESSAGES = [
-    "Emiel was hiding there and stole your wallet.",
+    "Emiel was hiding there and raped you.",
     "Emiel pickpocketed you and ran away.",
-    "Emiel mugged you behind the minefield.",
+    "Emiel fucked you behind the minefield.",
     "You found Emiel. Unfortunately, he found your money too.",
-    "Emiel demanded protection money.",
-    "Emiel tax collected your gambling profits.",
-    "Emiel stole your betting slip.",
-    "Emiel yoinked your cash and disappeared."
+    "Emiel stole your cash and disappeared."
 ]
 
 COLOR_PLAYING = 0x5865F2
@@ -274,11 +271,11 @@ class MinesView(discord.ui.View):
             await interaction.message.edit(embed=final_embed, view=self)
 
 
-class MinesGameCog(commands.Cog):
+class MinesCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(aliases=['mine'])
+    @commands.command(aliases=['mines'])
     async def mines(self, ctx, amount: str):
         """
         Start a game of Mines.
@@ -321,5 +318,5 @@ class MinesGameCog(commands.Cog):
 
 
 async def setup(bot):
-    await bot.add_cog(MinesGameCog(bot))
+    await bot.add_cog(MinesCog(bot))
       
