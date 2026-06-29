@@ -24,12 +24,13 @@ from utils.achievement_checker import check_achievements
 # ─────────────────────────
 
 MAX_NUMBER = 100
-MAX_GUESSES = 5  # Changed to 6
+MAX_GUESSES = 6  # Changed to 6
 
 MULT_BY_GUESSES_USED = {
     1: 10.0,   # correct on 1st guess
     2: 5.0,
     3: 2.5,
+    4: 2.0,
     4: 1.5,
     5: 1.25,
 }
@@ -43,10 +44,10 @@ def proximity_hint(guess, secret):
     gap = abs(guess - secret)
     direction = "📈 **Higher**" if guess < secret else "📉 **Lower**"
 
-    if gap <= 30:
-        warmth = "🔥 **Very close, The number is 30 less or more!**"
+    if gap <= 40:
+        warmth = "🔥 **Very close, The number is 40 less or more!**"
     else:
-        warmth = "🧊 **Getting warmer...**"
+        warmth = "<:dealer:1519037377769640140> **Emiel is coming...**"
 
     return direction, warmth, gap
 
@@ -57,9 +58,9 @@ def guess_bar(guesses_left, max_guesses=MAX_GUESSES):
 
 def mult_display():
     lines = []
-    labels = ["1st", "2nd", "3rd", "4th", "5th"]
-    mults = [10.0, 5.0, 2.5, 1.5, 1.25]
-    icons = ["🏆", "🥇", "🥈", "🥉", "⭐"]
+    labels = ["1st", "2nd", "3rd", "4th", "5th", "6th"]
+    mults = [10.0, 5.0, 2.5, 2.0, 1.5, 1.25]
+    icons = ["🏆", "🥇", "🥈", "🎗️" "🥉", "⭐"]
     for label, mult, icon in zip(labels, mults, icons):
         lines.append(f"{icon} `{label} guess` → **{mult}×**")
     return "\n".join(lines)
