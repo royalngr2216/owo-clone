@@ -13,10 +13,10 @@ from utils.economy import economy_collection, get_cash, remove_cash, format_cash
 TITLES = {
     "i'm not into girls": {"label": "i'm not into girls", "price": 50_000_000,     "emoji": "🥉", "color": 0xCD7F32},
     "rapist": {"label": "Rapist", "price": 100_000_000,     "emoji": "🥈", "color": 0xB0B0B8},
-    "azure Fucker":  {"label": "Azure Fucker",  "price": 250_000_000,    "emoji": "🥇", "color": 0xFFD700},
-    "madhav Fucker":   {"label": "Madhav Fucker",   "price": 500_000_000,    "emoji": "💎", "color": 0x20D2D2},
-    "emiel Fucker":  {"label": "Emiel Fucker",  "price": 750_000_000,  "emoji": "👑", "color": 0xA349E8},
-    "qeight Fucker":   {"label": "Qeight Fucker",   "price": 1_000_000_000, "emoji": "✨", "color": 0xED4A6B},
+    "azure fucker":  {"label": "Azure Fucker",  "price": 250_000_000,    "emoji": "🥇", "color": 0xFFD700},
+    "madhav fucker":   {"label": "Madhav Fucker",   "price": 500_000_000,    "emoji": "💎", "color": 0x20D2D2},
+    "emiel fucker":  {"label": "Emiel Fucker",  "price": 750_000_000,  "emoji": "👑", "color": 0xA349E8},
+    "qeight fucker":   {"label": "Qeight Fucker",   "price": 1_000_000_000, "emoji": "✨", "color": 0xED4A6B},
 }
 
 # Ordering used for display (cheapest -> most prestigious)
