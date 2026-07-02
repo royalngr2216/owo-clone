@@ -1,37 +1,88 @@
-import discord
 from discord.ext import commands
+import discord
 
-# 1. CHANGE THIS NAME (e.g., from Economy to AdminMoney)
-class AdminMoney(commands.Cog):
+from utils.economy import (
+    add_cash,
+    get_cash,
+    format_cash,
+    parse_amount,
+    create_account
+)
+
+
+class AddMoney(commands.Cog):
+
     def __init__(self, bot):
+
         self.bot = bot
+
 
     @commands.command(name="addmoney")
     @commands.is_owner()
-    async def add_money(self, ctx, member: discord.Member, amount: int):
-        """Adds money to a user's account without deducting from the owner."""
-        
-        if amount <= 0:
-            await ctx.send("Please specify an amount greater than 0.")
+    async def addmoney(
+        self,
+        ctx,
+        member: discord.Member,
+        amount
+    ):
+
+        create_account(member.id)
+
+        parsed = parse_amount(
+            amount,
+            get_cash(member.id)
+        )
+
+        if parsed is None or parsed <= 0:
+
+            await ctx.send(
+                "Invalid amount."
+            )
+
             return
 
-        # ---------------------------------------------------------
-        # YOUR DATABASE LOGIC GOES HERE
-        # (Don't forget to update this part later so the money actually saves!)
-        # ---------------------------------------------------------
+        add_cash(
+            member.id,
+            parsed
+        )
 
-        await ctx.send(f"✅ Successfully added **{amount}** coins to {member.mention}'s account!")
+        embed = discord.Embed(
+            title="<:dealer:1519037377769640140> MONEY ADDED",
+            description=(
+                f"Added **{format_cash(parsed)}** "
+                f"to {member.mention}'s account.\n\n"
+                f"New Balance: **{format_cash(get_cash(member.id))}**"
+            ),
+            color=discord.Color.green()
+        )
 
-    @add_money.error
-    async def add_money_error(self, ctx, error):
+        await ctx.send(embed=embed)
+
+
+    @addmoney.error
+    async def addmoney_error(self, ctx, error):
+
         if isinstance(error, commands.NotOwner):
-            await ctx.send("❌ You do not have permission to use this command.")
-        elif isinstance(error, commands.MissingRequiredArgument):
-            await ctx.send("**Usage:** `.addmoney @user <amount>`")
-        elif isinstance(error, commands.BadArgument):
-            await ctx.send("❌ Invalid user or amount specified. Make sure you are pinging a valid user and providing a number.")
+
+            await ctx.send(
+                "<:dealer:1519037377769640140> Only the bot owner can use this command."
+            )
+
+            return
+
+        if isinstance(error, commands.MemberNotFound):
+
+            await ctx.send(
+                "❌ Couldn't find that user."
+            )
+
+            return
+
+        raise error
+
 
 async def setup(bot):
-    # 2. CHANGE THIS NAME TO MATCH THE CLASS ABOVE
-    await bot.add_cog(AdminMoney(bot))
-  
+
+    await bot.add_cog(
+        AddMoney(bot)
+    )
