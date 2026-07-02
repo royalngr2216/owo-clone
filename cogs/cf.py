@@ -8,7 +8,8 @@ from utils.economy import (
     add_cash,
     remove_cash,
     parse_amount,
-    format_cash
+    format_cash,
+    MAX_BET
 )
 
 from utils.stats import (
@@ -52,6 +53,10 @@ class Coinflip(commands.Cog):
 
         if cash < amount:
             await ctx.send("You don't have enough cash.")
+            return
+
+        if amount > MAX_BET:
+            await ctx.send(f"❌ Max bet is **{format_cash(MAX_BET)}**.")
             return
 
         # Start the suspense animation

@@ -1039,6 +1039,26 @@ class Shop(commands.Cog):
         )
 
 
+        # TITLES
+
+        embed.add_field(
+
+            name="🎖 Titles",
+
+            value=(
+
+                "Permanent cosmetic badges shown on "
+                "`.cash` and `.leaderboard`.\n\n"
+
+                "• Prices: **10M → 10B NGR**\n"
+                "• Use `.titles` to browse and buy"
+
+            ),
+
+            inline=False
+        )
+
+
         embed.set_footer(
 
             text="ECHLEON Economy System"

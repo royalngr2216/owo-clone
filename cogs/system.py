@@ -18,6 +18,8 @@ from utils.achievements import (
     RARE_ACHIEVEMENTS,
     LEGENDARY_ACHIEVEMENTS
 )
+from utils.titles import get_equipped
+from utils.leaderboard_render import render_leaderboard
 
 # ─────────────────────────
 # ROLE UPDATE
@@ -372,24 +374,81 @@ class System(commands.Cog):
     @commands.command(name="leaderboard")
     async def leaderboard(self, ctx):
 
-        users = list(economy_collection.find({"cash": {"$gt": 0}}))
-        users.sort(key=lambda x: x.get("cash", 0), reverse=True)
+        async with ctx.typing():
 
-        embed = discord.Embed(title="LEADERBOARD", color=0xF1C40F)
+            # Efficient: sort + limit at the DB level instead of pulling
+            # every account with cash > 0 into memory and sorting in Python.
+            top_docs = list(
+                economy_collection.find({"cash": {"$gt": 0}})
+                .sort("cash", -1)
+                .limit(10)
+            )
 
-        text = ""
-        for index, user in enumerate(users[:10]):
-            user_id = int(user["user_id"])
-            cash    = user.get("cash", 0)
+            top_entries = []
+            top_ids = set()
+
+            for index, user in enumerate(top_docs):
+                user_id = int(user["user_id"])
+                top_ids.add(user_id)
+                cash = user.get("cash", 0)
+
+                try:
+                    fetched_user = await self.bot.fetch_user(user_id)
+                    name = fetched_user.display_name if hasattr(fetched_user, "display_name") else fetched_user.name
+                    avatar_url = str(fetched_user.display_avatar.url)
+                except Exception:
+                    name = f"User {user_id}"
+                    avatar_url = "https://cdn.discordapp.com/embed/avatars/0.png"
+
+                top_entries.append({
+                    "rank": index + 1,
+                    "name": name,
+                    "cash": cash,
+                    "user_id": user_id,
+                    "avatar_url": avatar_url,
+                    "title_key": get_equipped(user_id),
+                })
+
+            if not top_entries:
+                embed = discord.Embed(
+                    description="❌ No one has any cash yet.",
+                    color=0xED4245,
+                )
+                await ctx.send(embed=embed)
+                return
+
+            # Pin the requester's own rank at the bottom if they're not
+            # already visible in the top 10.
+            requester_entry = None
+            if ctx.author.id not in top_ids:
+                my_doc = economy_collection.find_one({"user_id": str(ctx.author.id)})
+                my_cash = my_doc.get("cash", 0) if my_doc else 0
+
+                if my_cash > 0:
+                    my_rank = economy_collection.count_documents({"cash": {"$gt": my_cash}}) + 1
+                    requester_entry = {
+                        "rank": my_rank,
+                        "name": ctx.author.display_name,
+                        "cash": my_cash,
+                        "user_id": ctx.author.id,
+                        "avatar_url": str(ctx.author.display_avatar.url),
+                        "title_key": get_equipped(ctx.author.id),
+                    }
+
             try:
-                fetched_user = await self.bot.fetch_user(user_id)
-                name = fetched_user.name
+                buf = await render_leaderboard(top_entries, requester_entry, format_cash)
+                file = discord.File(buf, filename="leaderboard.png")
+                await ctx.send(file=file)
             except Exception:
-                name = f"User {user_id}"
-            text += f"**#{index + 1} {name}**\n{format_cash(cash)}\n\n"
-
-        embed.description = text or "No data."
-        await ctx.send(embed=embed)
+                # Fallback to the plain text embed if image rendering fails
+                # for any reason (missing fonts, network hiccup fetching an
+                # avatar, etc.) so the command never just breaks.
+                embed = discord.Embed(title="LEADERBOARD", color=0xF1C40F)
+                text = ""
+                for entry in top_entries:
+                    text += f"**#{entry['rank']} {entry['name']}**\n{format_cash(entry['cash'])}\n\n"
+                embed.description = text
+                await ctx.send(embed=embed)
 
 
     # ─────────────────────────

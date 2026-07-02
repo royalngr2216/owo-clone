@@ -8,7 +8,8 @@ from utils.economy import (
     add_cash,
     remove_cash,
     parse_amount,
-    format_cash
+    format_cash,
+    MAX_BET
 )
 from utils.stats import (
     add_stats,
@@ -125,6 +126,13 @@ class GuessNumber(commands.Cog):
             await ctx.send(embed=discord.Embed(
                 title="❌ Insufficient Funds",
                 description=f"You only have **{format_cash(cash)}**.",
+                color=0xED4245
+            ))
+            return
+        if bet > MAX_BET:
+            await ctx.send(embed=discord.Embed(
+                title="❌ Bet Too High",
+                description=f"Max bet is **{format_cash(MAX_BET)}**.",
                 color=0xED4245
             ))
             return

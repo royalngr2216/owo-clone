@@ -523,9 +523,54 @@ class DexView(discord.ui.View):
 TOTAL_POKEMON = 898
 active_spawns: dict = {}
 
+# ─────────────────────────────────────────────────────────────────────
+# SPAWN WEIGHTING
+# ─────────────────────────────────────────────────────────────────────
+# Previously every one of the 898 species had the exact same 1/898 chance
+# of spawning — a Rattata and Mewtwo were equally likely. That meant
+# mythicals/legendaries kept showing up constantly instead of being rare.
+#
+# Now a tier is picked first (weighted), then a species is picked
+# uniformly within that tier. Numbers below are the % chance a spawn
+# comes from that tier overall — spread across however many species
+# are in it, so individually rarer tiers work out to a much smaller
+# per-species chance too.
+SPAWN_TIER_WEIGHTS: dict[str, float] = {
+    "common":      85.0,
+    "pseudo":       6.0,
+    "ultra_beast":  4.0,
+    "legendary":    3.5,
+    "mythical":     1.5,
+}
+
+COMMON_IDS: tuple[int, ...] = tuple(
+    pid for pid in range(1, TOTAL_POKEMON + 1)
+    if pid not in MYTHICAL_IDS
+    and pid not in LEGENDARY_IDS
+    and pid not in ULTRA_BEAST_IDS
+    and pid not in PSEUDO_LEGENDARY_IDS
+)
+
+SPAWN_TIER_POOLS: dict[str, tuple[int, ...]] = {
+    "common":      COMMON_IDS,
+    "pseudo":      tuple(PSEUDO_LEGENDARY_IDS),
+    "ultra_beast": tuple(ULTRA_BEAST_IDS),
+    "legendary":   tuple(LEGENDARY_IDS),
+    "mythical":    tuple(MYTHICAL_IDS),
+}
+
+_SPAWN_TIERS = list(SPAWN_TIER_WEIGHTS.keys())
+_SPAWN_WEIGHTS = list(SPAWN_TIER_WEIGHTS.values())
+
+
+def _roll_pokedex_id() -> int:
+    """Pick a rarity tier by weight, then a species uniformly within it."""
+    tier = random.choices(_SPAWN_TIERS, weights=_SPAWN_WEIGHTS, k=1)[0]
+    return random.choice(SPAWN_TIER_POOLS[tier])
+
 
 async def fetch_random_pokemon():
-    pid = random.randint(1, TOTAL_POKEMON)
+    pid = _roll_pokedex_id()
     async with aiohttp.ClientSession() as s:
         async with s.get(f"https://pokeapi.co/api/v2/pokemon/{pid}") as r:
             if r.status != 200:

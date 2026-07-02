@@ -16,6 +16,8 @@ from utils.economy import (
     get_monthly_reset,
     format_cash
 )
+from utils.branding import brand
+from utils.titles import title_badge
 
 
 class Economy(commands.Cog):
@@ -52,11 +54,12 @@ class Economy(commands.Cog):
                 color=0xED4245
             )
 
+            brand(embed)
             await ctx.send(embed=embed)
 
             return
 
-        amount = 100000
+        amount = 50000
 
         add_cash(
             ctx.author.id,
@@ -82,6 +85,7 @@ class Economy(commands.Cog):
             color=0x57F287
         )
 
+        brand(embed)
         await ctx.send(embed=embed)
 
 
@@ -112,11 +116,12 @@ class Economy(commands.Cog):
                 color=0xED4245
             )
 
+            brand(embed)
             await ctx.send(embed=embed)
 
             return
 
-        amount = 1000000
+        amount = 500000
 
         add_cash(
             ctx.author.id,
@@ -142,6 +147,7 @@ class Economy(commands.Cog):
             color=0x5865F2
         )
 
+        brand(embed)
         await ctx.send(embed=embed)
 
 
@@ -172,11 +178,14 @@ class Economy(commands.Cog):
                 color=0xED4245
             )
 
+            brand(embed)
             await ctx.send(embed=embed)
 
             return
 
-        amount = 1000000
+        # Was a copy-paste bug: monthly used to pay the exact same amount
+        # as weekly, so there was no reason to ever wait a month for it.
+        amount = 2000000
 
         add_cash(
             ctx.author.id,
@@ -202,6 +211,7 @@ class Economy(commands.Cog):
             color=0xFEE75C
         )
 
+        brand(embed)
         await ctx.send(embed=embed)
 
 
@@ -223,6 +233,7 @@ class Economy(commands.Cog):
         create_account(member.id)
 
         cash = get_cash(member.id)
+        badge = title_badge(member.id)
 
         embed = discord.Embed(
 
@@ -230,7 +241,7 @@ class Economy(commands.Cog):
 
             description=(
 
-                f"{member.mention}\n\n"
+                f"{badge}{member.mention}\n\n"
 
                 f"# {format_cash(cash)}"
 
@@ -243,6 +254,7 @@ class Economy(commands.Cog):
             url=member.display_avatar.url
         )
 
+        brand(embed)
         await ctx.send(embed=embed)
 
 

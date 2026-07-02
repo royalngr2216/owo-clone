@@ -42,14 +42,19 @@ def parse_amount(amount: str):
 SPINNING = "<a:slots:1514761192193789982>"
 
 PAYOUTS = {
-    "🍒": 1.5,
-    "🍋": 2,
-    "🍀": 3,
-    "🔔": 5,
-    "💎": 6,
-    "👑": 10,
+    "🍒": 1.1,
+    "🍋": 1.4,
+    "🍀": 2.0,
+    "🔔": 3.5,
+    "💎": 4.0,
+    "👑": 7.0,
 }
 
+# REBALANCED ECONOMY:
+# Old table paid out 124% of every bet on average (positive EV, no house
+# edge), which let a single player mint unlimited money by going all-in
+# repeatedly. This table pays out ~87% on average (a normal casino-style
+# house edge) so the house wins over time instead of bleeding money.
 OUTCOMES = {
     "lose":    50,
     "cherry":  22,
@@ -60,6 +65,8 @@ OUTCOMES = {
     "jackpot":  3,
     "troll":    5,
 }
+
+MAX_BET = 5_000_000
 
 # Embed colors per state
 COLOR_SPIN    = 0x5865F2   # blurple — spinning
@@ -172,6 +179,16 @@ class Slots(commands.Cog):
                 embed=discord.Embed(
                     title="🎰 Slots",
                     description=f"❌ You only have 🪙 **{format_cash(cash)}** — not enough to bet that.",
+                    color=COLOR_LOSE,
+                )
+            )
+            return
+
+        if amount > MAX_BET:
+            await ctx.send(
+                embed=discord.Embed(
+                    title="🎰 Slots",
+                    description=f"❌ Max bet is 🪙 **{format_cash(MAX_BET)}**.",
                     color=COLOR_LOSE,
                 )
             )

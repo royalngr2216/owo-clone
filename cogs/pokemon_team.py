@@ -13,6 +13,18 @@ from PIL import Image, ImageDraw, ImageFont
 from utils.economy import get_cash, add_cash, remove_cash, format_cash, parse_amount
 from utils.pokemon_db import db
 
+# ─────────────────────────────────────────────────────────────────
+# MARKET SAFEGUARDS
+# ─────────────────────────────────────────────────────────────────
+# .give has a daily cap so players can't just hand cash to an alt
+# account. Without a floor/fee here, .pokemon sell/buy was a free
+# workaround: list a Pokémon for 1 NGR and "buy" it from an alt to
+# move any amount of money instantly. A minimum price plus a burned
+# market fee (same idea as .donate's 50% cut) closes that loophole
+# while keeping real trades between real players unaffected.
+MARKET_MIN_PRICE = 25_000
+MARKET_FEE_PCT = 0.05  # 5% burned on every sale, not paid to anyone
+
 def gif_url(name: str) -> str:
     clean = name.lower().replace(" ", "").replace(".", "").replace("'", "")
     return f"https://play.pokemonshowdown.com/sprites/xyani/{clean}.gif"
@@ -467,6 +479,13 @@ class PokemonTeam(commands.Cog):
                 ))
                 return
 
+            if price < MARKET_MIN_PRICE:
+                await ctx.send(embed=discord.Embed(
+                    description=f"❌ Minimum listing price is **{format_cash(MARKET_MIN_PRICE)}**.",
+                    color=0xED4245,
+                ))
+                return
+
             uid = str(ctx.author.id)
 
             if not owns_pokemon(uid, poke_name):
@@ -585,8 +604,11 @@ class PokemonTeam(commands.Cog):
                 return
 
             # ── Execute the trade ──────────────────────────────────
+            fee = int(price * MARKET_FEE_PCT)
+            seller_receives = price - fee
+
             remove_cash(buyer_id, price)
-            add_cash(seller_id, price)
+            add_cash(seller_id, seller_receives)
             
             seller_poke = db.pokemon_collection.find_one({"user_id": seller_id, "name": poke_name})
             moves = seller_poke.get("moves", []) if seller_poke else []
@@ -631,7 +653,8 @@ class PokemonTeam(commands.Cog):
                     title="💰 Your Pokémon was sold!",
                     description=(
                         f"**{display}** was purchased by **{ctx.author.display_name}**!\n\n"
-                        f"💰 You received: **{format_cash(price)}**"
+                        f"💰 You received: **{format_cash(seller_receives)}**\n"
+                        f"🏪 Market fee (5%): **{format_cash(fee)}**"
                     ),
                     color=0x57F287,
                 )

@@ -8,7 +8,8 @@ from utils.economy import (
     add_cash,
     remove_cash,
     parse_amount,
-    format_cash
+    format_cash,
+    MAX_BET
 )
 from utils.stats import (
     add_stats,
@@ -105,6 +106,13 @@ class HigherLower(commands.Cog):
             await ctx.send(embed=discord.Embed(
                 title="❌ Invalid Amount",
                 description="Please enter a valid bet amount.",
+                color=0xED4245
+            ))
+            return
+        if bet > MAX_BET:
+            await ctx.send(embed=discord.Embed(
+                title="❌ Bet Too High",
+                description=f"Max bet is **{format_cash(MAX_BET)}**.",
                 color=0xED4245
             ))
             return
