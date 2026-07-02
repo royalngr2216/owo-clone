@@ -47,7 +47,7 @@ class AddMoney(commands.Cog):
         )
 
         embed = discord.Embed(
-            title="<:dealer:1519037377769640140> MONEY ADDED",
+            title="💰 MONEY ADDED",
             description=(
                 f"Added **{format_cash(parsed)}** "
                 f"to {member.mention}'s account.\n\n"
@@ -65,7 +65,7 @@ class AddMoney(commands.Cog):
         if isinstance(error, commands.NotOwner):
 
             await ctx.send(
-                "<:dealer:1519037377769640140> Only the bot owner can use this command."
+                "❌ Only the bot owner can use this command."
             )
 
             return
