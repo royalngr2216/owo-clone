@@ -5,6 +5,16 @@ import pytz
 
 MONGO_URI = os.getenv("MONGO_URI")
 
+# ─────────────────────────
+# ECONOMY BALANCE CAPS
+# ─────────────────────────
+# Shared max bet for every player-vs-house gambling command
+# (slots, coinflip, crash, mines, blackjack, highlow, guessnumber).
+# Prevents any single spin/round from injecting huge amounts of new
+# money into the economy. PvP games (deathroll, crack) aren't capped
+# here since money there just moves between two players, it isn't created.
+MAX_BET = 5_000_000
+
 client = MongoClient(MONGO_URI)
 
 db = client["royal_bot"]
