@@ -2,7 +2,6 @@ from discord.ext import commands
 import discord
 import random
 import asyncio
-import math
 
 from utils.economy import (
     get_cash,
@@ -19,6 +18,7 @@ from utils.stats import (
     record_loss
 )
 from utils.achievement_checker import check_achievements
+from utils.crash_render import render_crash
 
 
 # ─────────────────────────
@@ -57,18 +57,6 @@ def get_frames(crash_point):
     return frames
 
 
-def rocket_bar(mult):
-    """Visual progress bar for the multiplier."""
-    capped = min(mult, 10.0)
-    filled = round((capped / 10.0) * 8)
-    bar = "🟩" * filled + "⬛" * (8 - filled)
-    if mult >= 5:
-        bar = "🟨" * filled + "⬛" * (8 - filled)
-    if mult >= 10:
-        bar = "🔴" * 8
-    return bar
-
-
 def mult_color(mult):
     if mult < 1.5:
         return 0x57F287   # green
@@ -78,6 +66,33 @@ def mult_color(mult):
         return 0xFF7700   # orange
     else:
         return 0xED4245   # red
+
+
+# ─────────────────────────
+# RECENT RESULTS TICKER
+# ─────────────────────────
+
+recent_crashes = []  # rolling history of last crash points, for flavor on the intro embed
+
+
+def _push_recent(point):
+    recent_crashes.append(point)
+    if len(recent_crashes) > 10:
+        recent_crashes.pop(0)
+
+
+def _recent_ticker():
+    if not recent_crashes:
+        return "No recent games yet — be the first! 🚀"
+    parts = []
+    for p in recent_crashes[-10:]:
+        if p < 1.5:
+            parts.append(f"`{p:.2f}×`")
+        elif p < 3.0:
+            parts.append(f"**{p:.2f}×**")
+        else:
+            parts.append(f"🔥`{p:.2f}×`")
+    return "  ".join(parts)
 
 
 # ─────────────────────────
@@ -115,7 +130,7 @@ class Crash(commands.Cog):
             embed = discord.Embed(
                 title="🚀 Crash",
                 description=(
-                    "**cash out** before it crashes! <:bj:1492588515253551144>\n\n"
+                    "**Cash out** before it crashes! 📈\n\n"
                     "━━━━━━━━━━━━━━━━━━━━━\n"
                     "💰 **Manual** — press Cash Out whenever you want\n"
                     "🎯 **Auto** — set a target and cash out automatically\n"
@@ -124,11 +139,12 @@ class Crash(commands.Cog):
                     "`.crash <amount>` — manual cashout\n"
                     "`.crash <amount> <target×>` — auto cashout\n\n"
                     "**Example:** `.crash 1000 2.5` → auto cashes at **2.5×**\n\n"
-                    "<:bj:1492588515253551144> The longer you wait, the higher the risk!"
+                    "The longer you wait, the higher the risk!"
                 ),
                 color=0x2B2D31
             )
-            embed.set_footer(text="<:Pray:1509654308705145033>")
+            embed.add_field(name="Recent Games", value=_recent_ticker(), inline=False)
+            embed.set_footer(text="Average crash ~1.03×  •  3% house edge")
             await ctx.send(embed=embed)
             return
 
@@ -187,30 +203,27 @@ class Crash(commands.Cog):
             "bet": bet,
             "crash_point": crash_point,
             "current_mult": 1.0,
+            "history": [1.0],
             "cashed_out": False,
             "cashout_mult": None,
             "auto_target": auto_target,
             "finished": False,
         }
 
-        # Build initial embed
-        auto_str = f"🎯 Auto cashout at **{auto_target}×**" if auto_target else "💡 Press **Cash Out** manually"
+        # Build initial embed + graph image
+        auto_str = f"🎯 Auto cashout target: **{auto_target}×**" if auto_target else "💡 Press **Cash Out** whenever you like"
         embed = discord.Embed(
             title="🚀 Crash — LIVE",
-            description=(
-                f"**Multiplier: `1.00×`** 🚀\n"
-                f"{rocket_bar(1.0)}\n\n"
-                f"{auto_str}\n"
-                f"━━━━━━━━━━━━━━━━━━━━━\n"
-                f"💸 Bet: **{format_cash(bet)}**\n"
-                f"💰 Potential: **{format_cash(bet)}**"
-            ),
+            description=auto_str,
             color=0x57F287
         )
-        embed.set_footer(text="🚀 Launching...")
+        img = render_crash([1.0], "live", bet, bet, format_cash)
+        file = discord.File(img, filename="crash.png")
+        embed.set_image(url="attachment://crash.png")
+        embed.set_footer(text="Multiplier climbing... don't wait too long!")
 
         view = CrashView(user_id=ctx.author.id, cog=self)
-        msg = await ctx.send(embed=embed, view=view)
+        msg = await ctx.send(embed=embed, file=file, view=view)
         crash_player_games[ctx.author.id]["msg"] = msg
 
         # ─── ANIMATE ───
@@ -220,6 +233,7 @@ class Crash(commands.Cog):
                 break
 
             g["current_mult"] = frame_mult
+            g["history"].append(frame_mult)
 
             # Auto cashout check
             if auto_target and frame_mult >= auto_target:
@@ -235,23 +249,19 @@ class Crash(commands.Cog):
 
             embed = discord.Embed(
                 title="🚀 Crash — LIVE",
-                description=(
-                    f"**Multiplier: `{frame_mult}×`** 🚀\n"
-                    f"{rocket_bar(frame_mult)}\n\n"
-                    f"{auto_str}\n"
-                    f"━━━━━━━━━━━━━━━━━━━━━\n"
-                    f"💸 Bet: **{format_cash(bet)}**\n"
-                    f"💰 Cash out now: **{format_cash(potential)}**"
-                ),
+                description=auto_str,
                 color=color
             )
-            embed.set_footer(text=f"🚀 Multiplier climbing... Don't wait too long!")
+            img = render_crash(g["history"], "live", bet, potential, format_cash)
+            file = discord.File(img, filename="crash.png")
+            embed.set_image(url="attachment://crash.png")
+            embed.set_footer(text="Multiplier climbing... don't wait too long!")
             try:
-                await msg.edit(embed=embed, view=view)
+                await msg.edit(embed=embed, attachments=[file], view=view)
             except Exception:
                 pass
 
-            await asyncio.sleep(0.4)
+            await asyncio.sleep(0.45)
 
         # Check if user already cashed out
         g = crash_player_games.get(ctx.author.id)
@@ -262,21 +272,19 @@ class Crash(commands.Cog):
         crash_player_games[ctx.author.id]["finished"] = True
         del crash_player_games[ctx.author.id]
         record_loss(ctx.author.id, bet)
+        _push_recent(crash_point)
 
         embed = discord.Embed(
             title="💥 CRASHED!",
-            description=(
-                f"**Crashed at `{crash_point}×`** 💥\n\n"
-                f"━━━━━━━━━━━━━━━━━━━━━\n"
-                f"💸 Lost: **{format_cash(bet)}**\n"
-                f"━━━━━━━━━━━━━━━━━━━━━\n"
-                f"*{_crash_quip(crash_point)}*"
-            ),
+            description=f"*{_crash_quip(crash_point)}*",
             color=0xED4245
         )
-        embed.set_footer(text=f"Bet: {format_cash(bet)}  •  Play again with .crash <amount>")
+        img = render_crash(g["history"], "crashed", bet, 0, format_cash, crash_point=crash_point)
+        file = discord.File(img, filename="crash.png")
+        embed.set_image(url="attachment://crash.png")
+        embed.set_footer(text=f"Lost {format_cash(bet)}  •  Play again with .crash <amount>")
         try:
-            await msg.edit(embed=embed, view=None)
+            await msg.edit(embed=embed, attachments=[file], view=None)
         except Exception:
             pass
         await check_achievements(self.bot, ctx.author)
@@ -294,6 +302,7 @@ class Crash(commands.Cog):
         g["cashout_mult"] = auto_target
         g["finished"] = True
         del crash_player_games[user_id]
+        _push_recent(crash_point)
 
         payout = int(bet * auto_target)
         profit = payout - bet
@@ -304,24 +313,26 @@ class Crash(commands.Cog):
         else:
             record_loss(user_id, abs(profit))
 
+        # Build the "ghost" continuation so the player can see the full run
+        ghost = get_frames(crash_point)
+        ghost = [m for m in ghost if m > auto_target]
+
         embed = discord.Embed(
             title="🎯 Auto Cashed Out!",
-            description=(
-                f"**Cashed out at `{auto_target}×`** ✅\n"
-                f"Crashed at `{crash_point}×` — *just in time!*\n\n"
-                f"━━━━━━━━━━━━━━━━━━━━━\n"
-                f"💰 **+{format_cash(profit)}**\n"
-                f"━━━━━━━━━━━━━━━━━━━━━\n"
-                f"Payout: **{format_cash(payout)}**"
-            ),
+            description=f"Crashed at `{crash_point}×` — **+{format_cash(profit)}** locked in.",
             color=0x57F287
         )
-        embed.set_footer(text=f"Bet: {format_cash(bet)}  •  Play again with .crash <amount>")
+        img = render_crash(
+            g["history"], "cashed", bet, payout, format_cash,
+            cashout_mult=auto_target, ghost_history=ghost, crash_point=crash_point
+        )
+        file = discord.File(img, filename="crash.png")
+        embed.set_image(url="attachment://crash.png")
+        embed.set_footer(text=f"Payout {format_cash(payout)}  •  Play again with .crash <amount>")
         try:
-            await msg.edit(embed=embed, view=None)
+            await msg.edit(embed=embed, attachments=[file], view=None)
         except Exception:
             pass
-        # Can't use interaction here, so just check achievements via bot
         try:
             guild = self.bot.guilds[0] if self.bot.guilds else None
             if guild:
@@ -357,6 +368,7 @@ class Crash(commands.Cog):
         g["cashout_mult"] = current_mult
         g["finished"] = True
         del crash_player_games[user_id]
+        _push_recent(crash_point)
 
         payout = int(bet * current_mult)
         profit = payout - bet
@@ -369,22 +381,24 @@ class Crash(commands.Cog):
             record_loss(user_id, abs(profit))
 
         color = 0x57F287 if profit >= 0 else 0xED4245
-        result = f"💰 **+{format_cash(profit)}**" if profit >= 0 else f"💸 **-{format_cash(abs(profit))}**"
+        result = f"**+{format_cash(profit)}**" if profit >= 0 else f"**-{format_cash(abs(profit))}**"
+
+        ghost = get_frames(crash_point)
+        ghost = [m for m in ghost if m > current_mult]
 
         embed = discord.Embed(
             title="✅ Cashed Out!",
-            description=(
-                f"**Cashed out at `{current_mult}×`** ✅\n"
-                f"Crashed at `{crash_point}×`\n\n"
-                f"━━━━━━━━━━━━━━━━━━━━━\n"
-                f"{result}\n"
-                f"━━━━━━━━━━━━━━━━━━━━━\n"
-                f"Payout: **{format_cash(payout)}**"
-            ),
+            description=f"Crashed at `{crash_point}×` — {result} locked in.",
             color=color
         )
-        embed.set_footer(text=f"Bet: {format_cash(bet)}  •  Play again with .crash <amount>")
-        await interaction.response.edit_message(embed=embed, view=None)
+        img = render_crash(
+            g["history"], "cashed", bet, payout, format_cash,
+            cashout_mult=current_mult, ghost_history=ghost, crash_point=crash_point
+        )
+        file = discord.File(img, filename="crash.png")
+        embed.set_image(url="attachment://crash.png")
+        embed.set_footer(text=f"Payout {format_cash(payout)}  •  Play again with .crash <amount>")
+        await interaction.response.edit_message(embed=embed, attachments=[file], view=None)
         await check_achievements(self.bot, interaction.user)
 
 
@@ -398,7 +412,7 @@ def _crash_quip(crash_point):
     elif crash_point < 7.0:
         return "That was actually pretty high!"
     else:
-        return f"It went to {crash_point}×! You should've cashed out! <:bj:1492588515253551144>"
+        return f"It went to {crash_point}×! You should've cashed out! 🔥"
 
 
 class CrashView(discord.ui.View):
@@ -432,4 +446,3 @@ class CrashView(discord.ui.View):
 
 async def setup(bot):
     await bot.add_cog(Crash(bot))
-        

@@ -18,15 +18,15 @@ from utils.stats import (
     record_loss
 )
 from utils.achievement_checker import check_achievements
+from utils.blackjack_render import render_blackjack
 
 
 # ─────────────────────────
-# CUSTOM EMOJIS & CONFIG
+# CONFIG
 # ─────────────────────────
 SHUFFLE_EMOJI = "<a:14722:1519037409579499581>"
 DEALER_EMOJI = "<:dealer:1519037377769640140>"
 
-# UI Colors
 COLOR_SHUFFLE = 0x2B2D31
 COLOR_PLAYING = 0x5865F2
 COLOR_DEALER = 0xFEE75C
@@ -41,11 +41,10 @@ COLOR_LOSS = 0xED4245
 SUITS = ["♠", "♥", "♦", "♣"]
 RANKS = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"]
 
-# Upgraded Suit Visuals
-SUIT_SYMBOLS = {"♠": "♠️", "♥": "♥️", "♦": "♦️", "♣": "♣️"}
 
 def make_deck():
     return [f"{r}{s}" for s in SUITS for r in RANKS]
+
 
 def card_value(card):
     rank = card[:-1]
@@ -55,6 +54,7 @@ def card_value(card):
         return 11
     return int(rank)
 
+
 def hand_total(hand):
     total = sum(card_value(c) for c in hand)
     aces = sum(1 for c in hand if c[:-1] == "A")
@@ -63,43 +63,9 @@ def hand_total(hand):
         aces -= 1
     return total
 
+
 def fmt_card(card):
-    """Formats a single card to look like a modern UI element."""
-    rank = card[:-1]
-    suit = card[-1]
-    return f"` {rank} {SUIT_SYMBOLS[suit]} `"
-
-def fmt_hand(hand, hide_second=False):
-    if hide_second and len(hand) >= 2:
-        return f"{fmt_card(hand[0])}  ` 🂠 ? `"
-    return "  ".join(fmt_card(c) for c in hand)
-
-def hand_label(hand, hide_second=False):
-    if hide_second:
-        return f"? (showing {card_value(hand[0])})"
-    t = hand_total(hand)
-    if t > 21:
-        return f"💥 {t} (Bust)"
-    if t == 21:
-        return "🌟 21 (Max)"
-    return str(t)
-
-def score_bar(total, hidden=False):
-    """Sleek minimalist geometric progress bar for the hand total."""
-    total_blocks = 7  # 7 blocks perfectly maps to 21 (3 points per block)
-    if hidden:
-        return f"` {'▱' * total_blocks} `"
-    if total > 21:
-        return f"` {'▰' * total_blocks} ` *Bust*"
-    
-    filled = min(total_blocks, round((total / 21) * total_blocks))
-    empty = total_blocks - filled
-    
-    bar = ("▰" * filled) + ("▱" * empty)
-    
-    if total == 21:
-        return f"` {bar} ` ✨"
-    return f"` {bar} `"
+    return f"`{card}`"
 
 
 # ─────────────────────────
@@ -181,12 +147,12 @@ class Blackjack(commands.Cog):
         # --- PHASE 1: SHUFFLE ANIMATION ---
         shuffle_embed = discord.Embed(color=COLOR_SHUFFLE)
         shuffle_embed.set_author(name=f"{ctx.author.display_name}'s Blackjack Table", icon_url=ctx.author.display_avatar.url)
-        shuffle_embed.description = f"### Action Log\n> {SHUFFLE_EMOJI} *The dealer is shuffling the deck and dealing cards...*"
-        
+        shuffle_embed.description = f"### Dealing...\n> {SHUFFLE_EMOJI} *The dealer is shuffling the deck and dealing cards...*"
+
         msg = await ctx.send(embed=shuffle_embed)
         bj_games[ctx.author.id]["msg"] = msg
-        
-        await asyncio.sleep(1.5) # Allow animation to play out
+
+        await asyncio.sleep(1.5)  # Allow animation to play out
 
         # Instant natural blackjack check
         if hand_total(player) == 21:
@@ -199,74 +165,61 @@ class Blackjack(commands.Cog):
                 add_cash(ctx.author.id, payout)
                 update_biggest_win(ctx.author.id, payout - bet)
                 record_win(ctx.author.id, payout - bet)
-                await self._finalize_ui(msg, ctx.author, player, dealer, bet, "bj", f"Natural Blackjack! You won **{format_cash(payout - bet)}**.")
-            
+                await self._finalize_ui(msg, ctx.author, player, dealer, bet, "bj", f"Natural Blackjack! You won {format_cash(payout - bet)}.")
+
             await check_achievements(self.bot, ctx.author)
             return
 
         # Start standard game
-        embed, view = self._build_embed_view(ctx.author)
-        await msg.edit(embed=embed, view=view)
+        embed, file, view = self._build_embed_view(ctx.author, "It's your turn. What will you do?")
+        await msg.edit(embed=embed, attachments=[file], view=view)
 
     # ─────────────────────────
     # UI BUILDERS
     # ─────────────────────────
 
-    def _build_embed_view(self, user):
+    def _build_embed_view(self, user, log_text):
         g = bj_games[user.id]
         player = g["player"]
         dealer = g["dealer"]
         bet = g["bet"]
 
         ptotal = hand_total(player)
-        
+
         embed = discord.Embed(color=COLOR_PLAYING)
         embed.set_author(name=f"{user.display_name}'s Blackjack Game", icon_url=user.display_avatar.url)
-        embed.description = f"### Action Log\n> 👤 *It's your turn. What will you do?*"
+        embed.description = f"> 👤 *{log_text}*"
 
-        embed.add_field(
-            name=f"<:oh_no:1483163517556101243> Your Hand: {hand_label(player)}",
-            value=f"{fmt_hand(player)}\n{score_bar(ptotal)}",
-            inline=True
+        img = render_blackjack(
+            player, dealer, ptotal, 0, True, bet, format_cash,
         )
-        embed.add_field(
-            name=f"{DEALER_EMOJI} Dealer Hand: {hand_label(dealer, hide_second=True)}",
-            value=f"{fmt_hand(dealer, hide_second=True)}\n{score_bar(0, hidden=True)}",
-            inline=True
-        )
-        
-        embed.set_footer(text=f"Current Bet: {format_cash(bet)} | Hit, Stand, or Double")
+        file = discord.File(img, filename="blackjack.png")
+        embed.set_image(url="attachment://blackjack.png")
+        embed.set_footer(text="Hit, Stand, or Double")
 
         cash = get_cash(user.id)
-        can_double = cash >= bet
+        can_double = cash >= bet and len(player) == 2
 
         view = BjView(user_id=user.id, can_double=can_double, cog=self)
-        return embed, view
+        return embed, file, view
 
     def _build_animation_embed(self, user, player, dealer, bet, log_text):
-        """Builds an embed for smooth dealer drawing animations."""
         ptotal = hand_total(player)
         dtotal = hand_total(dealer)
 
         embed = discord.Embed(color=COLOR_DEALER)
         embed.set_author(name=f"{user.display_name}'s Blackjack Game", icon_url=user.display_avatar.url)
-        embed.description = f"### Action Log\n> {log_text}"
+        embed.description = f"> {log_text}"
 
-        embed.add_field(
-            name=f"<:oh_no:1483163517556101243> Your Hand: {hand_label(player)}",
-            value=f"{fmt_hand(player)}\n{score_bar(ptotal)}",
-            inline=True
+        img = render_blackjack(
+            player, dealer, ptotal, dtotal, False, bet, format_cash,
         )
-        embed.add_field(
-            name=f"{DEALER_EMOJI} Dealer Hand: {hand_label(dealer)}",
-            value=f"{fmt_hand(dealer)}\n{score_bar(dtotal)}",
-            inline=True
-        )
-        embed.set_footer(text=f"Current Bet: {format_cash(bet)} | Dealer's Turn...")
-        return embed
+        file = discord.File(img, filename="blackjack.png")
+        embed.set_image(url="attachment://blackjack.png")
+        embed.set_footer(text="Dealer's turn...")
+        return embed, file
 
     async def _finalize_ui(self, msg, user, player, dealer, bet, result, log_text, interaction=None):
-        """The absolute final state of the UI."""
         ptotal = hand_total(player)
         dtotal = hand_total(dealer)
 
@@ -282,27 +235,21 @@ class Blackjack(commands.Cog):
 
         embed = discord.Embed(color=color)
         embed.set_author(name=f"{user.display_name}'s Blackjack Game", icon_url=user.display_avatar.url)
-        
-        embed.description = f"### Action Log\n> {icon} **{log_text}**"
+        embed.description = f"> {icon} **{log_text}**"
 
-        embed.add_field(
-            name=f"<:oh_no:1483163517556101243> Your Hand: {hand_label(player)}",
-            value=f"{fmt_hand(player)}\n{score_bar(ptotal)}",
-            inline=True
+        img = render_blackjack(
+            player, dealer, ptotal, dtotal, False, bet, format_cash,
+            result=result,
         )
-        embed.add_field(
-            name=f"{DEALER_EMOJI} Thief Emiel Hand: {hand_label(dealer)}",
-            value=f"{fmt_hand(dealer)}\n{score_bar(dtotal)}",
-            inline=True
-        )
-        
-        embed.set_footer(text=f"Total Bet: {format_cash(bet)} | Play again: .bj <amount>")
+        file = discord.File(img, filename="blackjack.png")
+        embed.set_image(url="attachment://blackjack.png")
+        embed.set_footer(text=f"Total Bet: {format_cash(bet)}  •  Play again: .bj <amount>")
 
         try:
             if interaction:
-                await interaction.edit_original_response(embed=embed, view=None)
+                await interaction.edit_original_response(embed=embed, attachments=[file], view=None)
             elif msg:
-                await msg.edit(embed=embed, view=None)
+                await msg.edit(embed=embed, attachments=[file], view=None)
         except Exception:
             pass
 
@@ -331,9 +278,8 @@ class Blackjack(commands.Cog):
             g["done"] = True
             await self._end_game(interaction, user_id, "stand")
         else:
-            embed, view = self._build_embed_view(interaction.user)
-            embed.description = f"### Action Log\n> 👤 *You hit and received {fmt_card(card)}.*"
-            await interaction.response.edit_message(embed=embed, view=view)
+            embed, file, view = self._build_embed_view(interaction.user, f"You hit and received {card}.")
+            await interaction.response.edit_message(embed=embed, attachments=[file], view=view)
 
     async def do_stand(self, interaction, user_id):
         if interaction.user.id != user_id:
@@ -392,36 +338,33 @@ class Blackjack(commands.Cog):
         user = interaction.user
 
         ptotal = hand_total(player)
-        
+
         if result_type == "double" and ptotal > 21:
             result_type = "bust"
 
         # --- PHASE 2: DEALER TURN ANIMATIONS ---
         if result_type != "bust":
-            # 1. Flip the hidden card
-            log_text = f"{DEALER_EMOJI} *Thief Emiel flips their hidden card... It's a {fmt_card(dealer[1])}.*"
-            reveal_embed = self._build_animation_embed(user, player, dealer, bet, log_text)
-            
+            log_text = f"{DEALER_EMOJI} *Dealer flips the hidden card... it's a {dealer[1]}.*"
+            reveal_embed, reveal_file = self._build_animation_embed(user, player, dealer, bet, log_text)
+
             try:
-                await interaction.response.edit_message(embed=reveal_embed, view=None)
+                await interaction.response.edit_message(embed=reveal_embed, attachments=[reveal_file], view=None)
             except Exception:
                 pass
 
-            # 2. Loop through draws
             while hand_total(dealer) < 17:
-                await asyncio.sleep(1.2) # Essential delay to prevent rate limiting
+                await asyncio.sleep(1.2)  # Essential delay to prevent rate limiting
                 drawn_card = deck.pop()
                 dealer.append(drawn_card)
-                
-                log_text = f"{DEALER_EMOJI} *Thief Emiel draws {fmt_card(drawn_card)}...*"
-                draw_embed = self._build_animation_embed(user, player, dealer, bet, log_text)
-                
+
+                log_text = f"{DEALER_EMOJI} *Dealer draws {drawn_card}...*"
+                draw_embed, draw_file = self._build_animation_embed(user, player, dealer, bet, log_text)
+
                 try:
-                    await interaction.edit_original_response(embed=draw_embed)
+                    await interaction.edit_original_response(embed=draw_embed, attachments=[draw_file])
                 except Exception:
                     pass
-            
-            # Brief pause before showing final calculation
+
             await asyncio.sleep(1.0)
         else:
             try:
@@ -434,21 +377,20 @@ class Blackjack(commands.Cog):
 
         if ptotal > 21:
             outcome = "loss"
-            final_log = f"Thief Emiel busted! Lost {format_cash(bet)}."
+            final_log = f"You busted! Lost {format_cash(bet)}."
         elif dtotal > 21:
             outcome = "win"
-            final_log = f"Thief Emiel busted! You won {format_cash(bet)}."
+            final_log = f"Dealer busted! You won {format_cash(bet)}."
         elif ptotal > dtotal:
             outcome = "win"
-            final_log = f"You beat Thief Emiel! Won {format_cash(bet)}."
+            final_log = f"You beat the dealer! Won {format_cash(bet)}."
         elif ptotal == dtotal:
             outcome = "push"
             final_log = f"It's a tie! Bet of {format_cash(bet)} returned."
         else:
             outcome = "loss"
-            final_log = f"Thief Emiel wins. Lost {format_cash(bet)}."
+            final_log = f"Dealer wins. Lost {format_cash(bet)}."
 
-        # Handle economy
         if outcome == "win":
             add_cash(user_id, bet * 2)
             update_biggest_win(user_id, bet)
@@ -521,11 +463,10 @@ class BjView(discord.ui.View):
                         description=f"You took too long! Your bet of **{format_cash(g['bet'])}** was returned.",
                         color=COLOR_SHUFFLE
                     )
-                    await msg.edit(embed=embed, view=None)
+                    await msg.edit(embed=embed, attachments=[], view=None)
             except Exception:
                 pass
 
 
 async def setup(bot):
     await bot.add_cog(Blackjack(bot))
-        
