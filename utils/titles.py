@@ -11,12 +11,12 @@ from utils.economy import economy_collection, get_cash, remove_cash, format_cash
 # it's a pure sink that drains the economy instead of recirculating it.
 
 TITLES = {
-    "grinder": {"label": "Casino King", "price": 100_000_000,     "emoji": "🥉", "color": 0xCD7F32},
-    "hustler": {"label": "Rapist", "price": 250_000_000,     "emoji": "🥈", "color": 0xB0B0B8},
-    "tycoon":  {"label": "Azure Fucker",  "price": 500_000_000,    "emoji": "🥇", "color": 0xFFD700},
-    "mogul":   {"label": "Madhav Fucker",   "price": 1_000_000_000,    "emoji": "💎", "color": 0x20D2D2},
-    "legend":  {"label": "Emiel Fucker",  "price": 2_000_000_000,  "emoji": "👑", "color": 0xA349E8},
-    "titan":   {"label": "Qeight Fucker",   "price": 10_000_000_000, "emoji": "✨", "color": 0xED4A6B},
+    "grinder": {"label": "I'm not into Girls", "price": 50_000_000,     "emoji": "🥉", "color": 0xCD7F32},
+    "hustler": {"label": "Rapist", "price": 100_000_000,     "emoji": "🥈", "color": 0xB0B0B8},
+    "tycoon":  {"label": "Azure Fucker",  "price": 250_000_000,    "emoji": "🥇", "color": 0xFFD700},
+    "mogul":   {"label": "Madhav Fucker",   "price": 500_000_000,    "emoji": "💎", "color": 0x20D2D2},
+    "legend":  {"label": "Emiel Fucker",  "price": 750_000_000,  "emoji": "👑", "color": 0xA349E8},
+    "titan":   {"label": "Qeight Fucker",   "price": 1_000_000_000, "emoji": "✨", "color": 0xED4A6B},
 }
 
 # Ordering used for display (cheapest -> most prestigious)
