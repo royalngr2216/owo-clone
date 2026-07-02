@@ -13,7 +13,7 @@ MONGO_URI = os.getenv("MONGO_URI")
 # Prevents any single spin/round from injecting huge amounts of new
 # money into the economy. PvP games (deathroll, crack) aren't capped
 # here since money there just moves between two players, it isn't created.
-MAX_BET = 15_000_000
+MAX_BET = 100_000_000
 
 client = MongoClient(MONGO_URI)
 
