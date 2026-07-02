@@ -20,7 +20,7 @@ TITLES = {
 }
 
 # Ordering used for display (cheapest -> most prestigious)
-TITLE_ORDER = ["grinder", "hustler", "tycoon", "mogul", "legend", "titan"]
+TITLE_ORDER = ["I'm Not Into Girls", "Rapist", "Azure Fucker", "Madhav Fucker", "Emiel Fucker", "Qeight Fucker"]
 
 
 def _user(user_id):
