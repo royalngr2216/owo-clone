@@ -17,6 +17,10 @@ from utils.stats import (
 from utils.achievement_checker import (
     check_achievements
 )
+from utils.slot_render import (
+    build_spin_gif,
+    build_result_frame
+)
 
 
 # ─────────────────────────
@@ -37,9 +41,6 @@ def parse_amount(amount: str):
 # ─────────────────────────
 # CONFIG
 # ─────────────────────────
-
-# Your animated slot emoji — spins itself in Discord while unrevealed
-SPINNING = "<a:slots:1514761192193789982>"
 
 PAYOUTS = {
     "🍒": 1.1,
@@ -81,39 +82,30 @@ COLOR_TROLL   = 0x36393F   # dark    — troll
 # ─────────────────────────
 
 def build_embed(
-    r0, r1, r2,
     author: discord.Member,
     bet: int,
     *,
     color: int = COLOR_SPIN,
     result_line: str = "",
+    image_filename: str = "spin.gif",
 ) -> discord.Embed:
     """
     Single embed used for every state (spinning + final result).
-
-    Layout:
-      Title      🎰  S L O T S
-      Description  the three reels, large and centred
-      Fields     Bet | Result (only shown when result_line is set)
-      Footer     avatar + username
+    The reels themselves are the attached image now, not text.
     """
-    # Reels row — spaced out so they look big and centred
-    reels_row = f"╔══════════════╗\n║  {r0}  {r1}  {r2}  ║\n╚══════════════╝"
-
     embed = discord.Embed(
         title="🎰  S L O T S",
-        description=reels_row,
         color=color,
     )
 
-    # Always show bet
     embed.add_field(name="Bet", value=f"🪙 **{format_cash(bet)}**", inline=True)
 
-    # Result field — blank placeholder keeps layout stable while spinning
     if result_line:
         embed.add_field(name="Result", value=result_line, inline=True)
     else:
         embed.add_field(name="Result", value="*Spinning…*", inline=True)
+
+    embed.set_image(url=f"attachment://{image_filename}")
 
     embed.set_footer(
         text=author.display_name,
@@ -238,60 +230,47 @@ class Slots(commands.Cog):
 
         # ── ANIMATION ────────────────────────────────────────────────────
         #
-        # 3-edit chain (same as OwO's setTimeout approach).
-        # The animated emoji self-animates in Discord — no loop needed.
-        #
-        #   send        →  🌀 🌀 🌀   spinning…
-        #   +1.0 s      →  r0 🌀 🌀
-        #   +0.7 s      →  r0 r1 🌀
-        #   +1.0 s      →  r0 r1 r2  + result
+        # One smooth Pillow-rendered GIF (eased deceleration + motion
+        # blur per reel, staggered stop times) instead of 3 discrete
+        # message edits swapping emoji text. Built off the event loop
+        # via to_thread since Pillow rendering is CPU-bound.
 
-        S = SPINNING
+        gif_buf, duration = await asyncio.to_thread(build_spin_gif, result, near_miss)
 
-        # Step 0 — send, all spinning
-        embed = build_embed(S, S, S, ctx.author, amount)
-        msg = await ctx.send(embed=embed)
+        embed = build_embed(ctx.author, amount, image_filename="spin.gif")
+        msg = await ctx.send(embed=embed, file=discord.File(gif_buf, filename="spin.gif"))
 
-        # Step 1 — reel 0 lands
-        await asyncio.sleep(1.0)
-        embed = build_embed(result[0], S, S, ctx.author, amount)
-        await msg.edit(embed=embed)
+        await asyncio.sleep(duration)
 
-        # Step 2 — reel 1 lands
-        await asyncio.sleep(0.7)
-        embed = build_embed(result[0], result[1], S, ctx.author, amount)
-        await msg.edit(embed=embed)
-
-        # Step 3 — reel 2 lands (longer wait on near-miss for suspense)
-        await asyncio.sleep(2.0 if near_miss else 1.0)
-
-        # ── Final embed ──────────────────────────────────────────────────
+        # ── Final result render ─────────────────────────────────────────
 
         # TROLL
         if outcome == "troll":
+            png_buf = await asyncio.to_thread(build_result_frame, result, win=False)
             embed = build_embed(
-                result[0], result[1], result[2],
                 ctx.author, amount,
                 color=COLOR_TROLL,
                 result_line=f"☠️ EMIEL entered the casino and <a:sex:1514766414248939610> you.\n💸 Lost **{format_cash(amount)}**",
+                image_filename="result.png",
             )
-            await msg.edit(embed=embed)
+            await msg.edit(embed=embed, attachments=[discord.File(png_buf, filename="result.png")])
             return
 
         # LOSE
         if outcome == "lose":
+            png_buf = await asyncio.to_thread(build_result_frame, result, win=False)
             result_line = (
                 f"<:komedi:1482793353748680956> **So close!**\n-🪙 {format_cash(amount)}"
                 if near_miss
                 else f"<:bj:1492588515253551144> Better luck next time!\n"
             )
             embed = build_embed(
-                result[0], result[1], result[2],
                 ctx.author, amount,
                 color=COLOR_LOSE,
                 result_line=result_line,
+                image_filename="result.png",
             )
-            await msg.edit(embed=embed)
+            await msg.edit(embed=embed, attachments=[discord.File(png_buf, filename="result.png")])
             return
 
         # WIN
@@ -303,7 +282,10 @@ class Slots(commands.Cog):
         add_cash(ctx.author.id, winnings)
         update_biggest_win(ctx.author.id, winnings)
 
-        if outcome == "jackpot":
+        jackpot = outcome == "jackpot"
+        png_buf = await asyncio.to_thread(build_result_frame, result, win=True, jackpot=jackpot)
+
+        if jackpot:
             result_line = (
                 f"<:3845happycat:1072237341357387786> **JACKPOT!** `{multiplier}x`\n"
                 f"+🪙 {format_cash(profit)}"
@@ -317,15 +299,14 @@ class Slots(commands.Cog):
             color = COLOR_WIN
 
         embed = build_embed(
-            result[0], result[1], result[2],
             ctx.author, amount,
             color=color,
             result_line=result_line,
+            image_filename="result.png",
         )
-        await msg.edit(embed=embed)
+        await msg.edit(embed=embed, attachments=[discord.File(png_buf, filename="result.png")])
         await check_achievements(self.bot, ctx.author)
 
 
 async def setup(bot):
     await bot.add_cog(Slots(bot))
-    
