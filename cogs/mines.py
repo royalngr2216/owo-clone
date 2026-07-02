@@ -35,17 +35,17 @@ MINE = "💣"
 
 MULTIPLIERS = {
     0: 1.00,
-    1: 1.30,
-    2: 1.75,
-    3: 2.40,
-    4: 3.50,
+    1: 1.10,
+    2: 1.5,
+    3: 2.0,
+    4: 3.0,
     5: 5.00,
-    6: 8.00,
+    6: 10.00,
 }
 
 EMIEL_MESSAGES = [
     "Emiel was hiding there and raped you.",
-    "Emiel pickpocketed you and ran away.",
+    "Emiel raped you and ran away.",
     "Emiel fucked you behind the minefield.",
     "You found Emiel. Unfortunately, he found your money too.",
     "Emiel stole your cash and disappeared."
