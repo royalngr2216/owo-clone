@@ -46,7 +46,7 @@ class Titles(commands.Cog):
             title="🎖 TITLES",
             description=(
                 "Permanent cosmetic badges shown on `.cash` and `.leaderboard`.\n"
-                "Buying a title spends the cash for good — it's not a trade, it's gone.\n\n"
+                "Buying a title is permanent.\n\n"
                 + "\n".join(lines)
                 + "\n\n`.titles buy <name>` · `.titles equip <name>` · `.titles unequip`"
             ),
