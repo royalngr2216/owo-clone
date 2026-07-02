@@ -11,7 +11,7 @@ from utils.economy import economy_collection, get_cash, remove_cash, format_cash
 # it's a pure sink that drains the economy instead of recirculating it.
 
 TITLES = {
-    "i'm Not Into Girls": {"label": "i'm not into girls", "price": 50_000_000,     "emoji": "🥉", "color": 0xCD7F32},
+    "i'm not into girls": {"label": "i'm not into girls", "price": 50_000_000,     "emoji": "🥉", "color": 0xCD7F32},
     "rapist": {"label": "Rapist", "price": 100_000_000,     "emoji": "🥈", "color": 0xB0B0B8},
     "azure Fucker":  {"label": "Azure Fucker",  "price": 250_000_000,    "emoji": "🥇", "color": 0xFFD700},
     "madhav Fucker":   {"label": "Madhav Fucker",   "price": 500_000_000,    "emoji": "💎", "color": 0x20D2D2},
