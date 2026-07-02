@@ -112,7 +112,7 @@ class GiveView(discord.ui.View):
 
                 description=(
 
-                    "❌ Daily gift limit exceeded.\n\n"
+                    "<:dealer:1519037377769640140> Daily gift limit exceeded.\n\n"
 
                     f"Daily Limit: "
                     f"**{format_cash(GIVE_LIMIT)}**"
@@ -135,7 +135,7 @@ class GiveView(discord.ui.View):
 
             embed = discord.Embed(
 
-                description="❌ Not enough cash.",
+                description="<:dealer:1519037377769640140> Not enough cash.",
 
                 color=discord.Color.red()
             )
@@ -179,7 +179,7 @@ class GiveView(discord.ui.View):
 
         embed = discord.Embed(
 
-            title="💸 CASH SENT",
+            title="<:dealer:1519037377769640140> CASH SENT",
 
             description=(
 
