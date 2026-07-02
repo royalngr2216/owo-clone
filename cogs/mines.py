@@ -47,7 +47,7 @@ EMIEL_MESSAGES = [
     "Emiel was hiding there and raped you.",
     "Emiel raped you and ran away.",
     "Emiel fucked you behind the minefield.",
-    "You found Emiel. Unfortunately, he found your money too.",
+    "You found Emiel. Unfortunately, he got your ass.",
     "Emiel stole your cash and disappeared."
 ]
 
