@@ -28,16 +28,34 @@ from utils.crash_render import render_crash
 # CRASH POINT GENERATION
 # ─────────────────────────
 
+INSTANT_CRASH_CHANCE = 0.05     # flat chance to crash at exactly 1.00x
+REDIRECT_LOW = 1.10             # crashes that would land in [REDIRECT_LOW, REDIRECT_HIGH)
+REDIRECT_HIGH = 1.50            # have a chance to get pulled down below REDIRECT_LOW instead
+REDIRECT_CHANCE = 0.5           # how often that pull-down happens
+
+
 def generate_crash_point():
     """
-    Generates a fair crash point with exactly a 3% house edge.
-    Most games will run, but the house always maintains its profit margin.
+    Generates a crash point. Two things stack the deck against
+    "spam-bet a tiny 1.05x-1.1x cashout every round" farming:
+
+    1. The instant-crash (1.00x) chance is bumped up.
+    2. A chunk of runs that would have landed in the 1.10x-1.50x band
+       get pulled back down under 1.10x instead.
+
+    Cashout targets of 2x and above are left essentially untouched —
+    this only tightens the low-risk end of the curve.
     """
-    if random.random() < 0.03:
+    if random.random() < INSTANT_CRASH_CHANCE:
         return 1.00
 
     crash = 1.00 / (1.0 - random.random())
-    return max(1.01, round(crash, 2))
+    crash = round(crash, 2)
+
+    if REDIRECT_LOW <= crash < REDIRECT_HIGH and random.random() < REDIRECT_CHANCE:
+        crash = round(random.uniform(1.00, REDIRECT_LOW - 0.01), 2)
+
+    return max(1.0, crash)
 
 
 def _sample_curve(t_start, t_end, duration_ms, crash_point, n=20):
