@@ -66,7 +66,7 @@ class GuildSelect(discord.ui.Select):
             return
 
         done_embed = discord.Embed(
-            title="Emoji Stolen",
+            title="✅ Emoji Stolen",
             description=(
                 f"Added {new_emoji} as **:{new_emoji.name}:** to **{guild.name}**."
             ),
@@ -88,7 +88,7 @@ class GuildSelect(discord.ui.Select):
 
         if target_channel is not None:
             public_embed = discord.Embed(
-                description=f"<a:sex:1514766414248939610> **{interaction.user.mention} stole {new_emoji} successfully!**",
+                description=f"🎉 **{interaction.user.mention} stole {new_emoji} successfully!**",
                 color=discord.Color.gold(),
             )
             public_embed.set_thumbnail(url=new_emoji.url)
@@ -116,9 +116,21 @@ class Steal(commands.Cog):
         # Ensures the slash command tree knows about this command.
         # Safe to call repeatedly — Discord dedupes on sync.
         try:
-            await self.bot.tree.sync()
-        except Exception:
-            pass
+            synced = await self.bot.tree.sync()
+            print(f"[steal.py] Synced {len(synced)} global command(s).")
+        except Exception as e:
+            print(f"[steal.py] Slash command sync FAILED: {e}")
+
+    @commands.command(name="synccmds")
+    @commands.is_owner()
+    async def synccmds(self, ctx):
+        """Manual fallback: run .synccmds (owner only) to force a resync
+        and see any error directly in the channel."""
+        try:
+            synced = await self.bot.tree.sync()
+            await ctx.send(f"✅ Synced {len(synced)} global command(s).")
+        except Exception as e:
+            await ctx.send(f"❌ Sync failed: `{e}`")
 
     @app_commands.command(
         name="steal",
