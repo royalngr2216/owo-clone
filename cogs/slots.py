@@ -305,13 +305,13 @@ class Slots(commands.Cog):
 
         if outcome == "jackpot":
             result_line = (
-                f"<:3845happycat:1072237341357387786> **JACKPOT!** `{multiplier}x`\n"
+                f"<:dealer:1519037377769640140> **JACKPOT!** `{multiplier}x`\n"
                 f"+🪙 {format_cash(profit)}"
             )
             color = COLOR_JACKPOT
         else:
             result_line = (
-                f"<:Pray:1509654308705145033> **You won!** `{multiplier}x`\n"
+                f"<:dealer:1519037377769640140>> **You won!** `{multiplier}x`\n"
                 f"+🪙 {format_cash(profit)}"
             )
             color = COLOR_WIN
