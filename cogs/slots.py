@@ -283,7 +283,7 @@ class Slots(commands.Cog):
             result_line = (
                 f"<:komedi:1482793353748680956> **So close!**\n-🪙 {format_cash(amount)}"
                 if near_miss
-                else f"<:bj:1492588515253551144> Better luck next time!\n"
+                else f"<:dealer:1519037377769640140> Better luck next time!\n"
             )
             embed = build_embed(
                 result[0], result[1], result[2],
