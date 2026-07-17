@@ -311,7 +311,7 @@ class Slots(commands.Cog):
             color = COLOR_JACKPOT
         else:
             result_line = (
-                f"<:dealer:1519037377769640140>> **You won!** `{multiplier}x`\n"
+                f"<:dealer:1519037377769640140> **You won!** `{multiplier}x`\n"
                 f"+🪙 {format_cash(profit)}"
             )
             color = COLOR_WIN
