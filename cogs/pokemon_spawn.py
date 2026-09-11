@@ -18,8 +18,8 @@ def _clean(name: str) -> str:
 
 
 def gif_url(name: str) -> str:
-    # Pokémon Showdown animated sprites (National Dex / Gen 9-compatible IDs).
-    return f"https://play.pokemonshowdown.com/sprites/ani/{_clean(name)}.gif"
+    # Pokémon Showdown Gen 9 National Dex animated sprite.
+    return f"https://play.pokemonshowdown.com/sprites/gen9ani/{_clean(name)}.gif"
 
 
 BALLS = {
@@ -38,9 +38,9 @@ CATCH_RATES = {
     "mb": {"common": 100, "pseudo": 100, "ultra_beast": 100, "legendary": 100, "mythical": 100},
 }
 MYTHICAL_IDS = frozenset({151, 251, 385, 386, 489, 490, 491, 492, 493, 494, 647, 648, 649, 719, 720, 721, 801, 802, 807, 808, 809, 893})
-LEGENDARY_IDS = frozenset({144,145,146,150,243,244,245,249,250,377,378,379,380,381,382,383,384,480,481,482,483,484,485,486,487,488,638,639,640,641,642,643,644,645,646,716,717,718,785,786,787,788,789,790,791,792,800,888,889,890,891,892,894,895,896,897,898})
+LEGENDARY_IDS = frozenset({144,145,146,150,243,244,245,249,250,377,378,379,380,381,382,383,384,480,481,482,483,484,485,486,638,639,640,641,642,643,644,645,646,716,717,718,785,786,787,788,789,790,791,792,800,888,889,890,891,892,894,895,896,897,898,905,1001,1002,1003,1004,1007,1008,1009,1010,1017,1024,1025})
 ULTRA_BEAST_IDS = frozenset({793,794,795,796,797,798,799,803,804,805,806})
-PSEUDO_LEGENDARY_IDS = frozenset({149,248,373,376,445,635,706,784,887})
+PSEUDO_LEGENDARY_IDS = frozenset({149,248,373,376,445,635,706,784,887,998})
 
 def get_rarity(pokedex_id: int) -> str:
     if pokedex_id in MYTHICAL_IDS: return "mythical"
@@ -61,6 +61,7 @@ RARITY_SPAWN_EXTRA = {
 
 class PokemonSpawn(commands.Cog):
     SPAWN_INTERVAL_MINUTES = 30
+    NATIONAL_DEX_MAX = 1025
 
     def __init__(self, bot):
         self.bot = bot
@@ -166,21 +167,19 @@ class PokemonSpawn(commands.Cog):
         if channel is None: return
         try:
             async with aiohttp.ClientSession() as session:
-                # Gen 9 National Dex = 1 through 1025.
-                pokemon_id = random.randint(1, 1025)
+                pokemon_id = random.randint(1, self.NATIONAL_DEX_MAX)
                 async with session.get(f"https://pokeapi.co/api/v2/pokemon/{pokemon_id}", timeout=aiohttp.ClientTimeout(total=8)) as response:
                     if response.status != 200: return
                     data = await response.json()
             name = data["name"].replace("-", " ").title()
             rarity = get_rarity(pokemon_id)
-            # Animated sprite; name is intentionally NOT shown in the spawn message.
-            sprite = gif_url(name)
+            gif = gif_url(name)
             embed = discord.Embed(
                 title="✨ A wild Pokémon has appeared!",
                 description=f"{RARITY_SPAWN_EXTRA[rarity]}\n\nType **`.catch`** to try catching it!",
                 color=RARITY_EMBED_COLORS[rarity],
             )
-            embed.set_image(url=sprite)
+            embed.set_image(url=gif)
             embed.set_footer(text="First successful catch gets the Pokémon!")
             message = await channel.send(embed=embed)
             pokemon_spawn_channels.update_one({"_id": guild.id}, {"$set": {"active": {"name": name, "pokedex_id": pokemon_id, "rarity": rarity, "message_id": message.id}}}, upsert=True)
