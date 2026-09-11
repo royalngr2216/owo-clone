@@ -1,12 +1,7 @@
 from discord.ext import commands, tasks
 import discord
 import random
-import asyncio
 import aiohttp
-import io
-import math
-
-from PIL import Image, ImageDraw, ImageFont
 
 from utils.pokemon_db import (
     db,
@@ -23,67 +18,43 @@ def _clean(name: str) -> str:
 
 
 def gif_url(name: str) -> str:
-    return f"https://play.pokemonshowdown.com/sprites/xyani/{_clean(name)}.gif"
+    # Pokémon Showdown animated sprites (National Dex / Gen 9-compatible IDs).
+    return f"https://play.pokemonshowdown.com/sprites/ani/{_clean(name)}.gif"
 
-
-def sprite_url(name: str) -> str:
-    return f"https://play.pokemonshowdown.com/sprites/gen5/{_clean(name)}.png"
 
 BALLS = {
     "pb": {"name": "Poké Ball", "db": "pokeball"},
     "ub": {"name": "Ultra Ball", "db": "ultraball"},
     "mb": {"name": "Master Ball", "db": "masterball"},
 }
-
 BALL_EMOJI = {
     "pb": "<:pb:1517998351227031632>",
     "ub": "<:ub:1517997681564324114>",
     "mb": "<a:mb:1517997721288704111>",
 }
-
 CATCH_RATES = {
     "pb": {"common": 35, "pseudo": 15, "ultra_beast": 15, "legendary": 7, "mythical": 3},
     "ub": {"common": 60, "pseudo": 30, "ultra_beast": 30, "legendary": 15, "mythical": 6},
     "mb": {"common": 100, "pseudo": 100, "ultra_beast": 100, "legendary": 100, "mythical": 100},
 }
-
 MYTHICAL_IDS = frozenset({151, 251, 385, 386, 489, 490, 491, 492, 493, 494, 647, 648, 649, 719, 720, 721, 801, 802, 807, 808, 809, 893})
 LEGENDARY_IDS = frozenset({144,145,146,150,243,244,245,249,250,377,378,379,380,381,382,383,384,480,481,482,483,484,485,486,487,488,638,639,640,641,642,643,644,645,646,716,717,718,785,786,787,788,789,790,791,792,800,888,889,890,891,892,894,895,896,897,898})
 ULTRA_BEAST_IDS = frozenset({793,794,795,796,797,798,799,803,804,805,806})
 PSEUDO_LEGENDARY_IDS = frozenset({149,248,373,376,445,635,706,784,887})
 
-
 def get_rarity(pokedex_id: int) -> str:
-    if pokedex_id in MYTHICAL_IDS:
-        return "mythical"
-    if pokedex_id in LEGENDARY_IDS:
-        return "legendary"
-    if pokedex_id in ULTRA_BEAST_IDS:
-        return "ultra_beast"
-    if pokedex_id in PSEUDO_LEGENDARY_IDS:
-        return "pseudo"
+    if pokedex_id in MYTHICAL_IDS: return "mythical"
+    if pokedex_id in LEGENDARY_IDS: return "legendary"
+    if pokedex_id in ULTRA_BEAST_IDS: return "ultra_beast"
+    if pokedex_id in PSEUDO_LEGENDARY_IDS: return "pseudo"
     return "common"
 
-
-RARITY_LABELS = {
-    "mythical": "✨ Mythical",
-    "legendary": "👑 Legendary",
-    "ultra_beast": "🔮 Ultra Beast",
-    "pseudo": "🔥 Pseudo",
-    "common": "Common",
-}
-RARITY_EMBED_COLORS = {
-    "mythical": 0xFFD700,
-    "legendary": 0xA349E8,
-    "ultra_beast": 0x20D2D2,
-    "pseudo": 0xE86420,
-    "common": 0x57F287,
-}
+RARITY_EMBED_COLORS = {"mythical": 0xFFD700, "legendary": 0xA349E8, "ultra_beast": 0x20D2D2, "pseudo": 0xE86420, "common": 0x57F287}
 RARITY_SPAWN_EXTRA = {
-    "mythical": "\n\n✨ **A MYTHICAL Pokémon has appeared — incredibly rare!** ✨",
-    "legendary": "\n\n👑 **A LEGENDARY Pokémon has appeared!** 👑",
-    "ultra_beast": "\n\n🔮 **An ULTRA BEAST has appeared!** 🔮",
-    "pseudo": "\n\n🔥 **A powerful Pseudo-Legendary has appeared!** 🔥",
+    "mythical": "✨ **A MYTHICAL Pokémon has appeared — incredibly rare!** ✨",
+    "legendary": "👑 **A LEGENDARY Pokémon has appeared!** 👑",
+    "ultra_beast": "🔮 **An ULTRA BEAST has appeared!** 🔮",
+    "pseudo": "🔥 **A powerful Pseudo-Legendary has appeared!** 🔥",
     "common": "",
 }
 
@@ -95,47 +66,34 @@ class PokemonSpawn(commands.Cog):
         self.bot = bot
 
     async def cog_load(self):
-        if not self.spawn_loop.is_running():
-            self.spawn_loop.start()
+        if not self.spawn_loop.is_running(): self.spawn_loop.start()
 
-    def cog_unload(self):
-        self.spawn_loop.cancel()
+    def cog_unload(self): self.spawn_loop.cancel()
 
     @commands.command(name="pokemons")
     async def pokemons(self, ctx, member: discord.Member = None):
-        """Show a user's caught Pokémon collection."""
         if db is None:
             await ctx.send("❌ MongoDB is not configured.")
             return
-
         target = member or ctx.author
         data = get_pokemon_data(target.id)
         inventory = data.get("inventory", [])
         if not inventory:
             await ctx.send(f"📦 **{target.display_name}** has no Pokémon yet.")
             return
-
         counts = {}
         for name in inventory:
             key = str(name).lower()
             counts[key] = counts.get(key, 0) + 1
-
         lines = [f"**{name.title()}** × `{count}`" for name, count in sorted(counts.items())]
         description = "\n".join(lines)
-        if len(description) > 3900:
-            description = description[:3890] + "…"
-
-        embed = discord.Embed(
-            title=f"📦 {target.display_name}'s Pokémon",
-            description=description,
-            color=0x5865F2,
-        )
+        if len(description) > 3900: description = description[:3890] + "…"
+        embed = discord.Embed(title=f"📦 {target.display_name}'s Pokémon", description=description, color=0x5865F2)
         embed.set_footer(text=f"Total Pokémon: {len(inventory)}")
         await ctx.send(embed=embed)
 
     @commands.command(name="dex", aliases=["pokedex"])
     async def dex(self, ctx, member: discord.Member = None):
-        """Show the species registered in a user's collection."""
         if db is None:
             await ctx.send("❌ MongoDB is not configured.")
             return
@@ -147,13 +105,8 @@ class PokemonSpawn(commands.Cog):
             return
         species = sorted({str(name).title() for name in inventory})
         description = "\n".join(f"`{i:02}` {name}" for i, name in enumerate(species, 1))
-        if len(description) > 3900:
-            description = description[:3890] + "…"
-        embed = discord.Embed(
-            title=f"📖 {target.display_name}'s Pokédex",
-            description=description,
-            color=0x5865F2,
-        )
+        if len(description) > 3900: description = description[:3890] + "…"
+        embed = discord.Embed(title=f"📖 {target.display_name}'s Pokédex", description=description, color=0x5865F2)
         embed.set_footer(text=f"Unique species: {len(species)}")
         await ctx.send(embed=embed)
 
@@ -176,11 +129,7 @@ class PokemonSpawn(commands.Cog):
         if pokemon_spawn_channels is None:
             await ctx.send("❌ MongoDB is not configured, so spawn settings cannot be saved.")
             return
-        pokemon_spawn_channels.update_one(
-            {"_id": ctx.guild.id},
-            {"$set": {"channel_id": channel.id, "enabled": True}},
-            upsert=True,
-        )
+        pokemon_spawn_channels.update_one({"_id": ctx.guild.id}, {"$set": {"channel_id": channel.id, "enabled": True}}, upsert=True)
         await ctx.send(f"✅ Pokémon spawns are now enabled in {channel.mention}.\nA Pokémon will spawn there every **{self.SPAWN_INTERVAL_MINUTES} minutes**.")
         await self.spawn_in_guild(ctx.guild)
 
@@ -189,11 +138,7 @@ class PokemonSpawn(commands.Cog):
     @commands.has_guild_permissions(manage_guild=True)
     async def spawn_disable(self, ctx):
         if pokemon_spawn_channels is not None:
-            pokemon_spawn_channels.update_one(
-                {"_id": ctx.guild.id},
-                {"$set": {"enabled": False}, "$unset": {"active": ""}},
-                upsert=True,
-            )
+            pokemon_spawn_channels.update_one({"_id": ctx.guild.id}, {"$set": {"enabled": False}, "$unset": {"active": ""}}, upsert=True)
         await ctx.send("🛑 Pokémon spawns have been disabled for this server.")
 
     @commands.command(name="forcespawn")
@@ -214,27 +159,22 @@ class PokemonSpawn(commands.Cog):
         await ctx.send("⚡ Forced Pokémon spawn!")
 
     async def spawn_in_guild(self, guild):
-        if pokemon_spawn_channels is None:
-            return
+        if pokemon_spawn_channels is None: return
         config = pokemon_spawn_channels.find_one({"_id": guild.id})
-        if not config or not config.get("enabled"):
-            return
+        if not config or not config.get("enabled"): return
         channel = guild.get_channel(config.get("channel_id"))
-        if channel is None:
-            return
+        if channel is None: return
         try:
             async with aiohttp.ClientSession() as session:
-                pokemon_id = random.randint(1, 898)
-                async with session.get(
-                    f"https://pokeapi.co/api/v2/pokemon/{pokemon_id}",
-                    timeout=aiohttp.ClientTimeout(total=8),
-                ) as response:
-                    if response.status != 200:
-                        return
+                # Gen 9 National Dex = 1 through 1025.
+                pokemon_id = random.randint(1, 1025)
+                async with session.get(f"https://pokeapi.co/api/v2/pokemon/{pokemon_id}", timeout=aiohttp.ClientTimeout(total=8)) as response:
+                    if response.status != 200: return
                     data = await response.json()
             name = data["name"].replace("-", " ").title()
             rarity = get_rarity(pokemon_id)
-            sprite = data.get("sprites", {}).get("front_default") or sprite_url(name)
+            # Animated sprite; name is intentionally NOT shown in the spawn message.
+            sprite = gif_url(name)
             embed = discord.Embed(
                 title="✨ A wild Pokémon has appeared!",
                 description=f"{RARITY_SPAWN_EXTRA[rarity]}\n\nType **`.catch`** to try catching it!",
@@ -243,28 +183,21 @@ class PokemonSpawn(commands.Cog):
             embed.set_image(url=sprite)
             embed.set_footer(text="First successful catch gets the Pokémon!")
             message = await channel.send(embed=embed)
-            pokemon_spawn_channels.update_one(
-                {"_id": guild.id},
-                {"$set": {"active": {"name": name, "pokedex_id": pokemon_id, "rarity": rarity, "message_id": message.id}}},
-                upsert=True,
-            )
+            pokemon_spawn_channels.update_one({"_id": guild.id}, {"$set": {"active": {"name": name, "pokedex_id": pokemon_id, "rarity": rarity, "message_id": message.id}}}, upsert=True)
         except Exception as exc:
             print(f"Pokemon spawn error in {guild.id}: {exc}")
 
     @tasks.loop(minutes=SPAWN_INTERVAL_MINUTES)
     async def spawn_loop(self):
-        for guild in self.bot.guilds:
-            await self.spawn_in_guild(guild)
+        for guild in self.bot.guilds: await self.spawn_in_guild(guild)
 
     @spawn_loop.before_loop
-    async def before_spawn_loop(self):
-        await self.bot.wait_until_ready()
+    async def before_spawn_loop(self): await self.bot.wait_until_ready()
 
     @commands.command(name="catch")
     @commands.guild_only()
     async def catch(self, ctx, ball: str = "pb"):
-        if pokemon_spawn_channels is None:
-            return
+        if pokemon_spawn_channels is None: return
         config = pokemon_spawn_channels.find_one({"_id": ctx.guild.id})
         if not config or not config.get("enabled") or not config.get("active"):
             await ctx.send("❌ There is no Pokémon to catch right now.")
@@ -282,10 +215,8 @@ class PokemonSpawn(commands.Cog):
             await ctx.send(f"❌ You don't have a {BALLS[ball]['name']}.")
             return
         active = config["active"]
-        rarity = active["rarity"]
         remove_ball(ctx.author.id, ball_db, 1)
-        chance = CATCH_RATES[ball][rarity]
-        if random.randint(1, 100) <= chance:
+        if random.randint(1, 100) <= CATCH_RATES[ball][active["rarity"]]:
             add_pokemon(ctx.author.id, active["name"])
             pokemon_spawn_channels.update_one({"_id": ctx.guild.id}, {"$unset": {"active": ""}})
             await ctx.send(f"🎉 **{ctx.author.display_name} caught {active['name']}!** {BALL_EMOJI[ball]}")
