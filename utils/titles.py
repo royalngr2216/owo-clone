@@ -15,12 +15,12 @@ TITLES = {
     "rapist": {"label": "Rapist", "price": 100_000_000,     "emoji": "🥈", "color": 0xB0B0B8},
     "azure fucker":  {"label": "Azure Fucker",  "price": 250_000_000,    "emoji": "🥇", "color": 0xFFD700},
     "madhav fucker":   {"label": "Madhav Fucker",   "price": 500_000_000,    "emoji": "💎", "color": 0x20D2D2},
-    "emiel fucker":  {"label": "Emiel Fucker",  "price": 750_000_000,  "emoji": "👑", "color": 0xA349E8},
+    "neel fucker":  {"label": "Neel Fucker",  "price": 750_000_000,  "emoji": "👑", "color": 0xA349E8},
     "qeight fucker":   {"label": "Qeight Fucker",   "price": 1_000_000_000, "emoji": "✨", "color": 0xED4A6B},
 }
 
 # Ordering used for display (cheapest -> most prestigious)
-TITLE_ORDER = ["i'm not into girls", "rapist", "azure fucker", "madhav fucker", "emiel fucker", "qeight fucker"]
+TITLE_ORDER = ["i'm not into girls", "rapist", "azure fucker", "madhav fucker", "neel fucker", "qeight fucker"]
 
 
 def _user(user_id):
