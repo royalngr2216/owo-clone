@@ -3,7 +3,7 @@ import discord
 import random
 
 from utils.economy import add_cash, format_cash, create_account
-from utils.pokemon_db import db, log_neel_event, get_neel_log
+from utils.pokemon_db import db, get_pokemon_data, log_neel_event, get_neel_log
 
 # Neel should be useful, but selling a Pokémon should not print millions.
 SELL_PRICE_RANGES = {
@@ -54,6 +54,11 @@ RARITY_COLORS = {
     "mythical": 0xE91E63,
 }
 
+
+def _normalize_name(name):
+    return "".join(c.lower() for c in str(name) if c.isalnum())
+
+
 class Neel(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -74,20 +79,60 @@ class Neel(commands.Cog):
         if not pokemon_name:
             await ctx.send(embed=discord.Embed(description="**Usage:** `.neel sell <Pokémon>`\n**Example:** `.neel sell Rayquaza`", color=0xED4245))
             return
+        if db is None:
+            await ctx.send(embed=discord.Embed(description="❌ MongoDB is not configured.", color=0xED4245))
+            return
+
         create_account(ctx.author.id)
         uid = str(ctx.author.id)
-        pname = pokemon_name.strip().lower()
-        poke_doc = db.pokemon_collection.find_one({"user_id": uid, "name": pname})
+        requested = pokemon_name.strip()
+        requested_key = _normalize_name(requested)
+
+        # Current Pokémon storage keeps a user's collection in one document:
+        # {_id: user_id, inventory: ["electrike", ...]}. Older Neel code expected
+        # one document per Pokémon ({user_id, name}), so support both schemas.
+        poke_doc = db.pokemon_collection.find_one({"user_id": uid, "name": requested.lower()})
+        storage = "legacy"
+        actual_name = requested.lower()
+
+        if not poke_doc:
+            user_doc = get_pokemon_data(ctx.author.id)
+            inventory = [str(x) for x in user_doc.get("inventory", [])]
+            for item in inventory:
+                if _normalize_name(item) == requested_key:
+                    actual_name = item
+                    poke_doc = user_doc
+                    storage = "inventory"
+                    break
+
         if not poke_doc:
             await ctx.send(embed=discord.Embed(description=f"❌ You don't own a **{pokemon_name.title()}**.", color=0xED4245))
             return
-        display = poke_doc.get("display", pname.title())
-        rarity = get_sale_rarity(poke_doc.get("pokedex_id"))
+
+        if storage == "legacy":
+            display = poke_doc.get("display", actual_name.title())
+            rarity = get_sale_rarity(poke_doc.get("pokedex_id"))
+        else:
+            display = actual_name.replace("-", " ").title()
+            rarity = "common"
+
         low, high = SELL_PRICE_RANGES[rarity]
         price = random.randint(low, high)
         flavor = random.choice(SELL_FLAVOR_TEXT)
-        db.pokemon_collection.delete_one({"user_id": uid, "name": pname})
-        db.pokemon_teams.update_one({"user_id": uid}, {"$pull": {"team": pname}})
+
+        if storage == "legacy":
+            db.pokemon_collection.delete_one({"_id": poke_doc["_id"]})
+            db.pokemon_teams.update_one({"user_id": ctx.author.id}, {"$pull": {"team": actual_name}})
+        else:
+            db.pokemon_collection.update_one(
+                {"_id": ctx.author.id},
+                {"$pull": {"inventory": actual_name}, "$inc": {"caught_count": -1}},
+            )
+            db.pokemon_collection.update_one(
+                {"_id": ctx.author.id},
+                {"$pull": {"team": actual_name}},
+            )
+
         add_cash(ctx.author.id, price)
         log_neel_event("sale", seller_id=uid, pokemon_display=display, rarity=rarity, price=price)
         embed = discord.Embed(title="💰 DEAL COMPLETE", color=RARITY_COLORS[rarity])
@@ -98,11 +143,13 @@ class Neel(commands.Cog):
         embed.set_footer(text="Your balance has been updated.")
         await ctx.send(embed=embed)
 
+
 def _format_log_line(entry: dict) -> str:
     if entry.get("type") == "steal":
         return f"🥷 Stole **{entry.get('pokemon_display', 'a Pokémon')}** from <@{entry.get('user_id')}>"
     price = entry.get("price", 0)
     return f"💰 Bought **{entry.get('pokemon_display', 'a Pokémon')}** from <@{entry.get('seller_id')}>\nPaid: **{price:,} NGR**"
+
 
 async def setup(bot):
     await bot.add_cog(Neel(bot))
