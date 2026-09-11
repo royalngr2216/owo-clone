@@ -18,8 +18,25 @@ def sprite_url(name: str) -> str:
     return f"https://play.pokemonshowdown.com/sprites/gen9/{_clean(name)}.png"
 
 
-def spawn_gif_url(name: str) -> str:
-    return f"https://play.pokemonshowdown.com/sprites/ani/{_clean(name)}.gif"
+def spawn_gif_url(name: str, pokedex_id: int = None, pokemon_data: dict = None) -> str:
+    # PokeAPI's Showdown sprite is the most reliable source for animated sprites,
+    # especially for newer Pokémon such as Iron Valiant that are not in Showdown's
+    # legacy /sprites/ani/ directory. It also correctly handles names like Ho-Oh.
+    if pokemon_data:
+        showdown = (
+            pokemon_data.get("sprites", {})
+            .get("other", {})
+            .get("showdown", {})
+            .get("front_default")
+        )
+        if showdown:
+            return showdown
+
+    # Fallback to the classic Showdown animated sprite directory.
+    slug = str(name).lower().replace(" ", "-").replace(".", "").replace("'", "")
+    # Zygarde's default/50% form is stored as zygarde.gif, not zygarde-50.gif.
+    slug = slug.replace("-50-percent", "").replace("-50%", "").replace("-50", "")
+    return f"https://play.pokemonshowdown.com/sprites/ani/{slug}.gif"
 
 
 def normalize_name(name: str) -> str:
@@ -329,7 +346,7 @@ class PokemonSpawn(commands.Cog):
                 else:
                     chance_text = f"**{chance}%** • {RARITY_LABELS[rarity]} Pokémon"
                 embed.add_field(name=f"{BALL_EMOJI[ball_key]}  {ball_name}", value=f"`.catch {ball_key} {name.lower()}`\n{chance_text}", inline=True)
-            embed.set_image(url=spawn_gif_url(name))
+            embed.set_image(url=spawn_gif_url(name, pokemon_id, data))
             embed.set_footer(text="First successful catch gets the Pokémon!  •  Pokédex lore from PokéAPI")
 
             message=await channel.send(embed=embed)
@@ -353,7 +370,7 @@ class PokemonSpawn(commands.Cog):
             await ctx.send("❌ There is no Pokémon to catch right now.")
             return
         if config.get("channel_id") != ctx.channel.id:
-            await ctx.send(f"❌ Pokémon are spawning in <#{config.get('channel_id')}>.")
+            await ctx.send(f"❌ Pokémon are spawning in <#{config.get('channel_id')}>")
             return
         if not ball or not pokemon_name:
             await ctx.send("❌ Use `.catch pokeball <name>`, `.catch ultraball <name>`, or `.catch masterball <name>`.")
