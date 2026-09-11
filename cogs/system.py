@@ -48,10 +48,12 @@ HELP_CATEGORIES = {
     ),
     "🐉 Pokémon": (
         "**.spawn**\nView Pokémon spawn status.\n\n"
-        "**.catch [pb/ub/mb]**\nTry to catch the active Pokémon.\n\n"
+        "**.catch pokeball**\nCatch with a Poké Ball.\n\n"
+        "**.catch ultraball**\nCatch with an Ultra Ball.\n\n"
+        "**.catch masterball**\nCatch with a Master Ball.\n\n"
         "**.balls [user]**\nView Poké Balls.\n\n"
-        "**.pokemons [user]**\nView your Pokémon collection.\n\n"
-        "**.dex [user]**\nView your Pokédex.\n\n"
+        "**.pokemons**\nView your full Pokémon collection with images, rarity and pagination.\n\n"
+        "**.dex** / **.pokedex**\nView your unique Pokédex, sorted by Pokédex number.\n\n"
         "**.pokemart**\nBrowse the Pokémon marketplace.\n\n"
         "**.pokecheck @user**\nView a trainer's listings.\n\n"
         "**.pokemon sell <pokemon> <price>**\nList a Pokémon for sale.\n\n"
@@ -67,14 +69,14 @@ HELP_CATEGORIES = {
         "**.titles equip <name>**\nEquip a title.\n\n"
         "**.titles unequip**\nUnequip your title."
     ),
-    "⚙ Utility": (
-        "**.ping**\nView bot latency.\n\n"
-        "**.stop**\nStop an active supported game."
-    ),
     "🛡️ Admin": (
         "**.spawn set #channel**\nEnable Pokémon spawns in a channel.\n\n"
         "**.spawn disable**\nDisable Pokémon spawns.\n\n"
-        "**.forcespawn**\nForce a new Pokémon spawn immediately, even if one is already active."
+        "**.forcespawn**\nForce a new Pokémon spawn even if one is already active."
+    ),
+    "⚙ Utility": (
+        "**.ping**\nView bot latency.\n\n"
+        "**.stop**\nStop an active supported game."
     ),
 }
 
@@ -85,20 +87,11 @@ class HelpDropdown(discord.ui.Select):
             discord.SelectOption(label=category, description=f"View {category} commands")
             for category in HELP_CATEGORIES
         ]
-        super().__init__(
-            placeholder="Select a category...",
-            min_values=1,
-            max_values=1,
-            options=options,
-        )
+        super().__init__(placeholder="Select a category...", min_values=1, max_values=1, options=options)
 
     async def callback(self, interaction: discord.Interaction):
         category = self.values[0]
-        embed = discord.Embed(
-            title=category,
-            description=HELP_CATEGORIES[category],
-            color=0x5865F2,
-        )
+        embed = discord.Embed(title=category, description=HELP_CATEGORIES[category], color=0x5865F2)
         embed.set_footer(text="SARKARI ADDA Economy System")
         await interaction.response.edit_message(embed=embed, view=self.view)
 
@@ -115,22 +108,14 @@ class System(commands.Cog):
 
     @commands.command(name="help")
     async def help(self, ctx):
-        embed = discord.Embed(
-            title="SARKARI ADDA HELP",
-            description="Economy, activities, games, casino and Pokémon commands.\n\nSelect a category below.",
-            color=0x5865F2,
-        )
+        embed = discord.Embed(title="SARKARI ADDA HELP", description="Economy, activities, games, casino and Pokémon commands.\n\nSelect a category below.", color=0x5865F2)
         embed.set_footer(text="SARKARI ADDA Economy System")
         await ctx.send(embed=embed, view=HelpView())
 
     @commands.command(name="leaderboard")
     async def leaderboard(self, ctx):
         async with ctx.typing():
-            top_docs = list(
-                economy_collection.find({"cash": {"$gt": 0}})
-                .sort("cash", -1)
-                .limit(10)
-            )
+            top_docs = list(economy_collection.find({"cash": {"$gt": 0}}).sort("cash", -1).limit(10))
             top_entries = []
             top_ids = set()
             for index, user in enumerate(top_docs):
@@ -147,14 +132,7 @@ class System(commands.Cog):
                 except Exception:
                     name = f"User {user_id}"
                     avatar_url = "https://cdn.discordapp.com/embed/avatars/0.png"
-                top_entries.append({
-                    "rank": index + 1,
-                    "name": name,
-                    "cash": cash,
-                    "user_id": user_id,
-                    "avatar_url": avatar_url,
-                    "title_key": get_equipped(user_id),
-                })
+                top_entries.append({"rank": index + 1, "name": name, "cash": cash, "user_id": user_id, "avatar_url": avatar_url, "title_key": get_equipped(user_id)})
             if not top_entries:
                 await ctx.send(embed=discord.Embed(description="❌ No one has any cash yet.", color=0xED4245))
                 return
@@ -164,23 +142,13 @@ class System(commands.Cog):
                 my_cash = my_doc.get("cash", 0) if my_doc else 0
                 if my_cash > 0:
                     my_rank = economy_collection.count_documents({"cash": {"$gt": my_cash}}) + 1
-                    requester_entry = {
-                        "rank": my_rank,
-                        "name": ctx.author.display_name,
-                        "cash": my_cash,
-                        "user_id": ctx.author.id,
-                        "avatar_url": str(ctx.author.display_avatar.url),
-                        "title_key": get_equipped(ctx.author.id),
-                    }
+                    requester_entry = {"rank": my_rank, "name": ctx.author.display_name, "cash": my_cash, "user_id": ctx.author.id, "avatar_url": str(ctx.author.display_avatar.url), "title_key": get_equipped(ctx.author.id)}
             try:
                 buf = await render_leaderboard(top_entries, requester_entry, format_cash)
                 await ctx.send(file=discord.File(buf, filename="leaderboard.png"))
             except Exception:
                 embed = discord.Embed(title="LEADERBOARD", color=0xF1C40F)
-                embed.description = "\n\n".join(
-                    f"**#{entry['rank']} {entry['name']}**\n{format_cash(entry['cash'])}"
-                    for entry in top_entries
-                )
+                embed.description = "\n\n".join(f"**#{entry['rank']} {entry['name']}**\n{format_cash(entry['cash'])}" for entry in top_entries)
                 await ctx.send(embed=embed)
 
     @commands.command(name="stop")
@@ -191,10 +159,7 @@ class System(commands.Cog):
             if ctx.channel.id in games:
                 del games[ctx.channel.id]
                 stopped = True
-        embed = discord.Embed(
-            description="🛑 Active game stopped." if stopped else "❌ No active game.",
-            color=0xED4245,
-        )
+        embed = discord.Embed(description="🛑 Active game stopped." if stopped else "❌ No active game.", color=0xED4245)
         await ctx.send(embed=embed)
 
     @commands.command(name="ping")
