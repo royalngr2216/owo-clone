@@ -6,7 +6,7 @@ from utils.titles import get_equipped
 from utils.leaderboard_render import render_leaderboard
 
 HELP_CATEGORIES = {
-    "💰 Economy": "**.cash [user]**\nView your balance.\n\n**.daily** · **.weekly** · **.monthly**\nClaim rewards.\n\n**.give @user amount**\nTransfer cash.\n\n**.donate @user amount**\nDonate cash.\n\n**.rob @user**\nAttempt a robbery.\n\n**.steal @user**\nAttempt a steal.",
+    "💰 Economy": "**.cash [user]**\nView your balance.\n\n**.daily** · **.weekly** · **.monthly**\nClaim rewards.\n\n**.give @user amount**\nTransfer cash.\n\n**.donate @user amount**\nDonate cash.\n\n**.rob @user**\nAttempt a robbery.",
     "🎒 Items": "**.shop**\nOpen the item shop / Poké Mart.\n\n**.inventory**\nView your inventory.\n\n**.sell item amount**\nSell items.\n\n**.padlock**\nView your protection status.",
     "⚒ Workers": "**.workers**\nView your workers.\n\n**.claim**\nClaim worker earnings.\n\n**.upgrade worker-1**\nUpgrade a worker.",
     "🌎 Activities": "**.job**\nWork for cash.\n\n**.fish**\nGo fishing.\n\n**.hunt**\nGo hunting.\n\n**.mine**\nGo mining.",
