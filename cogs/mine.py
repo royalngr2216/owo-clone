@@ -32,10 +32,6 @@ ORES = {
 }
 
 
-# ─────────────────────────
-# HELPERS
-# ─────────────────────────
-
 def progress_bar(step, total=5):
     filled = int((step / total) * 10)
     bar = "█" * filled + "░" * (10 - filled)
@@ -146,7 +142,7 @@ class Mine(commands.Cog):
                 f"{progress_bar(step)}"
             )
             if i == 3:
-                embed.color = 0xF1C40F  # flash gold when "struck"
+                embed.color = 0xF1C40F
             try:
                 await msg.edit(embed=embed)
             except:
@@ -154,79 +150,36 @@ class Mine(commands.Cog):
 
         await asyncio.sleep(0.75)
 
-        # ─────────────────────────
-        # EVENTS
-        # ─────────────────────────
-
-        # ─── CAVE COLLAPSE ───
         if risk_roll <= 5:
             loss = random.randint(50000, 150000)
             cash = get_cash(ctx.author.id)
             if loss > cash:
                 loss = cash
             remove_cash(ctx.author.id, loss)
-
-            embed = discord.Embed(
-                title="⛰️ CAVE COLLAPSE",
-                description=(
-                    "**CRACK — the ceiling gives way!**\n\n"
-                    "Rocks rain down around you.\n"
-                    "You sprint for the exit, barely making it out alive.\n\n"
-                    "Your tools and pocket change scatter everywhere."
-                ),
-                color=0xED4245
-            )
+            embed = discord.Embed(title="⛰️ CAVE COLLAPSE", description=("**CRACK — the ceiling gives way!**\n\nRocks rain down around you.\nYou sprint for the exit, barely making it out alive.\n\nYour tools and pocket change scatter everywhere."), color=0xED4245)
             embed.add_field(name="💸 Lost while fleeing", value=f"**{format_cash(loss)}**", inline=True)
             embed.set_footer(text="ECHLEON • You survived... barely.")
             await msg.edit(embed=embed)
             return
 
-        # ─── LAVA DISASTER ───
         if risk_roll <= 10:
             add_cash(ctx.author.id, MINE_REWARD)
-            embed = discord.Embed(
-                title="🌋 LAVA SURGE",
-                description=(
-                    "You found a rich vein of ore...\n\n"
-                    "Then lava burst through the wall and\n"
-                    "swallowed everything. You ran.\n\n"
-                    "At least you grabbed your cash first."
-                ),
-                color=0xE67E22
-            )
+            embed = discord.Embed(title="🌋 LAVA SURGE", description=("You found a rich vein of ore...\n\nThen lava burst through the wall and\nswallowed everything. You ran.\n\nAt least you grabbed your cash first."), color=0xE67E22)
             embed.add_field(name="💰 Escaped with", value=f"**{format_cash(MINE_REWARD)}**", inline=True)
             embed.set_footer(text="ECHLEON • Could've been worse.")
             await msg.edit(embed=embed)
             return
 
-        # ─── ANCIENT MINER ───
         if risk_roll <= 15:
-            embed = discord.Embed(
-                title="👴 THE ANCIENT MINER",
-                description=(
-                    "A shadowy figure steps out from the darkness.\n\n"
-                    "**\"These mines have belonged to me for 300 years.\"**\n\n"
-                    "Before you could react, he vanished —\n"
-                    "along with everything you found."
-                ),
-                color=0xED4245
-            )
+            embed = discord.Embed(title="👴 THE ANCIENT MINER", description=("A shadowy figure steps out from the darkness.\n\n**\"These mines have belonged to me for 300 years.\"**\n\nBefore you could react, he vanished —\nalong with everything you found."), color=0xED4245)
             embed.set_footer(text="ECHLEON • Some forces are beyond your control.")
             await msg.edit(embed=embed)
             return
 
-        # ─── NORMAL SUCCESS ───
         add_cash(ctx.author.id, MINE_REWARD)
-
-        # FIX: atomic inventory update
-        economy_collection.update_one(
-            {"user_id": str(ctx.author.id)},
-            {"$inc": {f"inventory.{selected_ore}": 1}}
-        )
-
+        economy_collection.update_one({"user_id": str(ctx.author.id)}, {"$inc": {f"inventory.{selected_ore}": 1}})
         rarity_label, rarity_color = get_rarity(ore_data["chance"])
 
-        # LEGENDARY EXTRA SUSPENSE
         if ore_data["chance"] <= 2:
             await asyncio.sleep(0.5)
             embed.description = "🌌 **The ore is pulsating with unknown energy...**\n\n`[██████████] 100%`"
@@ -238,36 +191,17 @@ class Mine(commands.Cog):
             await asyncio.sleep(1.0)
 
         ore_display = selected_ore.replace("_", " ").title()
-
-        embed = discord.Embed(
-            title="⛏️ MINING SUCCESS",
-            color=rarity_color
-        )
-        embed.add_field(
-            name="💰 Earned",
-            value=f"**{format_cash(MINE_REWARD)}**",
-            inline=True
-        )
-        embed.add_field(
-            name=f"{ore_data['emoji']} Found",
-            value=f"**{ore_display}**",
-            inline=True
-        )
-        embed.add_field(
-            name="✨ Rarity",
-            value=rarity_label,
-            inline=True
-        )
+        embed = discord.Embed(title="⛏️ MINING SUCCESS", color=rarity_color)
+        embed.add_field(name="💰 Earned", value=f"**{format_cash(MINE_REWARD)}**", inline=True)
+        embed.add_field(name=f"{ore_data['emoji']} Found", value=f"**{ore_display}**", inline=True)
+        embed.add_field(name="✨ Rarity", value=rarity_label, inline=True)
         from utils.items import MINING_ITEMS
         ore_price = next((i["price"] for i in MINING_ITEMS if i["name"] == selected_ore), 0)
         embed.set_footer(text=f"ECHLEON • Mine  •  Ore value: {format_cash(ore_price)}")
-
         await msg.edit(embed=embed)
-
         add_stats(ctx.author.id, total_mines=1)
         await check_achievements(self.bot, ctx.author)
 
 
 async def setup(bot):
     await bot.add_cog(Mine(bot))
-    
