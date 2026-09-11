@@ -5,7 +5,6 @@ import random
 from utils.economy import add_cash, format_cash, create_account
 from utils.pokemon_db import db, get_pokemon_data, log_neel_event, get_neel_log
 
-# Neel should be useful, but selling a Pokémon should not print millions.
 SELL_PRICE_RANGES = {
     "common":      (500, 1_500),
     "pseudo":      (8_000, 15_000),
@@ -26,8 +25,7 @@ SELL_FLAVOR_TEXT = [
 ]
 NEEL_COLOR = 0x2B2D31
 
-# Keep this cog independent from pokemon_spawn.py. A broken optional spawn cog
-# must never prevent .neel from loading.
+
 def get_sale_rarity(pokedex_id):
     if pokedex_id is None:
         return "common"
@@ -88,9 +86,8 @@ class Neel(commands.Cog):
         requested = pokemon_name.strip()
         requested_key = _normalize_name(requested)
 
-        # Current Pokémon storage keeps a user's collection in one document:
-        # {_id: user_id, inventory: ["electrike", ...]}. Older Neel code expected
-        # one document per Pokémon ({user_id, name}), so support both schemas.
+        # Support both the old one-document-per-Pokémon schema and the current
+        # single-user inventory schema.
         poke_doc = db.pokemon_collection.find_one({"user_id": uid, "name": requested.lower()})
         storage = "legacy"
         actual_name = requested.lower()
@@ -124,13 +121,34 @@ class Neel(commands.Cog):
             db.pokemon_collection.delete_one({"_id": poke_doc["_id"]})
             db.pokemon_teams.update_one({"user_id": ctx.author.id}, {"$pull": {"team": actual_name}})
         else:
+            # `.neel sell` permanently sells the Pokémon(s) from the collection.
+            # Remove EVERY matching copy, including differently-cased/formatted
+            # names, so it cannot remain visible in `.pokemons` afterward.
+            inventory = [str(x) for x in poke_doc.get("inventory", [])]
+            remaining_inventory = [
+                item for item in inventory
+                if _normalize_name(item) != requested_key
+            ]
+            sold_count = len(inventory) - len(remaining_inventory)
+            new_caught_count = max(0, int(poke_doc.get("caught_count", len(inventory))) - sold_count)
+
             db.pokemon_collection.update_one(
                 {"_id": ctx.author.id},
-                {"$pull": {"inventory": actual_name}, "$inc": {"caught_count": -1}},
+                {"$set": {
+                    "inventory": remaining_inventory,
+                    "caught_count": new_caught_count,
+                }},
             )
+            # Remove the sold Pokémon from the active team too, including all
+            # matching name variants.
+            team = [str(x) for x in poke_doc.get("team", [])]
+            remaining_team = [
+                item for item in team
+                if _normalize_name(item) != requested_key
+            ]
             db.pokemon_collection.update_one(
                 {"_id": ctx.author.id},
-                {"$pull": {"team": actual_name}},
+                {"$set": {"team": remaining_team}},
             )
 
         add_cash(ctx.author.id, price)
