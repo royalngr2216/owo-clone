@@ -3,16 +3,16 @@ import discord
 # ─────────────────────────────────────────────────────────────────
 # SHARED BRAND FOOTER
 # ─────────────────────────────────────────────────────────────────
-# A handful of cogs (e.g. rob.py) already stamp "ECHLEON" in their
+# A handful of cogs (e.g. rob.py) already stamp "SARKARI ADDA" in their
 # footer, most don't. This makes it consistent everywhere without
 # stomping on footers that already carry useful info (timers, page
-# counts, etc.) — those get "ECHLEON  •  <existing text>" instead.
+# counts, etc.) — those get "SARKARI ADDA  •  <existing text>" instead.
 
-BRAND = "ECHLEON"
+BRAND = "SARKARI ADDA"
 
 
 def brand(embed: discord.Embed, extra: str | None = None) -> discord.Embed:
-    """Stamp the ECHLEON footer on an embed, preserving any existing footer text."""
+    """Stamp the SARKARI ADDA footer on an embed, preserving any existing footer text."""
     existing = embed.footer.text if embed.footer else None
     parts = [BRAND]
     if extra:
