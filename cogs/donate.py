@@ -100,7 +100,7 @@ class DonateView(discord.ui.View):
                 f"**{format_cash(self.amount)}** "
                 f"to {self.receiver.mention}.\n\n"
 
-                f"Emiel saw the donation\n"
+                f"Neel saw the donation\n"
                 f"and 🍇 you and stole "
                 f"**{format_cash(stolen_amount)}** "
                 f"on the way.\n\n"
