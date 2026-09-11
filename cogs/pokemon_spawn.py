@@ -50,6 +50,7 @@ RARITY_LABELS = {"mythical":"✨ Mythical","legendary":"👑 Legendary","ultra_b
 RARITY_EMBED_COLORS = {"mythical":0xFFD700,"legendary":0xA349E8,"ultra_beast":0x20D2D2,"pseudo":0xE86420,"common":0x57F287}
 RARITY_TEXT_COLORS = {"mythical":(255,215,0),"legendary":(163,73,232),"ultra_beast":(32,210,210),"pseudo":(232,100,32),"common":(87,242,135)}
 RARITY_SPAWN_EXTRA = {"mythical":"✨ **A MYTHICAL Pokémon has appeared — incredibly rare!** ✨","legendary":"👑 **A LEGENDARY Pokémon has appeared!** 👑","ultra_beast":"🔮 **An ULTRA BEAST has appeared!** 🔮","pseudo":"🔥 **A powerful Pseudo-Legendary has appeared!** 🔥","common":""}
+RARITY_SORT_ORDER = {"mythical": 0, "legendary": 1, "ultra_beast": 2, "pseudo": 3, "common": 4}
 
 
 def get_rarity(pokedex_id: int) -> str:
@@ -105,7 +106,9 @@ async def build_collection_image(items, title):
     for index, (item, sprite) in enumerate(zip(items, sprites)):
         row, col = divmod(index, 3)
         x, y = 35 + col*(card_w+gap), 90 + row*(card_h+gap)
-        draw.rounded_rectangle((x,y,x+card_w,y+card_h), radius=16, fill=(28,33,42), outline=(62,70,84), width=2)
+        rarity = item["rarity"]
+        rarity_color = RARITY_TEXT_COLORS[rarity]
+        draw.rounded_rectangle((x,y,x+card_w,y+card_h), radius=16, fill=(28,33,42), outline=rarity_color, width=3)
         if sprite:
             sprite.thumbnail((150,150), Image.Resampling.LANCZOS)
             image.paste(sprite, (x+(card_w-sprite.width)//2,y+5), sprite)
@@ -113,7 +116,7 @@ async def build_collection_image(items, title):
             draw.text((x+100,y+65), "No image", fill=(150,155,165), font=small_font)
         draw.text((x+14,y+165), f"#{item['id']:03}", fill=(180,185,195), font=small_font)
         draw.text((x+14,y+188), item["name"], fill=(250,250,250), font=name_font)
-        draw.text((x+14,y+219), RARITY_LABELS[item["rarity"]], fill=RARITY_TEXT_COLORS[item["rarity"]], font=small_font)
+        draw.text((x+14,y+219), RARITY_LABELS[rarity], fill=rarity_color, font=small_font)
     output = io.BytesIO(); image.save(output, format="PNG"); output.seek(0); return output
 
 
@@ -122,44 +125,95 @@ class PokemonCollectionView(discord.ui.View):
         super().__init__(timeout=180)
         self.ctx, self.entries, self.title = ctx, entries, title
         self.page, self.per_page = 0, 9
+        self.sort_mode = "pokedex"
         self.total_pages = max(1, (len(entries)+8)//9)
+        self._sort_entries()
         self._update_buttons()
+
+    def _sort_entries(self):
+        if self.sort_mode == "rarity":
+            self.entries.sort(key=lambda x: (RARITY_SORT_ORDER.get(x["rarity"], 99), x["id"], x["name"].lower()))
+        else:
+            self.entries.sort(key=lambda x: (x["id"], x["name"].lower()))
+        self.total_pages = max(1, (len(self.entries)+self.per_page-1)//self.per_page)
+        self.page = min(self.page, self.total_pages - 1)
+
     def _update_buttons(self):
         self.previous.disabled = self.page <= 0
         self.next_button.disabled = self.page >= self.total_pages-1
+        self.rarity_sort.disabled = self.sort_mode == "rarity"
+        self.pokedex_sort.disabled = self.sort_mode == "pokedex"
+
     async def render(self):
-        current = self.entries[self.page*9:(self.page+1)*9]
+        current = self.entries[self.page*self.per_page:(self.page+1)*self.per_page]
         image = await build_collection_image(current, self.title)
         file = discord.File(image, filename="pokemon_collection.png")
-        embed = discord.Embed(title=self.title, description=f"Page **{self.page+1}/{self.total_pages}** • Sorted by **Pokédex #** (ascending)", color=0x5865F2)
+        sort_label = "Rarity" if self.sort_mode == "rarity" else "Pokédex #"
+        embed = discord.Embed(
+            title=self.title,
+            description=f"Page **{self.page+1}/{self.total_pages}** • Sorted by **{sort_label}**",
+            color=0x5865F2,
+        )
         embed.set_image(url="attachment://pokemon_collection.png")
         embed.set_footer(text=f"{len(self.entries)} {'unique species' if 'Pokédex' in self.title else 'Pokémon'} • 9 per page")
-        self._update_buttons(); return embed, file
+        self._update_buttons()
+        return embed, file
+
     async def interaction_check(self, interaction):
         if interaction.user.id != self.ctx.author.id:
-            await interaction.response.send_message("❌ This Pokémon list isn't yours.", ephemeral=True); return False
+            await interaction.response.send_message("❌ This Pokémon list isn't yours.", ephemeral=True)
+            return False
         return True
-    @discord.ui.button(label="◀", style=discord.ButtonStyle.secondary)
+
+    @discord.ui.button(label="✨ Rarity", style=discord.ButtonStyle.primary, row=0)
+    async def rarity_sort(self, interaction, button):
+        self.sort_mode = "rarity"
+        self.page = 0
+        self._sort_entries()
+        embed, file = await self.render()
+        await interaction.response.edit_message(embed=embed, attachments=[file], view=self)
+
+    @discord.ui.button(label="📖 Pokédex", style=discord.ButtonStyle.secondary, row=0)
+    async def pokedex_sort(self, interaction, button):
+        self.sort_mode = "pokedex"
+        self.page = 0
+        self._sort_entries()
+        embed, file = await self.render()
+        await interaction.response.edit_message(embed=embed, attachments=[file], view=self)
+
+    @discord.ui.button(label="◀", style=discord.ButtonStyle.secondary, row=1)
     async def previous(self, interaction, button):
-        self.page -= 1; embed, file = await self.render(); await interaction.response.edit_message(embed=embed, attachments=[file], view=self)
-    @discord.ui.button(label="▶", style=discord.ButtonStyle.primary)
+        self.page -= 1
+        embed, file = await self.render()
+        await interaction.response.edit_message(embed=embed, attachments=[file], view=self)
+
+    @discord.ui.button(label="▶", style=discord.ButtonStyle.primary, row=1)
     async def next_button(self, interaction, button):
-        self.page += 1; embed, file = await self.render(); await interaction.response.edit_message(embed=embed, attachments=[file], view=self)
+        self.page += 1
+        embed, file = await self.render()
+        await interaction.response.edit_message(embed=embed, attachments=[file], view=self)
 
 
 class PokemonSpawn(commands.Cog):
     SPAWN_INTERVAL_MINUTES = 30
     NATIONAL_DEX_MAX = 1025
+
     def __init__(self, bot): self.bot = bot
+
     async def cog_load(self):
         if not self.spawn_loop.is_running(): self.spawn_loop.start()
+
     def cog_unload(self): self.spawn_loop.cancel()
 
     async def _collection(self, ctx, unique=False):
-        if db is None: await ctx.send("❌ MongoDB is not configured."); return
+        if db is None:
+            await ctx.send("❌ MongoDB is not configured.")
+            return
         target = ctx.author
         inventory = [str(x) for x in get_pokemon_data(target.id).get("inventory", [])]
-        if not inventory: await ctx.send(f"📦 **{target.display_name}** has no Pokémon yet."); return
+        if not inventory:
+            await ctx.send(f"📦 **{target.display_name}** has no Pokémon yet.")
+            return
         names = list(dict.fromkeys(inventory))
         info = await asyncio.gather(*(fetch_pokemon_meta(name) for name in names))
         by_name = {normalize_name(x["name"]): x for x in info if x}
@@ -173,7 +227,8 @@ class PokemonSpawn(commands.Cog):
         entries.sort(key=lambda x: (x["id"], x["name"].lower()))
         title = f"📖 {target.display_name}'s Pokédex" if unique else f"📦 {target.display_name}'s Pokémon"
         view = PokemonCollectionView(ctx, entries, title)
-        embed, file = await view.render(); await ctx.send(embed=embed, file=file, view=view)
+        embed, file = await view.render()
+        await ctx.send(embed=embed, file=file, view=view)
 
     @commands.command(name="pokemons")
     async def pokemons(self, ctx): await self._collection(ctx, unique=False)
@@ -194,25 +249,34 @@ class PokemonSpawn(commands.Cog):
     @commands.guild_only()
     @commands.has_guild_permissions(manage_guild=True)
     async def spawn_set(self, ctx, channel: discord.TextChannel):
-        if pokemon_spawn_channels is None: await ctx.send("❌ MongoDB is not configured, so spawn settings cannot be saved."); return
+        if pokemon_spawn_channels is None:
+            await ctx.send("❌ MongoDB is not configured, so spawn settings cannot be saved.")
+            return
         pokemon_spawn_channels.update_one({"_id":ctx.guild.id},{"$set":{"channel_id":channel.id,"enabled":True}},upsert=True)
-        await ctx.send(f"✅ Pokémon spawns are now enabled in {channel.mention}.\nA Pokémon will spawn there every **{self.SPAWN_INTERVAL_MINUTES} minutes**."); await self.spawn_in_guild(ctx.guild)
+        await ctx.send(f"✅ Pokémon spawns are now enabled in {channel.mention}.\nA Pokémon will spawn there every **{self.SPAWN_INTERVAL_MINUTES} minutes**.")
+        await self.spawn_in_guild(ctx.guild)
 
     @spawn.command(name="disable")
     @commands.guild_only()
     @commands.has_guild_permissions(manage_guild=True)
     async def spawn_disable(self, ctx):
-        if pokemon_spawn_channels is not None: pokemon_spawn_channels.update_one({"_id":ctx.guild.id},{"$set":{"enabled":False},"$unset":{"active":""}},upsert=True)
+        if pokemon_spawn_channels is not None:
+            pokemon_spawn_channels.update_one({"_id":ctx.guild.id},{"$set":{"enabled":False},"$unset":{"active":""}},upsert=True)
         await ctx.send("🛑 Pokémon spawns have been disabled for this server.")
 
     @commands.command(name="forcespawn")
     @commands.guild_only()
     @commands.has_guild_permissions(manage_guild=True)
     async def force_spawn(self, ctx):
-        if pokemon_spawn_channels is None: await ctx.send("❌ MongoDB is not configured, so spawn settings cannot be used."); return
+        if pokemon_spawn_channels is None:
+            await ctx.send("❌ MongoDB is not configured, so spawn settings cannot be used.")
+            return
         config = pokemon_spawn_channels.find_one({"_id":ctx.guild.id})
-        if not config or not config.get("enabled"): await ctx.send("❌ Spawns are disabled. Use `.spawn set #channel` first."); return
-        await self.spawn_in_guild(ctx.guild, force=True); await ctx.send("⚡ Forced Pokémon spawn!")
+        if not config or not config.get("enabled"):
+            await ctx.send("❌ Spawns are disabled. Use `.spawn set #channel` first.")
+            return
+        await self.spawn_in_guild(ctx.guild, force=True)
+        await ctx.send("⚡ Forced Pokémon spawn!")
 
     async def spawn_in_guild(self, guild, force=False):
         if pokemon_spawn_channels is None: return
@@ -226,16 +290,20 @@ class PokemonSpawn(commands.Cog):
                 async with session.get(f"https://pokeapi.co/api/v2/pokemon/{pokemon_id}",timeout=aiohttp.ClientTimeout(total=8)) as response:
                     if response.status != 200: return
                     data = await response.json()
-            name = data["name"].replace("-"," ").title(); rarity=get_rarity(pokemon_id)
+            name = data["name"].replace("-"," ").title()
+            rarity = get_rarity(pokemon_id)
             embed=discord.Embed(title="✨ A wild Pokémon has appeared!",description=f"{RARITY_SPAWN_EXTRA[rarity]}\n\nCatch it with:\n**`.catch pokeball <name>`**\n**`.catch ultraball <name>`**\n**`.catch masterball <name>`**",color=RARITY_EMBED_COLORS[rarity])
-            embed.set_image(url=spawn_gif_url(name)); embed.set_footer(text="First successful catch gets the Pokémon!")
+            embed.set_image(url=spawn_gif_url(name))
+            embed.set_footer(text="First successful catch gets the Pokémon!")
             message=await channel.send(embed=embed)
             pokemon_spawn_channels.update_one({"_id":guild.id},{"$set":{"active":{"name":name,"pokedex_id":pokemon_id,"rarity":rarity,"message_id":message.id}}},upsert=True)
-        except Exception as exc: print(f"Pokemon spawn error in {guild.id}: {exc}")
+        except Exception as exc:
+            print(f"Pokemon spawn error in {guild.id}: {exc}")
 
     @tasks.loop(minutes=SPAWN_INTERVAL_MINUTES)
     async def spawn_loop(self):
         for guild in self.bot.guilds: await self.spawn_in_guild(guild)
+
     @spawn_loop.before_loop
     async def before_spawn_loop(self): await self.bot.wait_until_ready()
 
@@ -244,21 +312,40 @@ class PokemonSpawn(commands.Cog):
     async def catch(self, ctx, ball: str = None, *, pokemon_name: str = None):
         if pokemon_spawn_channels is None: return
         config=pokemon_spawn_channels.find_one({"_id":ctx.guild.id})
-        if not config or not config.get("enabled") or not config.get("active"): await ctx.send("❌ There is no Pokémon to catch right now."); return
-        if config.get("channel_id") != ctx.channel.id: await ctx.send(f"❌ Pokémon are spawning in <#{config.get('channel_id')}>."); return
-        if not ball or not pokemon_name: await ctx.send("❌ Use `.catch pokeball <name>`, `.catch ultraball <name>`, or `.catch masterball <name>`."); return
+        if not config or not config.get("enabled") or not config.get("active"):
+            await ctx.send("❌ There is no Pokémon to catch right now.")
+            return
+        if config.get("channel_id") != ctx.channel.id:
+            await ctx.send(f"❌ Pokémon are spawning in <#{config.get('channel_id')}>.")
+            return
+        if not ball or not pokemon_name:
+            await ctx.send("❌ Use `.catch pokeball <name>`, `.catch ultraball <name>`, or `.catch masterball <name>`.")
+            return
         ball=BALL_ALIASES.get(ball.lower(),ball.lower())
-        if ball not in BALLS: await ctx.send("❌ Ball must be `pokeball`, `ultraball`, or `masterball`."); return
+        if ball not in BALLS:
+            await ctx.send("❌ Ball must be `pokeball`, `ultraball`, or `masterball`.")
+            return
         active=config["active"]
-        if normalize_name(pokemon_name) != normalize_name(active["name"]): await ctx.send("❌ That's not the Pokémon that spawned. Check the image and try again."); return
-        balls=get_balls(ctx.author.id); ball_db=BALLS[ball]["db"]
-        if balls.get(ball_db,0)<=0: await ctx.send(f"❌ You don't have a {BALLS[ball]['name']}."); return
-        remove_ball(ctx.author.id,ball_db,1); rarity=active["rarity"]
+        if normalize_name(pokemon_name) != normalize_name(active["name"]):
+            await ctx.send("❌ That's not the Pokémon that spawned. Check the image and try again.")
+            return
+        balls=get_balls(ctx.author.id)
+        ball_db=BALLS[ball]["db"]
+        if balls.get(ball_db,0)<=0:
+            await ctx.send(f"❌ You don't have a {BALLS[ball]['name']}.")
+            return
+        remove_ball(ctx.author.id,ball_db,1)
+        rarity=active["rarity"]
         if random.randint(1,100)<=CATCH_RATES[ball][rarity]:
-            add_pokemon(ctx.author.id,active["name"]); pokemon_spawn_channels.update_one({"_id":ctx.guild.id},{"$unset":{"active":""}})
-            embed=discord.Embed(title="🎉 You caught it!",description=f"**Pokémon:** {active['name']}\n**Rarity:** {RARITY_LABELS[rarity]}\n**Pokédex #:** `{active['pokedex_id']:03}`\n**Ball Used:** {BALLS[ball]['name']}\n\n{active['name']} has been added to your collection!",color=RARITY_EMBED_COLORS[rarity]); embed.set_image(url=sprite_url(active["name"])); await ctx.send(embed=embed)
+            add_pokemon(ctx.author.id,active["name"])
+            pokemon_spawn_channels.update_one({"_id":ctx.guild.id},{"$unset":{"active":""}})
+            embed=discord.Embed(title="🎉 You caught it!",description=f"**Pokémon:** {active['name']}\n**Rarity:** {RARITY_LABELS[rarity]}\n**Pokédex #:** `{active['pokedex_id']:03}`\n**Ball Used:** {BALLS[ball]['name']}\n\n{active['name']} has been added to your collection!",color=RARITY_EMBED_COLORS[rarity])
+            embed.set_image(url=sprite_url(active["name"]))
+            await ctx.send(embed=embed)
         else:
-            embed=discord.Embed(title="💨 The Pokémon broke free!",description=f"The wild **{active['name']}** escaped!\n**Ball Used:** {BALLS[ball]['name']}",color=0xED4245); embed.set_image(url=sprite_url(active["name"])); await ctx.send(embed=embed)
+            embed=discord.Embed(title="💨 The Pokémon broke free!",description=f"The wild **{active['name']}** escaped!\n**Ball Used:** {BALLS[ball]['name']}",color=0xED4245)
+            embed.set_image(url=sprite_url(active["name"]))
+            await ctx.send(embed=embed)
 
 
 async def setup(bot): await bot.add_cog(PokemonSpawn(bot))
