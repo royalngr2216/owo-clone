@@ -18,8 +18,9 @@ def _clean(name: str) -> str:
 
 
 def gif_url(name: str) -> str:
-    # Pokémon Showdown Gen 9 National Dex animated sprite.
-    return f"https://play.pokemonshowdown.com/sprites/gen9ani/{_clean(name)}.gif"
+    # Pokémon Showdown's current animated National Dex sprites.
+    # The animated sprite directory is /sprites/ani/ (not /sprites/gen9ani/).
+    return f"https://play.pokemonshowdown.com/sprites/ani/{_clean(name)}.gif"
 
 
 BALLS = {
@@ -153,7 +154,6 @@ class PokemonSpawn(commands.Cog):
         if not config or not config.get("enabled"):
             await ctx.send("❌ Spawns are disabled. Use `.spawn set #channel` first.")
             return
-        # Force means exactly that: always create a new spawn, even when one is active.
         await self.spawn_in_guild(ctx.guild, force=True)
         await ctx.send("⚡ Forced Pokémon spawn!")
 
