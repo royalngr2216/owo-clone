@@ -177,11 +177,7 @@ class PokemonCollectionView(discord.ui.View):
         image = await build_collection_image(current, self.title)
         file = discord.File(image, filename="pokemon_collection.png")
         sort_label = "Rarity" if self.sort_mode == "rarity" else "Pokédex #"
-        embed = discord.Embed(
-            title=self.title,
-            description=f"Page **{self.page+1}/{self.total_pages}** • Sorted by **{sort_label}**",
-            color=0x5865F2,
-        )
+        embed = discord.Embed(title=self.title, description=f"Page **{self.page+1}/{self.total_pages}** • Sorted by **{sort_label}**", color=0x5865F2)
         embed.set_image(url="attachment://pokemon_collection.png")
         embed.set_footer(text=f"{len(self.entries)} {'unique species' if 'Pokédex' in self.title else 'Pokémon'} • 9 per page")
         self._update_buttons()
@@ -207,7 +203,7 @@ class PokemonCollectionView(discord.ui.View):
         self.page = 0
         self._sort_entries()
         embed, file = await self.render()
-        await interaction.response.edit_message_message(embed=embed, attachments=[file], view=self)
+        await interaction.response.edit_message(embed=embed, attachments=[file], view=self)
 
     @discord.ui.button(label="◀", style=discord.ButtonStyle.secondary, row=1)
     async def previous(self, interaction, button):
@@ -323,16 +319,8 @@ class PokemonSpawn(commands.Cog):
             lore = await fetch_pokemon_lore(pokemon_id)
             types = " / ".join(x["type"]["name"].title() for x in data.get("types", [])) or "Unknown"
 
-            embed = discord.Embed(
-                title="✨ A wild Pokémon has appeared!",
-                description=f"> {lore}",
-                color=RARITY_EMBED_COLORS[rarity],
-            )
-            embed.add_field(
-                name=f"{name}  •  {RARITY_LABELS[rarity]}",
-                value=f"**Pokédex:** `#{pokemon_id:03}`  •  **Type:** {types}",
-                inline=False,
-            )
+            embed = discord.Embed(title="✨ A wild Pokémon has appeared!", description=f"> {lore}", color=RARITY_EMBED_COLORS[rarity])
+            embed.add_field(name=f"{name}  •  {RARITY_LABELS[rarity]}", value=f"**Pokédex:** `#{pokemon_id:03}`  •  **Type:** {types}", inline=False)
             for ball_key in ("pokeball", "ultraball", "masterball"):
                 ball_name = BALLS[ball_key]["name"]
                 chance = CATCH_RATES[ball_key][rarity]
@@ -340,11 +328,7 @@ class PokemonSpawn(commands.Cog):
                     chance_text = f"**{chance}%** • Guaranteed"
                 else:
                     chance_text = f"**{chance}%** • {RARITY_LABELS[rarity]} Pokémon"
-                embed.add_field(
-                    name=f"{BALL_EMOJI[ball_key]}  {ball_name}",
-                    value=f"`.catch {ball_key} {name.lower()}`\n{chance_text}",
-                    inline=True,
-                )
+                embed.add_field(name=f"{BALL_EMOJI[ball_key]}  {ball_name}", value=f"`.catch {ball_key} {name.lower()}`\n{chance_text}", inline=True)
             embed.set_image(url=spawn_gif_url(name))
             embed.set_footer(text="First successful catch gets the Pokémon!  •  Pokédex lore from PokéAPI")
 
