@@ -62,6 +62,7 @@ def get_rarity(pokedex_id: int) -> str:
 
 
 _META_CACHE = {}
+_LORE_CACHE = {}
 
 
 async def fetch_pokemon_meta(name: str):
@@ -80,6 +81,34 @@ async def fetch_pokemon_meta(name: str):
         return meta
     except Exception:
         return None
+
+
+async def fetch_pokemon_lore(pokedex_id: int):
+    if pokedex_id in _LORE_CACHE:
+        return _LORE_CACHE[pokedex_id]
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(f"https://pokeapi.co/api/v2/pokemon-species/{pokedex_id}", timeout=aiohttp.ClientTimeout(total=8)) as response:
+                if response.status != 200:
+                    return "No Pokédex entry available."
+                data = await response.json()
+
+        entries = [x for x in data.get("flavor_text_entries", []) if x.get("language", {}).get("name") == "en"]
+        if not entries:
+            return "No Pokédex entry available."
+
+        # Prefer a classic Pokédex entry when available, then fall back to the first English entry.
+        preferred_versions = ("leafgreen", "firered", "emerald", "crystal", "gold", "silver", "red", "blue")
+        chosen = next(
+            (x for version in preferred_versions for x in entries
+             if x.get("version", {}).get("name") == version),
+            entries[0],
+        )
+        lore = " ".join(str(chosen.get("flavor_text", "")).replace("\n", " ").replace("\f", " ").split())
+        _LORE_CACHE[pokedex_id] = lore or "No Pokédex entry available."
+        return _LORE_CACHE[pokedex_id]
+    except Exception:
+        return "No Pokédex entry available."
 
 
 async def build_collection_image(items, title):
@@ -292,9 +321,37 @@ class PokemonSpawn(commands.Cog):
                     data = await response.json()
             name = data["name"].replace("-"," ").title()
             rarity = get_rarity(pokemon_id)
-            embed=discord.Embed(title="✨ A wild Pokémon has appeared!",description=f"{RARITY_SPAWN_EXTRA[rarity]}\n\nCatch it with:\n**`.catch pokeball <name>`**\n**`.catch ultraball <name>`**\n**`.catch masterball <name>`**",color=RARITY_EMBED_COLORS[rarity])
+            lore = await fetch_pokemon_lore(pokemon_id)
+            types = " / ".join(x["type"]["name"].title() for x in data.get("types", [])) or "Unknown"
+
+            embed = discord.Embed(
+                title="✨ A wild Pokémon has appeared!",
+                description=f"> {lore}",
+                color=RARITY_EMBED_COLORS[rarity],
+            )
+            embed.add_field(
+                name=f"{name}  •  {RARITY_LABELS[rarity]}",
+                value=f"**Pokédex:** `#{pokemon_id:03}`  •  **Type:** {types}",
+                inline=False,
+            )
+            embed.add_field(
+                name=f"{BALL_EMOJI['pokeball']}  Poké Ball",
+                value=f"`.catch pokeball {name.lower()}`\n**{CATCH_RATES['pokeball'][rarity]}%** catch rate",
+                inline=True,
+            )
+            embed.add_field(
+                name=f"{BALL_EMOJI['ultraball']}  Ultra Ball",
+                value=f"`.catch ultraball {name.lower()}`\n**{CATCH_RATES['ultraball'][rarity]}%** catch rate",
+                inline=True,
+            )
+            embed.add_field(
+                name=f"{BALL_EMOJI['masterball']}  Master Ball",
+                value=f"`.catch masterball {name.lower()}`\n**Guaranteed catch**",
+                inline=True,
+            )
             embed.set_image(url=spawn_gif_url(name))
-            embed.set_footer(text="First successful catch gets the Pokémon!")
+            embed.set_footer(text="First successful catch gets the Pokémon!  •  Pokédex lore from PokéAPI")
+
             message=await channel.send(embed=embed)
             pokemon_spawn_channels.update_one({"_id":guild.id},{"$set":{"active":{"name":name,"pokedex_id":pokemon_id,"rarity":rarity,"message_id":message.id}}},upsert=True)
         except Exception as exc:
