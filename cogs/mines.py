@@ -323,4 +323,3 @@ class MinesCog(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(MinesCog(bot))
-      
