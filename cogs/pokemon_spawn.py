@@ -301,6 +301,23 @@ class PokemonSpawn(commands.Cog):
             )
         await ctx.send("🛑 Pokémon spawns have been disabled for this server.")
 
+    @commands.command(name="forcespawn")
+    @commands.guild_only()
+    @commands.has_guild_permissions(manage_guild=True)
+    async def force_spawn(self, ctx):
+        if pokemon_spawn_channels is None:
+            await ctx.send("❌ MongoDB is not configured, so spawn settings cannot be used.")
+            return
+        config = pokemon_spawn_channels.find_one({"_id": ctx.guild.id})
+        if not config or not config.get("enabled"):
+            await ctx.send("❌ Spawns are disabled. Use `.spawn set #channel` first.")
+            return
+        if config.get("active"):
+            await ctx.send("⚠️ A Pokémon is already active. Catch it before forcing another spawn.")
+            return
+        await self.spawn_in_guild(ctx.guild)
+        await ctx.send("⚡ Forced Pokémon spawn!")
+
     async def spawn_in_guild(self, guild):
         if pokemon_spawn_channels is None:
             return
@@ -322,7 +339,7 @@ class PokemonSpawn(commands.Cog):
             sprite = data.get("sprites", {}).get("front_default") or sprite_url(name)
             embed = discord.Embed(
                 title="✨ A wild Pokémon has appeared!",
-                description=f"## {name}\n{RARITY_SPAWN_EXTRA[rarity]}\n\nType **`.catch`** to try catching it!",
+                description=f"{RARITY_SPAWN_EXTRA[rarity]}\n\nType **`.catch`** to try catching it!",
                 color=RARITY_EMBED_COLORS[rarity],
             )
             embed.set_image(url=sprite)
@@ -375,7 +392,7 @@ class PokemonSpawn(commands.Cog):
             pokemon_spawn_channels.update_one({"_id": ctx.guild.id}, {"$unset": {"active": ""}})
             await ctx.send(f"🎉 **{ctx.author.display_name} caught {active['name']}!** {BALL_EMOJI[ball]}")
         else:
-            await ctx.send(f"💨 {active['name']} broke free! Try another ball.")
+            await ctx.send(f"💨 **The Pokémon broke free!** Try another ball.")
 
     @catch.error
     async def catch_error(self, ctx, error):
