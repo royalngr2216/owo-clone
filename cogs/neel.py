@@ -9,9 +9,9 @@ from utils.pokemon_db import db, get_pokemon_data, log_neel_event, get_neel_log
 SELL_PRICE_RANGES = {
     "common":      (500, 1_500),
     "pseudo":      (8_000, 15_000),
-    "ultra_beast": (8_000, 15_000),
-    "legendary":   (20_000, 35_000),
-    "mythical":    (35_000, 50_000),
+    "ultra_beast": (60_000, 75_000),
+    "legendary":   (40_000, 60_000),
+    "mythical":    (75_000, 100_000),
 }
 SELL_FLAVOR_TEXT = [
     "This one's got great potential.",
