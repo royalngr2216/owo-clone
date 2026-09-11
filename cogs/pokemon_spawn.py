@@ -97,7 +97,6 @@ async def fetch_pokemon_lore(pokedex_id: int):
         if not entries:
             return "No Pokédex entry available."
 
-        # Prefer a classic Pokédex entry when available, then fall back to the first English entry.
         preferred_versions = ("leafgreen", "firered", "emerald", "crystal", "gold", "silver", "red", "blue")
         chosen = next(
             (x for version in preferred_versions for x in entries
@@ -208,7 +207,7 @@ class PokemonCollectionView(discord.ui.View):
         self.page = 0
         self._sort_entries()
         embed, file = await self.render()
-        await interaction.response.edit_message(embed=embed, attachments=[file], view=self)
+        await interaction.response.edit_message_message(embed=embed, attachments=[file], view=self)
 
     @discord.ui.button(label="◀", style=discord.ButtonStyle.secondary, row=1)
     async def previous(self, interaction, button):
@@ -334,21 +333,18 @@ class PokemonSpawn(commands.Cog):
                 value=f"**Pokédex:** `#{pokemon_id:03}`  •  **Type:** {types}",
                 inline=False,
             )
-            embed.add_field(
-                name=f"{BALL_EMOJI['pokeball']}  Poké Ball",
-                value=f"`.catch pokeball {name.lower()}`\n**{CATCH_RATES['pokeball'][rarity]}%** catch rate",
-                inline=True,
-            )
-            embed.add_field(
-                name=f"{BALL_EMOJI['ultraball']}  Ultra Ball",
-                value=f"`.catch ultraball {name.lower()}`\n**{CATCH_RATES['ultraball'][rarity]}%** catch rate",
-                inline=True,
-            )
-            embed.add_field(
-                name=f"{BALL_EMOJI['masterball']}  Master Ball",
-                value=f"`.catch masterball {name.lower()}`\n**Guaranteed catch**",
-                inline=True,
-            )
+            for ball_key in ("pokeball", "ultraball", "masterball"):
+                ball_name = BALLS[ball_key]["name"]
+                chance = CATCH_RATES[ball_key][rarity]
+                if ball_key == "masterball":
+                    chance_text = f"**{chance}%** • Guaranteed"
+                else:
+                    chance_text = f"**{chance}%** • {RARITY_LABELS[rarity]} Pokémon"
+                embed.add_field(
+                    name=f"{BALL_EMOJI[ball_key]}  {ball_name}",
+                    value=f"`.catch {ball_key} {name.lower()}`\n{chance_text}",
+                    inline=True,
+                )
             embed.set_image(url=spawn_gif_url(name))
             embed.set_footer(text="First successful catch gets the Pokémon!  •  Pokédex lore from PokéAPI")
 
@@ -393,14 +389,15 @@ class PokemonSpawn(commands.Cog):
             return
         remove_ball(ctx.author.id,ball_db,1)
         rarity=active["rarity"]
-        if random.randint(1,100)<=CATCH_RATES[ball][rarity]:
+        catch_chance = CATCH_RATES[ball][rarity]
+        if random.randint(1,100)<=catch_chance:
             add_pokemon(ctx.author.id,active["name"])
             pokemon_spawn_channels.update_one({"_id":ctx.guild.id},{"$unset":{"active":""}})
-            embed=discord.Embed(title="🎉 You caught it!",description=f"**Pokémon:** {active['name']}\n**Rarity:** {RARITY_LABELS[rarity]}\n**Pokédex #:** `{active['pokedex_id']:03}`\n**Ball Used:** {BALLS[ball]['name']}\n\n{active['name']} has been added to your collection!",color=RARITY_EMBED_COLORS[rarity])
+            embed=discord.Embed(title="🎉 You caught it!",description=f"**Pokémon:** {active['name']}\n**Rarity:** {RARITY_LABELS[rarity]}\n**Pokédex #:** `{active['pokedex_id']:03}`\n**Ball Used:** {BALLS[ball]['name']}\n**Catch Chance:** `{catch_chance}%`\n\n{active['name']} has been added to your collection!",color=RARITY_EMBED_COLORS[rarity])
             embed.set_image(url=sprite_url(active["name"]))
             await ctx.send(embed=embed)
         else:
-            embed=discord.Embed(title="💨 The Pokémon broke free!",description=f"The wild **{active['name']}** escaped!\n**Ball Used:** {BALLS[ball]['name']}",color=0xED4245)
+            embed=discord.Embed(title="💨 The Pokémon broke free!",description=f"The wild **{active['name']}** escaped!\n**Ball Used:** {BALLS[ball]['name']}\n**Catch Chance:** `{catch_chance}%`",color=0xED4245)
             embed.set_image(url=sprite_url(active["name"]))
             await ctx.send(embed=embed)
 
