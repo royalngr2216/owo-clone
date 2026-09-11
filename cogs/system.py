@@ -53,12 +53,8 @@ HELP_CATEGORIES = {
         "**.forcespawn**\nAdmin: spawn one immediately.\n\n"
         "**.catch [pb/ub/mb]**\nTry to catch the active Pokémon.\n\n"
         "**.balls [user]**\nView Poké Balls.\n\n"
-        "**.pokemons [user]**\nView Pokémon collection.\n\n"
-        "**.dex [user]**\nView the Pokédex.\n\n"
-        "**.team [p1, p2, ...]**\nView or set your battle team.\n\n"
-        "**.moves <pokemon> <moves>**\nTeach moves.\n\n"
-        "**.moveset <pokemon> [user]**\nView a moveset.\n\n"
-        "**.battle @user [amount]**\nChallenge another trainer.\n\n"
+        "**.pokemons [user]**\nView your Pokémon collection.\n\n"
+        "**.dex [user]**\nView your Pokédex.\n\n"
         "**.pokemart**\nBrowse the Pokémon marketplace.\n\n"
         "**.pokecheck @user**\nView a trainer's listings.\n\n"
         "**.pokemon sell <pokemon> <price>**\nList a Pokémon for sale.\n\n"
@@ -119,10 +115,7 @@ class System(commands.Cog):
     async def help(self, ctx):
         embed = discord.Embed(
             title="SARKARI ADDA HELP",
-            description=(
-                "Economy, activities, games, casino and Pokémon commands.\n\n"
-                "Select a category below."
-            ),
+            description="Economy, activities, games, casino and Pokémon commands.\n\nSelect a category below.",
             color=0x5865F2,
         )
         embed.set_footer(text="SARKARI ADDA Economy System")
@@ -136,10 +129,8 @@ class System(commands.Cog):
                 .sort("cash", -1)
                 .limit(10)
             )
-
             top_entries = []
             top_ids = set()
-
             for index, user in enumerate(top_docs):
                 try:
                     user_id = int(user["user_id"])
@@ -162,11 +153,9 @@ class System(commands.Cog):
                     "avatar_url": avatar_url,
                     "title_key": get_equipped(user_id),
                 })
-
             if not top_entries:
                 await ctx.send(embed=discord.Embed(description="❌ No one has any cash yet.", color=0xED4245))
                 return
-
             requester_entry = None
             if ctx.author.id not in top_ids:
                 my_doc = economy_collection.find_one({"user_id": str(ctx.author.id)})
@@ -181,7 +170,6 @@ class System(commands.Cog):
                         "avatar_url": str(ctx.author.display_avatar.url),
                         "title_key": get_equipped(ctx.author.id),
                     }
-
             try:
                 buf = await render_leaderboard(top_entries, requester_entry, format_cash)
                 await ctx.send(file=discord.File(buf, filename="leaderboard.png"))
@@ -201,13 +189,6 @@ class System(commands.Cog):
             if ctx.channel.id in games:
                 del games[ctx.channel.id]
                 stopped = True
-        try:
-            cog = self.bot.get_cog("PokemonBattle")
-            if cog and ctx.channel.id in cog.active:
-                del cog.active[ctx.channel.id]
-                stopped = True
-        except Exception:
-            pass
         embed = discord.Embed(
             description="🛑 Active game stopped." if stopped else "❌ No active game.",
             color=0xED4245,
