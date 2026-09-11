@@ -2,437 +2,130 @@ from discord.ext import commands
 import discord
 import random
 
-from utils.economy import (
-    create_account,
-    get_cash,
-    add_cash,
-    remove_cash,
-    format_cash
-)
-
-from utils.stats import (
-    record_win,
-    record_loss,
-    get_profile
-)
-
+from utils.economy import create_account, get_cash, add_cash, remove_cash, format_cash, parse_amount
+from utils.stats import record_win, record_loss, get_profile
 from cogs.system import update_roles
-from utils.game_state import (
-    deathroll_games
-)
+from utils.game_state import deathroll_games
 
 
 class Deathroll(commands.Cog):
-
     def __init__(self, bot):
-
         self.bot = bot
 
-
-    # ─────────────────────────
-    # START GAME
-    # ─────────────────────────
-
     @commands.command(name="deathroll")
-    async def deathroll(
-        self,
-        ctx,
-        opponent: discord.Member,
-        bo: int,
-        amount: str
-    ):
-
+    async def deathroll(self, ctx, opponent: discord.Member = None, bo: int = 1, amount: str = None):
+        if opponent is None or amount is None:
+            await ctx.send("❌ Usage: `.deathroll @user 1/3/5/7/9 amount`\nExample: `.deathroll @user 3 10k`")
+            return
         if opponent == ctx.author:
-
-            await ctx.send(
-                "You cannot play yourself."
-            )
-
+            await ctx.send("❌ You cannot play yourself.")
             return
-
-
-        if bo not in [1, 3, 5, 7, 9]:
-
-            await ctx.send(
-                "Use: `.deathroll @user 1/3/5/7/9 amount`"
-            )
-
+        if opponent.bot:
+            await ctx.send("❌ You cannot challenge bots.")
             return
-
-
+        if bo not in (1, 3, 5, 7, 9):
+            await ctx.send("❌ Best-of must be 1, 3, 5, 7, or 9.")
+            return
         if ctx.channel.id in deathroll_games:
-
-            await ctx.send(
-                "A deathroll game is already active."
-            )
-
+            await ctx.send("❌ A deathroll game is already active in this channel.")
             return
-
-
-        amount = amount.lower()
-
-
-        if amount.endswith("k"):
-
-            amount = int(
-                float(amount[:-1]) * 1000
-            )
-
-        elif amount.endswith("m"):
-
-            amount = int(
-                float(amount[:-1]) * 1000000
-            )
-
-        else:
-
-            amount = int(amount)
-
-
-        if amount <= 0:
-
-            await ctx.send(
-                "Amount must be greater than 0."
-            )
-
-            return
-
 
         create_account(ctx.author.id)
         create_account(opponent.id)
-
-
-        if get_cash(ctx.author.id) < amount:
-
-            await ctx.send(
-                f"{ctx.author.mention} does not have enough cash."
-            )
-
+        bet = parse_amount(amount, get_cash(ctx.author.id))
+        if bet is None or bet <= 0:
+            await ctx.send("❌ Invalid wager. Use amounts like `1000`, `10k`, `1.5k`, or `1m`.")
+            return
+        if bet > 100_000:
+            await ctx.send("❌ Maximum wager is **100,000 NGR**.")
+            return
+        if get_cash(ctx.author.id) < bet:
+            await ctx.send(f"❌ {ctx.author.mention} does not have enough cash.")
+            return
+        if get_cash(opponent.id) < bet:
+            await ctx.send(f"❌ {opponent.mention} does not have enough cash.")
             return
 
-
-        if get_cash(opponent.id) < amount:
-
-            await ctx.send(
-                f"{opponent.mention} does not have enough cash."
-            )
-
-            return
-
-
-        wins_required = (bo // 2) + 1
-
-
+        wins = bo // 2 + 1
         deathroll_games[ctx.channel.id] = {
-
-            "player1": ctx.author,
-            "player2": opponent,
-
-            "turn": ctx.author,
-
-            "current": 100,
-
-            "bet": amount,
-
-            "bo": bo,
-
-            "wins_required": wins_required,
-
-            "score1": 0,
-            "score2": 0
+            "player1": ctx.author, "player2": opponent, "turn": ctx.author,
+            "current": 100, "bet": bet, "bo": bo, "wins_required": wins,
+            "score1": 0, "score2": 0,
         }
-
-
-        embed = discord.Embed(
-
+        await ctx.send(embed=discord.Embed(
             title="💀 DEATHROLL",
-
-            description=(
-
-                f"{ctx.author.mention} ⚔️ "
-                f"{opponent.mention}\n\n"
-
-                f"💵 Wager: "
-                f"**{format_cash(amount)}**\n\n"
-
-                f"🏆 First to "
-                f"**{wins_required}** wins\n\n"
-
-                f"🎲 Starting Number: "
-                f"**100**\n\n"
-
-                f"Use `.roll`"
-
-            ),
-
-            color=discord.Color.red()
-        )
-
-
-        await ctx.send(embed=embed)
-
-
-    # ─────────────────────────
-    # ROLL
-    # ─────────────────────────
+            description=f"{ctx.author.mention} ⚔️ {opponent.mention}\n\n💵 Wager: **{format_cash(bet)}**\n\n🏆 First to **{wins}** wins\n\n🎲 Starting Number: **100**\n\nUse `.roll`",
+            color=discord.Color.red(),
+        ))
 
     @commands.command(name="roll")
     async def roll(self, ctx):
-
-        if ctx.channel.id not in deathroll_games:
-
-            await ctx.send(
-                "No active deathroll game."
-            )
-
+        game = deathroll_games.get(ctx.channel.id)
+        if not game:
+            await ctx.send("❌ No active deathroll game.")
+            return
+        if ctx.author.id != game["turn"].id:
+            await ctx.send(f"❌ It is {game['turn'].mention}'s turn.")
             return
 
+        rolled = random.randint(1, game["current"])
+        await ctx.send(embed=discord.Embed(
+            description=f"🎲 {ctx.author.mention} rolled\n# **{rolled}**",
+            color=discord.Color.orange(),
+        ))
 
-        game = deathroll_games[
-            ctx.channel.id
-        ]
-
-
-        if ctx.author != game["turn"]:
-
-            await ctx.send(
-                "It is not your turn."
-            )
-
+        if rolled != 1:
+            game["current"] = rolled
+            game["turn"] = game["player2"] if game["turn"].id == game["player1"].id else game["player1"]
+            await ctx.send(f"🎲 Next roll: **1–{rolled}**\n🎮 Turn: {game['turn'].mention}")
             return
 
-
-        rolled = random.randint(
-            1,
-            game["current"]
-        )
-
-
-        embed = discord.Embed(
-
-            description=(
-
-                f"🎲 {ctx.author.mention} rolled\n"
-                f"# **{rolled}**"
-
-            ),
-
-            color=discord.Color.orange()
-        )
-
-
-        await ctx.send(embed=embed)
-
-
-        # ROUND LOSS
-
-        if rolled == 1:
-
-            loser = ctx.author
-
-
-            if loser == game["player1"]:
-
-                winner = game["player2"]
-
-                game["score2"] += 1
-
-            else:
-
-                winner = game["player1"]
-
-                game["score1"] += 1
-
-
-            round_embed = discord.Embed(
-
-                title="🏆 ROUND WON",
-
-                description=(
-
-                    f"{loser.mention} rolled "
-                    f"**1**\n\n"
-
-                    f"{winner.mention} wins the round.\n\n"
-
-                    f"📊 Score\n"
-                    f"**{game['score1']} - {game['score2']}**"
-
-                ),
-
-                color=discord.Color.green()
-            )
-
-            await ctx.send(embed=round_embed)
-
-
-            # MATCH END
-
-            if (
-
-                game["score1"] >= game["wins_required"]
-
-                or
-
-                game["score2"] >= game["wins_required"]
-
-            ):
-
-                await self.end_match(
-                    ctx.channel.id
-                )
-
-                return
-
-
-            # NEXT ROUND
-
-            game["current"] = 100
-
-            game["turn"] = loser
-
-
-            next_embed = discord.Embed(
-
-                description=(
-
-                    "🎲 New round started.\n\n"
-
-                    f"🎮 {loser.mention} goes first\n\n"
-
-                    f"Starting Number: **100**"
-
-                ),
-
-                color=discord.Color.red()
-            )
-
-            await ctx.send(embed=next_embed)
-
-            return
-
-
-        # CONTINUE
-
-        game["current"] = rolled
-
-
-        if game["turn"] == game["player1"]:
-
-            game["turn"] = game["player2"]
-
+        loser = ctx.author
+        winner = game["player2"] if loser.id == game["player1"].id else game["player1"]
+        if winner.id == game["player1"].id:
+            game["score1"] += 1
         else:
+            game["score2"] += 1
+        await ctx.send(embed=discord.Embed(
+            title="🏆 ROUND WON",
+            description=f"{loser.mention} rolled **1**\n\n{winner.mention} wins the round.\n\n📊 Score\n**{game['score1']} - {game['score2']}**",
+            color=discord.Color.green(),
+        ))
 
-            game["turn"] = game["player1"]
-
-
-    # ─────────────────────────
-    # END MATCH
-    # ─────────────────────────
+        if game["score1"] >= game["wins_required"] or game["score2"] >= game["wins_required"]:
+            await self.end_match(ctx.channel.id)
+            return
+        game["current"] = 100
+        game["turn"] = loser
+        await ctx.send(f"🎲 New round started.\n🎮 {loser.mention} goes first\nStarting Number: **100**")
 
     async def end_match(self, channel_id):
-
-        game = deathroll_games[channel_id]
-
-
+        game = deathroll_games.get(channel_id)
+        if not game:
+            return
         if game["score1"] > game["score2"]:
-
-            winner = game["player1"]
-            loser = game["player2"]
-
+            winner, loser = game["player1"], game["player2"]
         else:
-
-            winner = game["player2"]
-            loser = game["player1"]
-
-
+            winner, loser = game["player2"], game["player1"]
         amount = game["bet"]
-
-
-        # MONEY
-
-        remove_cash(
-            loser.id,
-            amount
-        )
-
-        add_cash(
-            winner.id,
-            amount
-        )
-
-
-        # STATS
-
-        record_win(
-            winner.id,
-            amount
-        )
-
-        record_loss(
-            loser.id,
-            amount
-        )
-
-
-        winner_stats = get_profile(
-            winner.id
-        )
-
-        loser_stats = get_profile(
-            loser.id
-        )
-
-
-        await update_roles(
-            winner,
-            winner_stats["matches"]
-        )
-
-        await update_roles(
-            loser,
-            loser_stats["matches"]
-        )
-
-
-        # RESULT EMBED
-
-        end_embed = discord.Embed(
-
-            title="☠️ DEATHROLL RESULT",
-
-            description=(
-
-                f"{winner.mention} wins the match!\n\n"
-
-                f"📊 Final Score\n"
-                f"**{game['score1']} - {game['score2']}**\n\n"
-
-                f"💵 Prize: "
-                f"**{format_cash(amount)}**"
-
-            ),
-
-            color=discord.Color.dark_red()
-        )
-
-
-        channel = self.bot.get_channel(
-            channel_id
-        )
-
-        await channel.send(
-            embed=end_embed
-        )
-
-
-        del deathroll_games[
-            channel_id
-        ]
+        remove_cash(loser.id, amount)
+        add_cash(winner.id, amount)
+        record_win(winner.id, amount)
+        record_loss(loser.id, amount)
+        try:
+            await update_roles(winner, get_profile(winner.id)["matches"])
+            await update_roles(loser, get_profile(loser.id)["matches"])
+        except Exception:
+            pass
+        channel = self.bot.get_channel(channel_id)
+        if channel:
+            await channel.send(embed=discord.Embed(
+                title="☠️ DEATHROLL RESULT",
+                description=f"{winner.mention} wins the match!\n\n📊 Final Score\n**{game['score1']} - {game['score2']}**\n\n💵 Prize: **{format_cash(amount)}**",
+                color=discord.Color.dark_red(),
+            ))
+        deathroll_games.pop(channel_id, None)
 
 
 async def setup(bot):
-
-    await bot.add_cog(
-        Deathroll(bot)
-    )
+    await bot.add_cog(Deathroll(bot))
