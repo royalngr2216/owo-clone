@@ -153,13 +153,11 @@ class PokemonSpawn(commands.Cog):
         if not config or not config.get("enabled"):
             await ctx.send("❌ Spawns are disabled. Use `.spawn set #channel` first.")
             return
-        if config.get("active"):
-            await ctx.send("⚠️ A Pokémon is already active. Catch it before forcing another spawn.")
-            return
-        await self.spawn_in_guild(ctx.guild)
+        # Force means exactly that: always create a new spawn, even when one is active.
+        await self.spawn_in_guild(ctx.guild, force=True)
         await ctx.send("⚡ Forced Pokémon spawn!")
 
-    async def spawn_in_guild(self, guild):
+    async def spawn_in_guild(self, guild, force=False):
         if pokemon_spawn_channels is None: return
         config = pokemon_spawn_channels.find_one({"_id": guild.id})
         if not config or not config.get("enabled"): return
