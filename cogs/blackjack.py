@@ -9,7 +9,6 @@ from utils.economy import (
     remove_cash,
     parse_amount,
     format_cash,
-    MAX_BET
 )
 from utils.stats import (
     add_stats,
@@ -78,9 +77,7 @@ class Blackjack(commands.Cog):
         if cash < bet:
             await ctx.send(embed=discord.Embed(description=f"❌ **Insufficient funds.** You have {format_cash(cash)}.", color=COLOR_LOSS))
             return
-        if bet > MAX_BET:
-            await ctx.send(embed=discord.Embed(description=f"❌ **Max bet is {format_cash(MAX_BET)}.**", color=COLOR_LOSS))
-            return
+        # No maximum gambling/bet limit: players can wager any amount they can afford.
         remove_cash(ctx.author.id, bet)
         add_stats(ctx.author.id, games_played=1, total_gambled=bet)
         deck = make_deck()
