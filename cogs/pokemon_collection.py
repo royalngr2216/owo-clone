@@ -15,6 +15,7 @@ RARITY_IDS = {
 }
 RARITY_NAMES = {"mythical":"Mythical","legendary":"Legendary","ultra_beast":"Ultra Beast","pseudo":"Pseudo-Legendary","common":"Common"}
 RARITY_COLORS = {"mythical":(255,205,55),"legendary":(178,92,245),"ultra_beast":(45,210,210),"pseudo":(240,120,45),"common":(100,220,125)}
+RARITY_ORDER = {"mythical": 0, "legendary": 1, "ultra_beast": 2, "pseudo": 3, "common": 4}
 
 
 def rarity_for(pid):
@@ -70,7 +71,7 @@ async def build_image(entries, title, total_caught, unique_count):
     img = Image.new("RGB", (W, H), (18, 21, 28))
     d = ImageDraw.Draw(img)
     d.text((50, 28), title, fill=(245,245,248), font=font(38, True))
-    d.text((52, 76), f"{total_caught} caught  •  {unique_count} unique  •  Sorted by Pokédex #", fill=(155,165,180), font=font(19))
+    d.text((52, 76), f"{total_caught} caught  •  {unique_count} unique", fill=(155,165,180), font=font(19))
 
     async with aiohttp.ClientSession() as session:
         async def load(entry):
@@ -128,20 +129,30 @@ class CollectionView(discord.ui.View):
         self.unique_count = unique_count
         self.page = 0
         self.per_page = 9
+        self.sort_mode = "pokedex"
         self.total_pages = max(1, (len(entries)+8)//9)
         self.refresh_buttons()
+
+    def sorted_entries(self):
+        if self.sort_mode == "rarity":
+            return sorted(self.entries, key=lambda x: (RARITY_ORDER.get(x["rarity"], 99), x["id"], x["name"].lower()))
+        return sorted(self.entries, key=lambda x: (x["id"], x["name"].lower()))
 
     def refresh_buttons(self):
         self.prev.disabled = self.page <= 0
         self.next.disabled = self.page >= self.total_pages-1
+        self.rarity_button.disabled = self.sort_mode == "rarity"
+        self.pokedex_button.disabled = self.sort_mode == "pokedex"
 
     async def render(self):
-        current = self.entries[self.page*9:(self.page+1)*9]
+        ordered = self.sorted_entries()
+        current = ordered[self.page*9:(self.page+1)*9]
         image = await build_image(current, f"{self.ctx.author.display_name}'s Pokémon", self.total_caught, self.unique_count)
         file = discord.File(image, filename="pokemon_collection.png")
-        embed = discord.Embed(title="Pokémon Collection", description=f"**Page {self.page+1}/{self.total_pages}**", color=0x5865F2)
+        sort_name = "Rarity" if self.sort_mode == "rarity" else "Pokédex"
+        embed = discord.Embed(title="Pokémon Collection", description=f"**Page {self.page+1}/{self.total_pages}** • Sorted by **{sort_name}**", color=0x5865F2)
         embed.set_image(url="attachment://pokemon_collection.png")
-        embed.set_footer(text="9 Pokémon per page • Pokédex order • Buttons expire after 3 minutes")
+        embed.set_footer(text="9 Pokémon per page • Buttons expire after 3 minutes")
         self.refresh_buttons()
         return embed, file
 
@@ -151,15 +162,29 @@ class CollectionView(discord.ui.View):
             return False
         return True
 
-    @discord.ui.button(label="◀", style=discord.ButtonStyle.secondary)
+    @discord.ui.button(label="◀", style=discord.ButtonStyle.secondary, row=0)
     async def prev(self, interaction, button):
         self.page -= 1
         embed, file = await self.render()
         await interaction.response.edit_message(embed=embed, attachments=[file], view=self)
 
-    @discord.ui.button(label="▶", style=discord.ButtonStyle.primary)
+    @discord.ui.button(label="▶", style=discord.ButtonStyle.primary, row=0)
     async def next(self, interaction, button):
         self.page += 1
+        embed, file = await self.render()
+        await interaction.response.edit_message(embed=embed, attachments=[file], view=self)
+
+    @discord.ui.button(label="Rarity", emoji="✨", style=discord.ButtonStyle.secondary, row=1)
+    async def rarity_button(self, interaction, button):
+        self.sort_mode = "rarity"
+        self.page = 0
+        embed, file = await self.render()
+        await interaction.response.edit_message(embed=embed, attachments=[file], view=self)
+
+    @discord.ui.button(label="Pokédex", emoji="📖", style=discord.ButtonStyle.secondary, row=1)
+    async def pokedex_button(self, interaction, button):
+        self.sort_mode = "pokedex"
+        self.page = 0
         embed, file = await self.render()
         await interaction.response.edit_message(embed=embed, attachments=[file], view=self)
 
@@ -191,7 +216,6 @@ class PokemonCollection(commands.Cog):
             if meta:
                 meta["count"] = counts.get(normalize(meta["name"]), 1)
                 entries.append(meta)
-        entries.sort(key=lambda x: (x["id"], x["name"].lower()))
         total = len(inventory)
         unique = len(entries)
         view = CollectionView(ctx, entries, total, unique)
