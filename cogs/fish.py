@@ -23,10 +23,6 @@ FISH_COOLDOWN = 1800
 FISH_REWARD   = 50000
 
 
-# ─────────────────────────
-# HELPERS
-# ─────────────────────────
-
 def progress_bar(step, total=5):
     filled = int((step / total) * 10)
     bar = "█" * filled + "░" * (10 - filled)
@@ -44,7 +40,6 @@ def get_rarity(chance):
     return ("🌟 LEGENDARY",    0xF1C40F)
 
 
-# Bobber animation — alternating water lines
 BOBBER_FRAMES = [
     "〰️〰️〰️ 🪝 〰️〰️〰️",
     "〰️〰️ 🪝 〰️〰️〰️〰️",
@@ -77,7 +72,6 @@ class Fish(commands.Cog):
         last_fish = user_data.get("last_fish", 0)
         current_time = int(datetime.now(IST).timestamp())
 
-        # ─── COOLDOWN ───
         if current_time - last_fish < FISH_COOLDOWN:
             remaining = FISH_COOLDOWN - (current_time - last_fish)
             next_time = current_time + remaining
@@ -91,13 +85,11 @@ class Fish(commands.Cog):
             await ctx.send(embed=embed)
             return
 
-        # ─── SAVE TIME ───
         economy_collection.update_one(
             {"user_id": str(ctx.author.id)},
             {"$set": {"last_fish": current_time}}
         )
 
-        # ─── DETERMINE OUTCOME NOW ───
         robbed = random.randint(1, 100) <= 10
 
         roll = random.randint(1, 100)
@@ -109,7 +101,6 @@ class Fish(commands.Cog):
                 selected_item = item
                 break
 
-        # ─── ANIMATION ───
         embed = discord.Embed(
             title="🎣 FISHING",
             description=(
@@ -119,10 +110,9 @@ class Fish(commands.Cog):
             ),
             color=0x3498DB
         )
-        embed.set_footer(text="ECHLEON • Activity")
+        embed.set_footer(text="SARKARI ADDA • Activity")
         msg = await ctx.send(embed=embed)
 
-        # Animate bobber waiting frames
         for i, (title, subtitle, step) in enumerate(FISH_FRAMES[1:], 1):
             delay = 0.85 if i < 3 else 0.7
             await asyncio.sleep(delay)
@@ -131,7 +121,6 @@ class Fish(commands.Cog):
                 f"{subtitle}\n\n"
                 f"{progress_bar(step)}"
             )
-            # Flash yellow on the bite frame
             if i == 3:
                 embed.color = 0xF1C40F
             try:
@@ -141,7 +130,6 @@ class Fish(commands.Cog):
 
         await asyncio.sleep(0.75)
 
-        # ─── BAD EVENT ───
         if robbed:
             loss = 100000
             cash = get_cash(ctx.author.id)
@@ -153,7 +141,7 @@ class Fish(commands.Cog):
                 title="🎣 STOLEN CATCH!",
                 description=(
                     "You pulled something big...\n\n"
-                    "**EMIEL** swam up and 🍇 your entire catch\n"
+                    "**NEEL** swam up and 🍇 your entire catch\n"
                     "before you could even see what it was."
                 ),
                 color=0xED4245
@@ -163,14 +151,12 @@ class Fish(commands.Cog):
                 value=f"**{format_cash(loss)}**",
                 inline=True
             )
-            embed.set_footer(text="ECHLEON • Better luck next time!")
+            embed.set_footer(text="SARKARI ADDA • Better luck next time!")
             await msg.edit(embed=embed)
             return
 
-        # ─── SUCCESS ───
         add_cash(ctx.author.id, FISH_REWARD)
 
-        # ─── FIX: atomic inventory update ───
         economy_collection.update_one(
             {"user_id": str(ctx.author.id)},
             {"$inc": {f"inventory.{selected_item['name']}": 1}}
@@ -178,7 +164,6 @@ class Fish(commands.Cog):
 
         rarity_label, rarity_color = get_rarity(selected_item["chance"])
 
-        # ─── LEGENDARY EXTRA SUSPENSE ───
         if selected_item["chance"] <= 2:
             await asyncio.sleep(0.5)
             embed.description = "✨ **The water is glowing... what is this?!**\n\n`[██████████] 100%`"
@@ -189,7 +174,6 @@ class Fish(commands.Cog):
                 pass
             await asyncio.sleep(0.9)
 
-        # ─── RESULT ───
         embed = discord.Embed(
             title="🎣 CATCH SUCCESS",
             color=rarity_color
@@ -209,7 +193,7 @@ class Fish(commands.Cog):
             value=rarity_label,
             inline=True
         )
-        embed.set_footer(text=f"ECHLEON • Fish  •  Item value: {format_cash(selected_item['price'])}")
+        embed.set_footer(text=f"SARKARI ADDA • Fish  •  Item value: {format_cash(selected_item['price'])}")
 
         await msg.edit(embed=embed)
 
