@@ -48,9 +48,6 @@ HELP_CATEGORIES = {
     ),
     "🐉 Pokémon": (
         "**.spawn**\nView Pokémon spawn status.\n\n"
-        "**.spawn set #channel**\nAdmin: enable spawns in a channel.\n\n"
-        "**.spawn disable**\nAdmin: disable spawns.\n\n"
-        "**.forcespawn**\nAdmin: spawn one immediately.\n\n"
         "**.catch [pb/ub/mb]**\nTry to catch the active Pokémon.\n\n"
         "**.balls [user]**\nView Poké Balls.\n\n"
         "**.pokemons [user]**\nView your Pokémon collection.\n\n"
@@ -73,6 +70,11 @@ HELP_CATEGORIES = {
     "⚙ Utility": (
         "**.ping**\nView bot latency.\n\n"
         "**.stop**\nStop an active supported game."
+    ),
+    "🛡️ Admin": (
+        "**.spawn set #channel**\nEnable Pokémon spawns in a channel.\n\n"
+        "**.spawn disable**\nDisable Pokémon spawns.\n\n"
+        "**.forcespawn**\nForce a new Pokémon spawn immediately, even if one is already active."
     ),
 }
 
