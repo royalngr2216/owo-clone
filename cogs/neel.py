@@ -13,6 +13,10 @@ from cogs.pokemon_spawn import (
 )
 
 
+# ─────────────────────────────────────────────────────────────────────
+# SELL PRICE RANGES (per rarity tier)
+# ─────────────────────────────────────────────────────────────────────
+
 SELL_PRICE_RANGES = {
     "common":      (15_000,     25_000),
     "pseudo":      (350_000,   650_000),
@@ -41,8 +45,14 @@ class Neel(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+    # ─────────────────────────────────────────────
+    # .neel — global activity feed
+    # ─────────────────────────────────────────────
+
     @commands.group(name="neel", invoke_without_command=True)
     async def neel(self, ctx):
+        """Show Neel's recent global activity (steals + purchases)."""
+
         entries = get_neel_log(limit=10)
 
         embed = discord.Embed(
@@ -68,8 +78,14 @@ class Neel(commands.Cog):
 
         await ctx.send(embed=embed)
 
+    # ─────────────────────────────────────────────
+    # .neel sell <pokemon> — instant sale to Neel
+    # ─────────────────────────────────────────────
+
     @neel.command(name="sell")
     async def neel_sell(self, ctx, *, pokemon_name: str = None):
+        """Sell a Pokémon you own directly to Neel for instant cash."""
+
         if not pokemon_name:
             await ctx.send(embed=discord.Embed(
                 description=(
@@ -104,6 +120,8 @@ class Neel(commands.Cog):
         price = random.randint(low, high)
         flavor = random.choice(SELL_FLAVOR_TEXT)
 
+        # Remove the Pokémon from the seller's collection and (if present)
+        # their active team, then pay out.
         db.pokemon_collection.delete_one({"user_id": uid, "name": pname})
         db.pokemon_teams.update_one(
             {"user_id": uid},
@@ -144,12 +162,15 @@ class Neel(commands.Cog):
 
 
 def _format_log_line(entry: dict) -> str:
+    """Render a single neel_log document as a feed line."""
+
     if entry.get("type") == "steal":
         return (
             f"🥷 Stole **{entry.get('pokemon_display', 'a Pokémon')}** "
             f"from <@{entry.get('user_id')}>"
         )
 
+    # "sale"
     price = entry.get("price", 0)
     return (
         f"💰 Bought **{entry.get('pokemon_display', 'a Pokémon')}** "
