@@ -813,268 +813,41 @@ class BallQuantityView(discord.ui.View):
         )
 
         embed.add_field(
-
-            name="📦 Updated Inventory",
-
+            name="🎒 Your Balls",
             value=(
-
-                f"<:pb:1517998351227031632> Poké Ball: **{balls.get('pokeball', 0)}**\n"
-                f"<:ub:1517997681564324114> Ultra Ball: **{balls.get('ultraball', 0)}**\n"
-                f"<a:mb:1517997721288704111> Master Ball: **{balls.get('masterball', 0)}**"
-
+                f"Poké Ball: **{balls.get('pokeball', 0)}**\n"
+                f"Ultra Ball: **{balls.get('ultraball', 0)}**\n"
+                f"Master Ball: **{balls.get('masterball', 0)}**"
             ),
-
             inline=False
         )
 
-        embed.set_footer(
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
-            text="Use .catch pb/ub/mb <pokemon> to start catching"
-        )
-
-
-        for child in self.children:
-            child.disabled = True
-
-        self.stop()
-
-
-        await interaction.response.edit_message(
-
-            embed=embed,
-            view=self
-        )
-
-        return
-
-
-# ─────────────────────────
-# SHOP COMMAND
-# ─────────────────────────
 
 class Shop(commands.Cog):
 
     def __init__(self, bot):
-
         self.bot = bot
-
 
     @commands.command(name="shop")
     async def shop(self, ctx):
 
-        create_account(ctx.author.id)
-
-        user_data = economy_collection.find_one({
-
-            "user_id": str(ctx.author.id)
-
-        })
-
-
-        workers = user_data.get(
-            "workers",
-            {}
-        )
-
-
-        current_time = int(
-            datetime.now().timestamp()
-        )
-
-
-        padlock_until = user_data.get(
-            "padlock_until",
-            0
-        )
-
-
-        active_days = 0
-
-        if padlock_until > current_time:
-
-            active_days = (
-
-                padlock_until - current_time
-
-            ) // 86400
-
-
-        lock_and_key = user_data.get(
-            "lock_and_key",
-            False
-        )
-
-
-        shovel_owned = user_data.get(
-            "shovel",
-            False
-        )
-
-
         embed = discord.Embed(
-
-            title="🛒 ECHLEON SHOP",
-
+            title="🛒 SHOP",
             description=(
-
-                "Purchase upgrades, protection, "
-                "and passive income systems.\n\n"
-
-                "Use the dropdown menu below "
-                "to buy items."
-
+                "Buy items to improve your account.\n\n"
+                "🛡 **Padlock** — 250K NGR\n"
+                "⚒ **Worker** — 5M NGR\n"
+                "🔐 **Lock and Key** — 2.5M NGR\n"
+                "⛏ **Shovel** — 3M NGR\n\n"
+                "🎯 **Pokemart** — Buy Poké Balls"
             ),
-
             color=0x5865F2
         )
 
-
-        # PADLOCK
-
-        embed.add_field(
-
-            name="🛡️ Padlock",
-
-            value=(
-
-                "Protects your account from rob attempts.\n\n"
-
-                "• Price: **250K NGR**\n"
-                "• Duration: **1 Day**\n"
-                f"• Active Time: **{active_days} Days**"
-
-            ),
-
-            inline=False
-        )
-
-
-        # WORKERS
-
-        embed.add_field(
-
-            name="🧌 Workers",
-
-            value=(
-
-                "Passive income generators.\n\n"
-
-                "• Level 1 Income: **200K/day**\n"
-                "• Max Level: **5**\n"
-                "• Upgradeable: **Yes**\n"
-                f"• Owned: **{len(workers)}/5**\n\n"
-
-                "Workers generate money endlessly "
-                "until claimed."
-
-            ),
-
-            inline=False
-        )
-
-
-        # LOCK AND KEY
-
-        embed.add_field(
-
-            name="🔐 Lock and Key",
-
-            value=(
-
-                "Increase rob attempts permanently.\n\n"
-
-                "• Price: **2.5M NGR**\n"
-                "• Rob Attempts: **10 → 20**\n"
-                f"• Owned: **{'Yes' if lock_and_key else 'No'}**"
-
-            ),
-
-            inline=False
-        )
-
-
-        # SHOVEL
-
-        embed.add_field(
-
-            name="🪏 Shovel",
-
-            value=(
-
-                "Unlock the mining system.\n\n"
-
-                "• Price: **3M NGR**\n"
-                "• Unlocks: **.mine**\n"
-                f"• Owned: **{'Yes' if shovel_owned else 'No'}**"
-
-            ),
-
-            inline=False
-        )
-
-
-        # POKÉ MART
-
-        balls = get_balls(ctx.author.id)
-
-        embed.add_field(
-
-            name="<a:mb:1517997721288704111> Pokemart",
-
-            value=(
-
-                "Buy Poké Balls to catch wild Pokémon.\n\n"
-
-                "• <:pb:1517998351227031632> Poké Ball: **5K NGR**\n"
-                "• <:ub:1517997681564324114> Ultra Ball: **75K NGR**\n"
-                "• <a:mb:1517997721288704111> Master Ball: **750K NGR**\n\n"
-
-                f"📦 Owned: **{balls.get('pokeball', 0)}** / "
-                f"**{balls.get('ultraball', 0)}** / "
-                f"**{balls.get('masterball', 0)}**"
-
-            ),
-
-            inline=False
-        )
-
-
-        # TITLES
-
-        embed.add_field(
-
-            name="🎖 Titles",
-
-            value=(
-
-                "Permanent cosmetic badges shown on "
-                "`.cash` and `.leaderboard`.\n\n"
-
-                "• Prices: **10M → 10B NGR**\n"
-                "• Use `.titles` to browse and buy"
-
-            ),
-
-            inline=False
-        )
-
-
-        embed.set_footer(
-
-            text="ECHLEON Economy System"
-        )
-
-
-        await ctx.send(
-
-            embed=embed,
-
-            view=ShopView(ctx)
-        )
+        await ctx.send(embed=embed, view=ShopView(ctx))
 
 
 async def setup(bot):
-
-    await bot.add_cog(
-        Shop(bot)
-			)
+    await bot.add_cog(Shop(bot))
