@@ -12,30 +12,26 @@ HELP_CATEGORIES = {
     "🌎 Activities": "**.job**\nWork for cash.\n\n**.fish**\nGo fishing.\n\n**.hunt**\nGo hunting.\n\n**.mine**\nGo mining.",
     "🎮 Games": "**.randoms @user bo amount**\nPokémon random battle.\n\n**.deathroll @user bo amount**\nPlay Deathroll.\n\n**.crack @user bo amount**\nCrack the hidden number.",
     "🎲 Casino": "**.cf h/t amount**\nCoinflip.\n\n**.blackjack amount** / **.bj amount**\nPlay Blackjack.\n\n**.crash amount**\nPlay Crash.\n\n**.guessnumber amount**\nGuess the number.\n\n**.mines amount**\nPlay Mines.\n\n**.highlow amount**\nPlay High/Low.\n\n**.lottery amount**\nEnter the lottery.\n\n**.slots amount**\nPlay Slots.",
-    "🐉 Pokémon": "**.spawn**\nView Pokémon spawn status.\n\n**.catch pokeball <name>**\nCatch with a Poké Ball.\n\n**.catch ultraball <name>**\nCatch with an Ultra Ball.\n\n**.catch masterball <name>**\nCatch with a Master Ball.\n\n**.balls [user]**\nView Poké Balls.\n\n**.pokemons**\nView your Pokémon collection with images, rarity and pagination.\n\n**.dex** / **.pokedex**\nView unique caught species with images, rarity and Pokédex sorting.\n\n**.pokemart**\nBrowse the Pokémon marketplace.\n\n**.pokecheck @user**\nView a trainer's listings.\n\n**.pokemon sell <pokemon> <price>**\nList a Pokémon for sale.\n\n**.pokemon buy @user <pokemon>**\nBuy a listed Pokémon.\n\n**.neel** / **.neel sell <pokemon>**\nView Neel or sell a Pokémon.",
+    "🐉 Pokémon": "**.spawn**\nView Pokémon spawn status.\n\n**.catch pokeball <name>**\nCatch with a Poké Ball.\n\n**.catch ultraball <name>**\nCatch with an Ultra Ball.\n\n**.catch masterball <name>**\nCatch with a Master Ball.\n\n**.balls [user]**\nView Poké Balls.\n\n**.pokemons**\nView your Pokémon collection with large images, rarity, Pokédex sorting and pagination.\n\n**.pokemart**\nBrowse the Pokémon marketplace.\n\n**.pokecheck @user**\nView a trainer's listings.\n\n**.pokemon sell <pokemon> <price>**\nList a Pokémon for sale.\n\n**.pokemon buy @user <pokemon>**\nBuy a listed Pokémon.\n\n**.neel** / **.neel sell <pokemon>**\nView Neel or sell a Pokémon.",
     "📊 Profile": "**.profile [user]**\nView player stats.\n\n**.leaderboard**\nView the richest players.\n\n**.quests**\nView quests and achievements.\n\n**.titles**\nBrowse your cosmetic titles.\n\n**.titles buy <name>**\nBuy a title.\n\n**.titles equip <name>**\nEquip a title.\n\n**.titles unequip**\nUnequip your title.",
     "🛡️ Admin": "**.spawn set #channel**\nEnable Pokémon spawns in a channel.\n\n**.spawn disable**\nDisable Pokémon spawns.\n\n**.forcespawn**\nForce a new Pokémon spawn even if one is already active.",
     "⚙ Utility": "**.ping**\nView bot latency.\n\n**.stop**\nStop an active supported game.",
 }
 
-
 class HelpDropdown(discord.ui.Select):
     def __init__(self):
         options = [discord.SelectOption(label=category, description=f"View {category} commands") for category in HELP_CATEGORIES]
         super().__init__(placeholder="Select a category...", min_values=1, max_values=1, options=options)
-
     async def callback(self, interaction: discord.Interaction):
         category = self.values[0]
         embed = discord.Embed(title=category, description=HELP_CATEGORIES[category], color=0x5865F2)
         embed.set_footer(text="SARKARI ADDA Economy System")
         await interaction.response.edit_message(embed=embed, view=self.view)
 
-
 class HelpView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=180)
         self.add_item(HelpDropdown())
-
 
 class System(commands.Cog):
     def __init__(self, bot): self.bot = bot
@@ -84,6 +80,5 @@ class System(commands.Cog):
     @commands.command(name="ping")
     async def ping(self, ctx):
         latency = round(self.bot.latency * 1000); await ctx.send(embed=discord.Embed(description=f"🏓 Pong: **{latency}ms**", color=0x57F287))
-
 
 async def setup(bot): await bot.add_cog(System(bot))
