@@ -18,25 +18,75 @@ def sprite_url(name: str) -> str:
     return f"https://play.pokemonshowdown.com/sprites/gen9/{_clean(name)}.png"
 
 
-def spawn_gif_url(name: str, pokedex_id: int = None, pokemon_data: dict = None) -> str:
-    # PokeAPI's Showdown sprite is the most reliable source for animated sprites,
-    # especially for newer Pokémon such as Iron Valiant that are not in Showdown's
-    # legacy /sprites/ani/ directory. It also correctly handles names like Ho-Oh.
-    if pokemon_data:
-        showdown = (
-            pokemon_data.get("sprites", {})
-            .get("other", {})
-            .get("showdown", {})
-            .get("front_default")
-        )
-        if showdown:
-            return showdown
+def spawn_gif_url(name: str) -> str:
+    return f"https://play.pokemonshowdown.com/sprites/ani/{_clean(name)}.gif"
 
-    # Fallback to the classic Showdown animated sprite directory.
-    slug = str(name).lower().replace(" ", "-").replace(".", "").replace("'", "")
-    # Zygarde's default/50% form is stored as zygarde.gif, not zygarde-50.gif.
-    slug = slug.replace("-50-percent", "").replace("-50%", "").replace("-50", "")
-    return f"https://play.pokemonshowdown.com/sprites/ani/{slug}.gif"
+
+_GIF_CACHE = {}
+
+
+def _gif_candidates(api_name: str, display_name: str = None):
+    raw = str(api_name).lower().strip()
+    display = str(display_name or api_name).lower().strip()
+    candidates = []
+
+    def add(value):
+        value = value.strip()
+        if value and value not in candidates:
+            candidates.append(value)
+
+    # Showdown normally uses its own ID-style slug. Keep hyphens first because
+    # forms such as ho-oh, mr-mime and zygarde-10 use them.
+    add(raw)
+    add(raw.replace(" ", "-"))
+    add(raw.replace("-", ""))
+    add(display.replace(" ", "-"))
+    add(display.replace(" ", ""))
+
+    # Known PokeAPI/Showdown naming differences.
+    aliases = {
+        "ho-oh": "ho-oh",
+        "mr-mime": "mr-mime",
+        "mime-jr": "mime-jr",
+        "type-null": "typenull",
+        "zygarde-50": "zygarde",
+        "zygarde-50-percent": "zygarde",
+        "zygarde-10-percent": "zygarde-10",
+        "zygarde-complete": "zygarde-complete",
+    }
+    for value in list(candidates):
+        if value in aliases:
+            add(aliases[value])
+
+    return candidates
+
+
+async def resolve_spawn_gif(api_name: str, display_name: str = None):
+    cache_key = str(api_name).lower()
+    if cache_key in _GIF_CACHE:
+        return _GIF_CACHE[cache_key]
+
+    candidates = _gif_candidates(api_name, display_name)
+    timeout = aiohttp.ClientTimeout(total=5)
+    try:
+        async with aiohttp.ClientSession() as session:
+            for slug in candidates:
+                url = f"https://play.pokemonshowdown.com/sprites/ani/{slug}.gif"
+                try:
+                    async with session.get(url, timeout=timeout) as response:
+                        if response.status == 200:
+                            _GIF_CACHE[cache_key] = url
+                            return url
+                except Exception:
+                    continue
+    except Exception:
+        pass
+
+    # If Showdown has no animated sprite for a newer Pokémon, use its static
+    # Showdown sprite rather than displaying a broken Discord image.
+    fallback = sprite_url(display_name or api_name)
+    _GIF_CACHE[cache_key] = fallback
+    return fallback
 
 
 def normalize_name(name: str) -> str:
@@ -109,17 +159,11 @@ async def fetch_pokemon_lore(pokedex_id: int):
                 if response.status != 200:
                     return "No Pokédex entry available."
                 data = await response.json()
-
         entries = [x for x in data.get("flavor_text_entries", []) if x.get("language", {}).get("name") == "en"]
         if not entries:
             return "No Pokédex entry available."
-
         preferred_versions = ("leafgreen", "firered", "emerald", "crystal", "gold", "silver", "red", "blue")
-        chosen = next(
-            (x for version in preferred_versions for x in entries
-             if x.get("version", {}).get("name") == version),
-            entries[0],
-        )
+        chosen = next((x for version in preferred_versions for x in entries if x.get("version", {}).get("name") == version), entries[0])
         lore = " ".join(str(chosen.get("flavor_text", "")).replace("\n", " ").replace("\f", " ").split())
         _LORE_CACHE[pokedex_id] = lore or "No Pokédex entry available."
         return _LORE_CACHE[pokedex_id]
@@ -331,10 +375,12 @@ class PokemonSpawn(commands.Cog):
                 async with session.get(f"https://pokeapi.co/api/v2/pokemon/{pokemon_id}",timeout=aiohttp.ClientTimeout(total=8)) as response:
                     if response.status != 200: return
                     data = await response.json()
-            name = data["name"].replace("-"," ").title()
+            api_name = data["name"]
+            name = api_name.replace("-"," ").title()
             rarity = get_rarity(pokemon_id)
             lore = await fetch_pokemon_lore(pokemon_id)
             types = " / ".join(x["type"]["name"].title() for x in data.get("types", [])) or "Unknown"
+            gif_url = await resolve_spawn_gif(api_name, name)
 
             embed = discord.Embed(title="✨ A wild Pokémon has appeared!", description=f"> {lore}", color=RARITY_EMBED_COLORS[rarity])
             embed.add_field(name=f"{name}  •  {RARITY_LABELS[rarity]}", value=f"**Pokédex:** `#{pokemon_id:03}`  •  **Type:** {types}", inline=False)
@@ -346,7 +392,7 @@ class PokemonSpawn(commands.Cog):
                 else:
                     chance_text = f"**{chance}%** • {RARITY_LABELS[rarity]} Pokémon"
                 embed.add_field(name=f"{BALL_EMOJI[ball_key]}  {ball_name}", value=f"`.catch {ball_key} {name.lower()}`\n{chance_text}", inline=True)
-            embed.set_image(url=spawn_gif_url(name, pokemon_id, data))
+            embed.set_image(url=gif_url)
             embed.set_footer(text="First successful catch gets the Pokémon!  •  Pokédex lore from PokéAPI")
 
             message=await channel.send(embed=embed)
@@ -370,7 +416,7 @@ class PokemonSpawn(commands.Cog):
             await ctx.send("❌ There is no Pokémon to catch right now.")
             return
         if config.get("channel_id") != ctx.channel.id:
-            await ctx.send(f"❌ Pokémon are spawning in <#{config.get('channel_id')}>")
+            await ctx.send(f"❌ Pokémon are spawning in <#{config.get('channel_id')}>.")
             return
         if not ball or not pokemon_name:
             await ctx.send("❌ Use `.catch pokeball <name>`, `.catch ultraball <name>`, or `.catch masterball <name>`.")
